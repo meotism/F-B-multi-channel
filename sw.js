@@ -10,10 +10,11 @@
  *   - Other requests: network-only
  */
 
-const CACHE_NAME = 'fb-restaurant-v1';
+const CACHE_NAME = 'fb-restaurant-v2';
 
 // Critical static assets to pre-cache during installation.
 // This list covers the app shell, all CSS, core JS, store modules, and page HTML.
+// NOTE: Only include files that actually exist — missing files will cause cache.addAll() to fail.
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -26,12 +27,14 @@ const STATIC_ASSETS = [
   // CSS - pages
   './css/pages/auth.css',
   './css/pages/table-map.css',
+  './css/pages/order.css',
   './css/pages/orders.css',
   './css/pages/bills.css',
   './css/pages/menu.css',
   './css/pages/inventory.css',
   './css/pages/reports.css',
   './css/pages/users.css',
+  './css/pages/settings.css',
   // JS - core
   './js/app.js',
   './js/config.js',
@@ -42,6 +45,8 @@ const STATIC_ASSETS = [
   './js/stores/table-map-store.js',
   './js/stores/printer-store.js',
   './js/stores/ui-store.js',
+  './js/stores/order-store.js',
+  './js/stores/report-store.js',
   // Manifest
   './manifest.json',
   // Page HTML templates
@@ -53,6 +58,7 @@ const STATIC_ASSETS = [
   './pages/menu-edit.html',
   './pages/categories.html',
   './pages/inventory.html',
+  './pages/ingredients.html',
   './pages/reports.html',
   './pages/users.html',
   './pages/settings.html',
@@ -94,6 +100,16 @@ self.addEventListener('fetch', (event) => {
 
   // Only handle GET requests; let mutations (POST/PUT/DELETE) pass through
   if (event.request.method !== 'GET') return;
+
+  // CDN / external modules: let the browser handle directly (no caching)
+  // These are ES modules from esm.sh and scripts from jsdelivr — caching them
+  // in the SW can cause stale or corrupt module responses and blank pages.
+  if (url.hostname.includes('esm.sh') ||
+      url.hostname.includes('jsdelivr.net') ||
+      url.hostname.includes('googleapis.com') ||
+      url.hostname.includes('gstatic.com')) {
+    return; // fall through to browser default fetch
+  }
 
   // API calls (Supabase): network-first -- always try for fresh data
   if (url.hostname.includes('supabase.co')) {

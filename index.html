@@ -49,8 +49,46 @@
 
   <!-- App bootstrap (module) - imports Alpine.js from esm.sh and starts manually -->
   <script type="module" src="js/app.js"></script>
+  <!-- Fallback: if the module fails to load, show an error instead of blank page -->
+  <script type="module">
+    // If we reach here, modules loaded successfully — hide the fallback
+    document.getElementById('app-load-error')?.remove();
+  </script>
+  <script nomodule>
+    // Browser doesn't support ES modules at all
+    document.addEventListener('DOMContentLoaded', function() {
+      var el = document.getElementById('app-load-error');
+      if (el) el.querySelector('p').textContent = 'Trình duyệt không hỗ trợ. Vui lòng dùng Chrome hoặc Edge.';
+    });
+  </script>
 </head>
 <body x-data>
+  <!-- Fallback shown only when JS modules fail to load (removed on success) -->
+  <noscript>
+    <div style="text-align:center;padding:3rem;font-family:sans-serif;">
+      <p>Vui lòng bật JavaScript để sử dụng ứng dụng.</p>
+    </div>
+  </noscript>
+  <div id="app-load-error" style="display:none;text-align:center;padding:3rem;font-family:Inter,sans-serif;">
+    <p style="font-size:1.1rem;color:#64748b;">Đang tải ứng dụng...</p>
+  </div>
+  <script>
+    // Show loading message after 2 seconds if Alpine hasn't started yet.
+    // If modules loaded fine, the #app-load-error div is already removed.
+    setTimeout(function() {
+      var el = document.getElementById('app-load-error');
+      if (el) {
+        el.style.display = 'block';
+        // After 8 more seconds, show error + reload suggestion
+        setTimeout(function() {
+          if (document.getElementById('app-load-error')) {
+            el.innerHTML = '<p style="font-size:1.1rem;color:#ef4444;margin-bottom:1rem;">Không thể tải ứng dụng.</p>' +
+              '<p style="color:#64748b;">Vui lòng thử <a href="javascript:location.reload(true)" style="color:#2563eb;">tải lại trang</a> hoặc xóa cache trình duyệt.</p>';
+          }
+        }, 8000);
+      }
+    }, 2000);
+  </script>
 
   <!-- ===================================================================
        Sidebar (desktop: fixed visible, tablet: overlay slide, mobile: hidden)
