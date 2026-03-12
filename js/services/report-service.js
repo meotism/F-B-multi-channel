@@ -28,7 +28,12 @@ export async function generateReport(from, to, type, categoryId = null, topN = 1
   });
 
   if (error) {
-    throw new Error('Khong the tao bao cao: ' + error.message);
+    let msg = error.message;
+    try {
+      const errBody = await error.context?.json?.();
+      if (errBody?.error?.message) msg = errBody.error.message;
+    } catch { /* ignore parse errors */ }
+    throw new Error(msg);
   }
 
   // The Edge Function may return an error in the response body

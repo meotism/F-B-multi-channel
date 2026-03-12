@@ -310,10 +310,10 @@ Deno.serve(async (req: Request) => {
     // 15. Return structured response
     return jsonResponse({
       summary: {
-        totalRevenue,
-        billCount,
-        averageBillValue,
-        totalTax,
+        total_revenue: totalRevenue,
+        bill_count: billCount,
+        average_value: averageBillValue,
+        total_tax: totalTax,
       },
       top_items_by_qty: topItemsByQty,
       top_items_by_revenue: topItemsByRevenue,

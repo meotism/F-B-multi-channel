@@ -6,7 +6,7 @@ import { corsHeaders } from './cors.ts';
 
 /**
  * Create a successful JSON response.
- * Follows the standard response format: { success: true, data: T }
+ * Returns the data payload directly (no wrapper).
  *
  * @param data - The response payload
  * @param status - HTTP status code (default: 200)
@@ -14,7 +14,7 @@ import { corsHeaders } from './cors.ts';
  */
 export function jsonResponse(data: unknown, status = 200): Response {
   return new Response(
-    JSON.stringify({ success: true, data }),
+    JSON.stringify(data),
     {
       status,
       headers: {
