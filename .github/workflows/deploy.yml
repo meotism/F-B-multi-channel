@@ -26,8 +26,8 @@ jobs:
 
       - name: Inject Supabase config
         run: |
-          sed -i "s|https://your-project.supabase.co|${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}|g" js/config.js
-          sed -i "s|your-anon-key|${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}|g" js/config.js
+          sed -i "s|https://gaaeyrnonbevkxpllwue.supabase.co|${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}|g" js/config.js
+          sed -i "s|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9[^']*|${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}|g" js/config.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
