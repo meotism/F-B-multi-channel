@@ -783,7 +783,7 @@ export function tableMapPage() {
         shape,
         x: 45,
         y: 40,
-        status: 'available',
+        status: 'empty',
       };
 
       const store = Alpine.store('tableMap');
