@@ -270,6 +270,17 @@ export function billPage() {
           this.order.status = 'finalized';
         }
 
+        // Mark table as 'paid' immediately after payment received — decoupled from print
+        if (this.order?.table_id) {
+          await supabase
+            .from('tables')
+            .update({ status: 'paid' })
+            .eq('id', this.order.table_id);
+          if (this.table) {
+            this.table.status = 'paid';
+          }
+        }
+
         Alpine.store('ui').showToast('Hóa đơn đã được xuất thành công', 'success');
 
         // Auto-trigger print if Bluetooth is supported and a printer is configured
@@ -342,19 +353,6 @@ export function billPage() {
           const updatedBill = await updateBillStatus(this.bill.id, 'printed', userId);
           this.bill = updatedBill;
 
-          // Update table status to 'paid' (Requirement 9 AC-5)
-          if (this.order?.table_id) {
-            await supabase
-              .from('tables')
-              .update({ status: 'paid' })
-              .eq('id', this.order.table_id);
-
-            // Update local table state in the tableMap store
-            if (this.table) {
-              this.table.status = 'paid';
-            }
-          }
-
           Alpine.store('printer').isConnected = true;
           Alpine.store('ui').showToast('In hóa đơn thành công!', 'success');
         } else {
@@ -370,6 +368,17 @@ export function billPage() {
         // If user cancelled the Bluetooth picker, do not show error
         if (err.name === 'NotFoundError') {
           return;
+        }
+
+        // Update bill to pending_print so retry button appears
+        try {
+          const userId = Alpine.store('auth').user?.id;
+          if (this.bill) {
+            const updatedBill = await updateBillStatus(this.bill.id, 'pending_print', userId);
+            this.bill = updatedBill;
+          }
+        } catch (statusErr) {
+          console.error('[billPage] failed to update bill to pending_print:', statusErr);
         }
 
         Alpine.store('ui').showToast('Lỗi in hóa đơn: ' + err.message, 'error');
