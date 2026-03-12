@@ -1,7 +1,7 @@
 // Table Map Page - Map container, drag-drop, lock, edit mode
 //
 // Alpine.js component for the table map page. Manages the visual map of tables,
-// edit mode with drag-and-drop (via interact.js), map lock state, undo stack,
+// edit mode with drag-and-drop (native pointer events), map lock state, undo stack,
 // and serving-table timers. Delegates table data to the tableMap store.
 
 import { navigate } from '../../utils/navigate.js';
@@ -373,8 +373,8 @@ export function tableMapPage() {
         // against position jitter during drag operations (design Section 4.2.8)
         Alpine.store('tableMap').isEditing = true;
 
-        // Wait for Alpine to finish re-rendering the DOM (adding .is-editable
-        // class to table nodes) before initializing interact.js drag targets
+        // Wait for Alpine to finish re-rendering the DOM before
+        // initializing drag-and-drop pointer event listeners
         this.$nextTick(() => this.initDragAndDrop());
 
         // Register beforeunload handler to warn users when closing/reloading
@@ -515,10 +515,10 @@ export function tableMapPage() {
       }, 5 * 60 * 1000); // 5 minutes
     },
 
-    // --- Drag-and-Drop (interact.js) ---
+    // --- Drag-and-Drop (native pointer events) ---
 
     /**
-     * Initialize interact.js draggable on editable table nodes.
+     * Initialize drag-and-drop using native pointer events on the map container.
      * Configures snap-to-grid (10px), restrict-to-parent, and percentage-based
      * positioning relative to .map-container dimensions.
      *
@@ -528,108 +528,118 @@ export function tableMapPage() {
      * Requirements: 5.1 AC-3 (drag updates x,y), 5.1 EC-2 (snap to grid)
      */
     initDragAndDrop() {
-      // Guard: interact.js must be loaded
-      if (typeof interact === 'undefined') {
-        console.error('[TableMapPage] interact.js is not loaded');
+      const container = document.getElementById('map-container');
+      if (!container) {
+        console.error('[TableMapPage] map-container not found');
         return;
       }
 
-      // Unset any previous interact.js config to avoid duplicates
-      interact('.table-node.is-editable').unset();
+      // State tracked across pointer events
+      let dragTableId = null;
+      let lastX = 0;
+      let lastY = 0;
 
-      interact('.table-node.is-editable').draggable({
-        inertia: false,
-        // No modifiers — we handle bounds clamping manually in the move
-        // handler via Math.max/min. Removing snap and restrictRect avoids
-        // conflicts with percentage-based positioning and Alpine's :style.
-        autoScroll: false,
+      const onPointerDown = (e) => {
+        // Find the closest .table-node ancestor (handles clicks on child spans)
+        const node = e.target.closest('.table-node.is-editable');
+        if (!node) return;
 
-        listeners: {
-          start: (event) => {
-            this.isDragging = true;
+        e.preventDefault();
+        node.setPointerCapture(e.pointerId);
 
-            const tableId = event.target.dataset.tableId;
-            const store = Alpine.store('tableMap');
-            const table = store.getTableById(tableId);
+        dragTableId = node.dataset.tableId;
+        lastX = e.clientX;
+        lastY = e.clientY;
 
-            if (table) {
-              // Save previous position for undo before drag begins
-              this.undoStack.push({
-                tableId,
-                prevX: table.x,
-                prevY: table.y,
-              });
-            }
+        this.isDragging = true;
 
-            // Add visual feedback class during drag
-            event.target.classList.add('is-dragging');
+        const store = Alpine.store('tableMap');
+        const table = store.getTableById(dragTableId);
+        if (table) {
+          this.undoStack.push({
+            tableId: dragTableId,
+            prevX: table.x,
+            prevY: table.y,
+          });
+        }
 
-            // Reset inactivity timer on user interaction to prevent
-            // auto-exit while the user is actively editing
-            this.resetInactivityTimer();
-          },
+        node.classList.add('is-dragging');
+        this.resetInactivityTimer();
+      };
 
-          move: (event) => {
-            const target = event.target;
-            const tableId = target.dataset.tableId;
+      const onPointerMove = (e) => {
+        if (!dragTableId) return;
+        e.preventDefault();
 
-            // Get container dimensions for pixel-to-percentage conversion
-            const container = document.getElementById('map-container');
-            if (!container) return;
-            const containerRect = container.getBoundingClientRect();
-            if (containerRect.width === 0 || containerRect.height === 0) return;
+        const containerRect = container.getBoundingClientRect();
+        if (containerRect.width === 0 || containerRect.height === 0) return;
 
-            // Convert pixel delta to percentage of container dimensions
-            const dxPercent = (event.dx / containerRect.width) * 100;
-            const dyPercent = (event.dy / containerRect.height) * 100;
+        const dx = e.clientX - lastX;
+        const dy = e.clientY - lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
 
-            // Read current position from the store (not DOM) to avoid
-            // conflicts with Alpine's reactive :style binding
-            const store = Alpine.store('tableMap');
-            const table = store.getTableById(tableId);
-            if (!table) return;
+        const dxPercent = (dx / containerRect.width) * 100;
+        const dyPercent = (dy / containerRect.height) * 100;
 
-            const newX = Math.max(0, Math.min(100, table.x + dxPercent));
-            const newY = Math.max(0, Math.min(100, table.y + dyPercent));
+        const store = Alpine.store('tableMap');
+        const table = store.getTableById(dragTableId);
+        if (!table) return;
 
-            // Update the store directly — Alpine's :style binding will
-            // update the DOM position reactively, keeping them in sync
-            store.updateLocalPosition(tableId, newX, newY);
-          },
+        const newX = Math.max(0, Math.min(100, table.x + dxPercent));
+        const newY = Math.max(0, Math.min(100, table.y + dyPercent));
 
-          end: (event) => {
-            this.isDragging = false;
-            event.target.classList.remove('is-dragging');
+        store.updateLocalPosition(dragTableId, newX, newY);
+      };
 
-            // Reset inactivity timer on drag end (user interaction)
-            this.resetInactivityTimer();
+      const onPointerUp = () => {
+        if (!dragTableId) return;
 
-            // Mark that there are unsaved layout changes
-            const store = Alpine.store('tableMap');
-            store.hasUnsavedChanges = true;
+        const node = container.querySelector(
+          `.table-node[data-table-id="${dragTableId}"]`,
+        );
+        if (node) node.classList.remove('is-dragging');
 
-            const tableId = event.target.dataset.tableId;
-            const table = store.getTableById(tableId);
-            if (table) {
-              console.log(
-                `[TableMapPage] Table ${tableId} moved to (${table.x.toFixed(1)}%, ${table.y.toFixed(1)}%)`,
-              );
-            }
-          },
-        },
-      });
+        const store = Alpine.store('tableMap');
+        store.hasUnsavedChanges = true;
 
-      console.log('[TableMapPage] Drag-and-drop initialized');
+        const table = store.getTableById(dragTableId);
+        if (table) {
+          console.log(
+            `[TableMapPage] Table ${dragTableId} moved to (${table.x.toFixed(1)}%, ${table.y.toFixed(1)}%)`,
+          );
+        }
+
+        dragTableId = null;
+        this.isDragging = false;
+        this.resetInactivityTimer();
+      };
+
+      container.addEventListener('pointerdown', onPointerDown);
+      container.addEventListener('pointermove', onPointerMove);
+      container.addEventListener('pointerup', onPointerUp);
+      container.addEventListener('pointercancel', onPointerUp);
+
+      // Store cleanup references
+      this._dragCleanup = () => {
+        container.removeEventListener('pointerdown', onPointerDown);
+        container.removeEventListener('pointermove', onPointerMove);
+        container.removeEventListener('pointerup', onPointerUp);
+        container.removeEventListener('pointercancel', onPointerUp);
+      };
+
+      console.log('[TableMapPage] Drag-and-drop initialized (native pointer events)');
     },
 
     /**
-     * Destroy interact.js draggable configuration on table nodes.
+     * Remove pointer event listeners for drag-and-drop.
      * Called from exitEditMode() to disable drag when leaving edit mode.
      */
     destroyDragAndDrop() {
-      if (typeof interact === 'undefined') return;
-
-      interact('.table-node.is-editable').unset();
+      if (this._dragCleanup) {
+        this._dragCleanup();
+        this._dragCleanup = null;
+      }
       console.log('[TableMapPage] Drag-and-drop destroyed');
     },
 
