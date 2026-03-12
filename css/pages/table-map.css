@@ -144,6 +144,17 @@
   cursor: grabbing;
 }
 
+/* In edit mode, child elements must not capture pointer events so that
+   interact.js receives pointerdown on the parent .table-node div. */
+.table-node.is-editable > * {
+  pointer-events: none;
+}
+
+/* Restore pointer-events on the inline rename input so it remains usable */
+.table-node.is-editable > .table-node__rename-input {
+  pointer-events: auto;
+}
+
 /* Selected table in edit mode */
 .table-node.is-selected {
   border: 2px solid white;

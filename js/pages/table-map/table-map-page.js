@@ -373,7 +373,9 @@ export function tableMapPage() {
         // against position jitter during drag operations (design Section 4.2.8)
         Alpine.store('tableMap').isEditing = true;
 
-        this.initDragAndDrop();
+        // Wait for Alpine to finish re-rendering the DOM (adding .is-editable
+        // class to table nodes) before initializing interact.js drag targets
+        this.$nextTick(() => this.initDragAndDrop());
 
         // Register beforeunload handler to warn users when closing/reloading
         // the browser tab while there are unsaved layout changes.
@@ -532,22 +534,15 @@ export function tableMapPage() {
         return;
       }
 
+      // Unset any previous interact.js config to avoid duplicates
+      interact('.table-node.is-editable').unset();
+
       interact('.table-node.is-editable').draggable({
         inertia: false,
-        modifiers: [
-          // Snap to 10x10 pixel grid for visual alignment
-          interact.modifiers.snap({
-            targets: [interact.snappers.grid({ x: 10, y: 10 })],
-            range: Infinity,
-            relativePoints: [{ x: 0, y: 0 }],
-          }),
-          // Restrict movement within the parent .map-container boundary
-          interact.modifiers.restrictRect({
-            restriction: 'parent',
-            endOnly: false,
-          }),
-        ],
-        autoScroll: true,
+        // No modifiers — we handle bounds clamping manually in the move
+        // handler via Math.max/min. Removing snap and restrictRect avoids
+        // conflicts with percentage-based positioning and Alpine's :style.
+        autoScroll: false,
 
         listeners: {
           start: (event) => {
