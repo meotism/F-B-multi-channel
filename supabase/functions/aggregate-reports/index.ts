@@ -20,6 +20,38 @@ import { jsonResponse, errorResponse } from '../_shared/response.ts';
 /** UUID v4 validation regex */
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Convert a local date (YYYY-MM-DD) at midnight in the given IANA timezone
+ * to a UTC ISO string.  Uses the Intl API available in Deno / V8.
+ *
+ * Example: localDateToUtc('2026-03-12', 'Asia/Ho_Chi_Minh')
+ *        → '2026-03-11T17:00:00.000Z'  (midnight VN = 17:00 UTC day before)
+ */
+function localDateToUtc(dateStr: string, timezone: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const utcMidnight = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
+
+  // Format the same instant in both UTC and target timezone
+  // sv-SE locale produces "YYYY-MM-DD HH:mm:ss" which is easy to parse
+  const utcStr = utcMidnight.toLocaleString('sv-SE', { timeZone: 'UTC' });
+  const tzStr = utcMidnight.toLocaleString('sv-SE', { timeZone: timezone });
+
+  // Parse back to compute offset (positive = east of UTC)
+  const utcMs = Date.parse(utcStr.replace(' ', 'T') + 'Z');
+  const tzMs = Date.parse(tzStr.replace(' ', 'T') + 'Z');
+  const offsetMs = tzMs - utcMs;
+
+  // Midnight local = UTC midnight − offset
+  return new Date(utcMidnight.getTime() - offsetMs).toISOString();
+}
+
+/** Add one day to a YYYY-MM-DD string. */
+function addOneDay(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  return next.toISOString().split('T')[0];
+}
+
 /** Allowed report type values */
 const VALID_TYPES = ['daily', 'monthly', 'yearly', 'custom'] as const;
 
@@ -204,38 +236,44 @@ Deno.serve(async (req: Request) => {
     // daily → nhóm theo giờ, monthly/yearly/custom → nhóm theo ngày
     const groupBy = type === 'daily' ? 'hour' : 'day';
 
-    // 10. Execute 3 queries in parallel
+    // 10. Convert local date range to UTC using outlet timezone.
+    //     "from" is inclusive, "to" is inclusive → add 1 day for exclusive upper bound.
+    const tz = outlet.timezone || 'Asia/Ho_Chi_Minh';
+    const fromUtc = localDateToUtc(from, tz);
+    const toUtc = localDateToUtc(addOneDay(to), tz);
+
+    // 11. Execute 3 queries in parallel
     const outletId = callerProfile.outlet_id;
 
     const [summaryResult, topItemsResult, breakdownResult] = await Promise.all([
-      // 10a. Revenue summary: tổng doanh thu, số hóa đơn, trung bình, tổng thuế
+      // 11a. Revenue summary: tổng doanh thu, số hóa đơn, trung bình, tổng thuế
       supabaseAdmin
         .from('bills')
         .select('total, tax')
         .eq('outlet_id', outletId)
-        .gte('finalized_at', from)
-        .lt('finalized_at', to)
+        .gte('finalized_at', fromUtc)
+        .lt('finalized_at', toUtc)
         .in('status', ['finalized', 'printed']),
 
-      // 10b. Top items by qty (RPC)
+      // 11b. Top items by qty (RPC)
       supabaseAdmin.rpc('get_top_items', {
         p_outlet_id: outletId,
-        p_from: from,
-        p_to: to,
+        p_from: fromUtc,
+        p_to: toUtc,
         p_category_id: categoryId,
         p_limit: topN,
       }),
 
-      // 10c. Revenue breakdown by hour or day (RPC)
+      // 11c. Revenue breakdown by hour or day (RPC)
       supabaseAdmin.rpc('get_revenue_breakdown', {
         p_outlet_id: outletId,
-        p_from: from,
-        p_to: to,
+        p_from: fromUtc,
+        p_to: toUtc,
         p_group_by: groupBy,
       }),
     ]);
 
-    // 11. Handle query errors
+    // 12. Handle query errors
     if (summaryResult.error) {
       console.error('aggregate-reports summary query error:', summaryResult.error);
       return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR');
@@ -251,7 +289,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR');
     }
 
-    // 12. Aggregate revenue summary from bills data
+    // 13. Aggregate revenue summary from bills data
     // Xử lý trường hợp không có dữ liệu — trả về giá trị 0 (không phải lỗi)
     const bills = summaryResult.data || [];
     const billCount = bills.length;
@@ -259,7 +297,7 @@ Deno.serve(async (req: Request) => {
     const totalTax = bills.reduce((sum: number, b: { tax: number }) => sum + (b.tax || 0), 0);
     const averageBillValue = billCount > 0 ? Math.round(totalRevenue / billCount) : 0;
 
-    // 13. Build top_items_by_qty and top_items_by_revenue
+    // 14. Build top_items_by_qty and top_items_by_revenue
     // get_top_items RPC trả về kết quả đã sắp xếp theo qty DESC
     const topItemsByQty = topItemsResult.data || [];
 
@@ -269,7 +307,7 @@ Deno.serve(async (req: Request) => {
         (b.total_revenue || 0) - (a.total_revenue || 0)
       );
 
-    // 14. Return structured response
+    // 15. Return structured response
     return jsonResponse({
       summary: {
         totalRevenue,
