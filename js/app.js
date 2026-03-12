@@ -1,9 +1,10 @@
 // App - Bootstrap: init Supabase, register stores, start router
 //
-// Application entry point. Initializes Supabase client, registers all Alpine.js
-// global stores, and boots the router after authentication is resolved.
+// Application entry point. Imports Alpine.js as ES module (not CDN auto-start)
+// to guarantee stores are registered BEFORE Alpine processes the DOM.
+// Then initializes auth, loads outlet data, and starts the router.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import Alpine from 'https://esm.sh/alpinejs@3';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import { authStore } from './stores/auth-store.js';
 import { outletStore } from './stores/outlet-store.js';
@@ -13,7 +14,7 @@ import { uiStore } from './stores/ui-store.js';
 import { orderStore } from './stores/order-store.js';
 import { reportStore } from './stores/report-store.js';
 import { initRouter } from './router.js';
-import { initRealtimeSubscriptions, unsubscribeAll } from './services/realtime-service.js';
+import { initRealtimeSubscriptions } from './services/realtime-service.js';
 
 // Page components -- imported for side effects (registers on window for x-data)
 import './pages/auth/login-page.js';
@@ -29,30 +30,36 @@ import './pages/bills/bill-page.js';
 import './pages/reports/reports-page.js';
 import './pages/settings/settings-page.js';
 
-// Initialize Supabase client (singleton)
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Make Alpine available globally (required for x-data, $store, etc. in templates)
+window.Alpine = Alpine;
 
-// Register Alpine stores before Alpine.start()
-document.addEventListener('alpine:init', () => {
-  Alpine.store('auth', authStore());
-  Alpine.store('outlet', outletStore());
-  Alpine.store('tableMap', tableMapStore());  // single source of truth for table data
-  Alpine.store('printer', printerStore());
-  Alpine.store('ui', uiStore());
-  Alpine.store('orders', orderStore());   // order state, cart, menu browsing
-  Alpine.store('reports', reportStore()); // report state, date range, chart data
-});
+// Register all stores BEFORE Alpine.start() so $store references work
+Alpine.store('auth', authStore());
+Alpine.store('outlet', outletStore());
+Alpine.store('tableMap', tableMapStore());
+Alpine.store('printer', printerStore());
+Alpine.store('ui', uiStore());
+Alpine.store('orders', orderStore());
+Alpine.store('reports', reportStore());
 
-// After Alpine starts, initialize app
-document.addEventListener('alpine:initialized', async () => {
-  await Alpine.store('auth').init();
-  if (Alpine.store('auth').isAuthenticated) {
-    const outletId = Alpine.store('auth').user.outlet_id;
-    await Alpine.store('outlet').loadOutlet(outletId);
-    await Alpine.store('tableMap').loadTables(outletId);
-    // Initialize centralized Realtime subscriptions for this outlet
-    initRealtimeSubscriptions(outletId);
+// Start Alpine - processes all x-data, x-show, etc. directives in the DOM
+Alpine.start();
+
+// Bootstrap: init auth, load data, start router
+async function bootstrap() {
+  try {
+    await Alpine.store('auth').init();
+    if (Alpine.store('auth').isAuthenticated) {
+      const outletId = Alpine.store('auth').user.outlet_id;
+      await Alpine.store('outlet').loadOutlet(outletId);
+      await Alpine.store('tableMap').loadTables(outletId);
+      initRealtimeSubscriptions(outletId);
+    }
+  } catch (err) {
+    console.error('[App] Bootstrap error:', err);
   }
   // Start hash-based SPA router after auth state is resolved
   initRouter();
-});
+}
+
+bootstrap();

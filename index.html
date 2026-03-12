@@ -8,10 +8,10 @@
   <!-- Content Security Policy -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://esm.sh;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://esm.sh https://*.esm.sh;
     style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
-    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://esm.sh;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://esm.sh https://*.esm.sh;
     img-src 'self' data: blob: https://*.supabase.co;
   ">
   <title>F&B Management</title>
@@ -47,10 +47,7 @@
   <!-- interact.js for drag-and-drop on table map (loaded before Alpine) -->
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 
-  <!-- Alpine.js from CDN -->
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
-
-  <!-- App bootstrap (module) -->
+  <!-- App bootstrap (module) - imports Alpine.js from esm.sh and starts manually -->
   <script type="module" src="js/app.js"></script>
 </head>
 <body x-data>
