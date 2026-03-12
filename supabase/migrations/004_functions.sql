@@ -62,8 +62,7 @@ CREATE TRIGGER trg_sync_user_role
 CREATE OR REPLACE FUNCTION finalize_bill(
     p_order_id UUID,
     p_payment_method payment_method,
-    p_user_id UUID,
-    p_outlet_id UUID
+    p_user_id UUID
 ) RETURNS JSONB AS $$
 DECLARE
     v_order RECORD;
@@ -76,8 +75,8 @@ BEGIN
     WHERE id = p_order_id
     FOR UPDATE;
 
-    -- Validate order exists and belongs to the correct outlet
-    IF v_order IS NULL OR v_order.outlet_id != p_outlet_id THEN
+    -- Validate order exists
+    IF v_order IS NULL THEN
         RAISE EXCEPTION 'ORDER_NOT_FOUND';
     END IF;
 
@@ -97,9 +96,9 @@ BEGIN
     FROM order_items
     WHERE order_id = p_order_id;
 
-    -- e. Create the bill record
+    -- e. Create the bill record (outlet_id derived from the order)
     INSERT INTO bills (order_id, outlet_id, total, tax, payment_method, status, finalized_at)
-    VALUES (p_order_id, p_outlet_id, v_total, 0, p_payment_method, 'finalized', now())
+    VALUES (p_order_id, v_order.outlet_id, v_total, 0, p_payment_method, 'finalized', now())
     RETURNING * INTO v_bill;
 
     -- f. Transition order status to 'finalized'
@@ -116,7 +115,7 @@ BEGIN
     -- h. Create audit log entry for bill finalization
     INSERT INTO audit_logs (outlet_id, entity, entity_id, action, user_id, details)
     VALUES (
-        p_outlet_id,
+        v_order.outlet_id,
         'bill',
         v_bill.id,
         'finalize',
@@ -137,10 +136,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION finalize_bill(UUID, payment_method, UUID, UUID) IS
+COMMENT ON FUNCTION finalize_bill(UUID, payment_method, UUID) IS
   'Atomic bill finalization: locks order, validates status, calculates total, '
   'creates bill, updates order/table status, and logs to audit_logs. '
-  'Called via rpc from the finalize-bill Edge Function.';
+  'Derives outlet_id from the order. Called via rpc from the finalize-bill Edge Function.';
 
 -- ============================================================
 -- 3. BATCH UPDATE TABLE POSITIONS
