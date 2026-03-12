@@ -348,17 +348,21 @@ export function tableMapPage() {
         const userId = auth.user?.id;
         const userName = auth.user?.name || auth.user?.email || 'Unknown';
 
-        // Attempt to acquire the map edit lock via Presence
+        // Attempt to acquire the map edit lock via Presence (non-blocking)
         if (this._mapLockChannel) {
-          const acquired = await acquireLock(this._mapLockChannel, userId, userName);
-          if (!acquired) {
-            // Lock held by another user -- show toast and remain in view mode
-            const ownerName = this.lockOwner?.user_name || 'Người dùng khác';
-            Alpine.store('ui').showToast(
-              `${ownerName} đang chỉnh sửa sơ đồ bàn`,
-              'warning',
-            );
-            return;
+          try {
+            const acquired = await acquireLock(this._mapLockChannel, userId, userName);
+            if (!acquired) {
+              const ownerName = this.lockOwner?.user_name || 'Người dùng khác';
+              Alpine.store('ui').showToast(
+                `${ownerName} đang chỉnh sửa sơ đồ bàn`,
+                'warning',
+              );
+              return;
+            }
+          } catch (lockErr) {
+            // Lock service failed (Realtime not available) — proceed without lock
+            console.warn('[TableMapPage] Map lock unavailable, proceeding without lock:', lockErr);
           }
         }
 
@@ -392,7 +396,7 @@ export function tableMapPage() {
         // stops interacting. This prevents indefinite lock holding.
         this.resetInactivityTimer();
 
-        console.log('[TableMapPage] enterEditMode() -- lock acquired');
+        console.log('[TableMapPage] enterEditMode() -- edit mode active');
       } catch (err) {
         console.error('[TableMapPage] enterEditMode() failed:', err);
         Alpine.store('ui').showToast(
