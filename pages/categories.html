@@ -1,0 +1,264 @@
+<!-- Categories page template - loaded by router -->
+<section x-data="categoriesPage()">
+
+  <!-- Page header with title and add button -->
+  <div class="categories-page__header">
+    <h2>Quản lý danh mục</h2>
+    <button class="btn btn--primary"
+            @click="openCreateModal()">
+      <!-- Plus icon -->
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>Thêm danh mục</span>
+    </button>
+  </div>
+
+  <!-- Loading skeleton -->
+  <div x-show="isLoading" x-cloak>
+    <div class="categories-skeleton">
+      <template x-for="i in 5" :key="i">
+        <div class="skeleton skeleton--row">
+          <div class="skeleton skeleton--text" style="width: 35%;"></div>
+          <div class="skeleton skeleton--text" style="width: 15%;"></div>
+          <div class="skeleton skeleton--text" style="width: 15%;"></div>
+          <div class="skeleton skeleton--text" style="width: 25%;"></div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div x-show="!isLoading && categories.length === 0"
+       x-cloak
+       class="categories-empty">
+    <!-- Folder icon -->
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+         style="color: var(--color-text-secondary); margin-bottom: var(--space-3);">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+    </svg>
+    <p>Chưa có danh mục nào</p>
+    <button class="btn btn--primary btn--sm"
+            @click="openCreateModal()"
+            style="margin-top: var(--space-3);">
+      Thêm danh mục đầu tiên
+    </button>
+  </div>
+
+  <!-- Categories table (desktop/tablet) -->
+  <div x-show="!isLoading && categories.length > 0"
+       x-cloak
+       class="categories-table-wrapper data-table-wrapper">
+    <table class="data-table categories-table">
+      <thead>
+        <tr>
+          <th>Tên danh mục</th>
+          <th>Thứ tự</th>
+          <th>Trạng thái</th>
+          <th>Hành động</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="cat in categories" :key="cat.id">
+          <tr :class="{ 'categories-table__row--inactive': !cat.is_active }">
+            <td x-text="cat.name"></td>
+            <td x-text="cat.sort_order"></td>
+            <td>
+              <button class="categories-toggle"
+                      :class="{ 'categories-toggle--active': cat.is_active }"
+                      @click="toggleActive(cat)"
+                      :aria-label="cat.is_active ? 'Ẩn danh mục' : 'Kích hoạt danh mục'">
+                <span class="categories-toggle__track">
+                  <span class="categories-toggle__thumb"></span>
+                </span>
+                <span class="categories-toggle__label"
+                      x-text="cat.is_active ? 'Hoạt động' : 'Đã ẩn'"></span>
+              </button>
+            </td>
+            <td>
+              <div class="categories-table__actions">
+                <button class="btn btn--outline btn--sm"
+                        @click="openEditModal(cat)">
+                  Sửa
+                </button>
+                <button class="btn btn--danger btn--sm"
+                        @click="confirmDelete(cat)">
+                  Xóa
+                </button>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Categories cards (mobile) -->
+  <div x-show="!isLoading && categories.length > 0"
+       x-cloak
+       class="categories-cards">
+    <template x-for="cat in categories" :key="'card-' + cat.id">
+      <div class="categories-card"
+           :class="{ 'categories-card--inactive': !cat.is_active }">
+        <div class="categories-card__header">
+          <span class="categories-card__name" x-text="cat.name"></span>
+          <span class="badge"
+                :class="cat.is_active ? 'badge--success' : 'badge--muted'"
+                x-text="cat.is_active ? 'Hoạt động' : 'Đã ẩn'"></span>
+        </div>
+        <div class="categories-card__meta">
+          <span style="color: var(--color-text-secondary); font-size: var(--font-size-xs);">
+            Thứ tự:
+          </span>
+          <span style="font-size: var(--font-size-xs);" x-text="cat.sort_order"></span>
+        </div>
+        <div class="categories-card__actions">
+          <button class="categories-toggle categories-toggle--compact"
+                  :class="{ 'categories-toggle--active': cat.is_active }"
+                  @click="toggleActive(cat)"
+                  :aria-label="cat.is_active ? 'Ẩn danh mục' : 'Kích hoạt danh mục'">
+            <span class="categories-toggle__track">
+              <span class="categories-toggle__thumb"></span>
+            </span>
+          </button>
+          <button class="btn btn--outline btn--sm"
+                  @click="openEditModal(cat)">
+            Sửa
+          </button>
+          <button class="btn btn--danger btn--sm"
+                  @click="confirmDelete(cat)">
+            Xóa
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ================================================================
+       Create/Edit Category Modal
+       ================================================================ -->
+  <div class="modal-backdrop"
+       x-show="showModal"
+       x-transition.opacity
+       @click.self="closeModal()"
+       x-cloak>
+    <div class="modal-content" x-show="showModal" x-transition>
+      <!-- Header -->
+      <div class="modal-content__header">
+        <h3 x-text="isEditMode ? 'Sửa danh mục' : 'Thêm danh mục'"></h3>
+        <button class="modal-content__close"
+                @click="closeModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-content__body">
+        <!-- Error message -->
+        <div class="categories-form__error"
+             x-show="formError"
+             x-cloak>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          <span x-text="formError"></span>
+        </div>
+
+        <form @submit.prevent="submitForm()">
+          <!-- Name -->
+          <div class="form-group">
+            <label class="form-label" for="category-name">Tên danh mục <span class="categories-form__required">*</span></label>
+            <input id="category-name"
+                   type="text"
+                   class="form-input"
+                   x-model="formName"
+                   placeholder="Nhập tên danh mục"
+                   maxlength="100"
+                   required
+                   :disabled="isSaving">
+          </div>
+
+          <!-- Sort order -->
+          <div class="form-group">
+            <label class="form-label" for="category-sort-order">Thứ tự sắp xếp</label>
+            <input id="category-sort-order"
+                   type="number"
+                   class="form-input"
+                   x-model.number="formSortOrder"
+                   min="0"
+                   placeholder="0"
+                   :disabled="isSaving">
+          </div>
+
+          <!-- Hidden submit for enter key -->
+          <button type="submit" style="display: none;"></button>
+        </form>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-content__footer">
+        <button class="btn btn--outline"
+                @click="closeModal()"
+                :disabled="isSaving">
+          Hủy
+        </button>
+        <button class="btn btn--primary"
+                @click="submitForm()"
+                :disabled="isSaving">
+          <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
+          <span x-text="isSaving ? 'Đang lưu...' : (isEditMode ? 'Lưu thay đổi' : 'Tạo danh mục')"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Delete Confirmation Modal
+       ================================================================ -->
+  <div class="modal-backdrop"
+       x-show="showDeleteModal"
+       x-transition.opacity
+       @click.self="closeDeleteModal()"
+       x-cloak>
+    <div class="modal-content" x-show="showDeleteModal" x-transition>
+      <!-- Header -->
+      <div class="modal-content__header">
+        <h3>Xác nhận xóa</h3>
+        <button class="modal-content__close"
+                @click="closeDeleteModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-content__body">
+        <p>Bạn có chắc muốn xóa danh mục
+          <strong x-text="deleteTarget?.name"></strong>?
+        </p>
+        <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: var(--space-2);">
+          Nếu danh mục đang có món ăn, bạn sẽ không thể xóa.
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-content__footer">
+        <button class="btn btn--outline"
+                @click="closeDeleteModal()"
+                :disabled="isSaving">
+          Hủy
+        </button>
+        <button class="btn btn--danger"
+                @click="submitDelete()"
+                :disabled="isSaving">
+          <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
+          <span x-text="isSaving ? 'Đang xóa...' : 'Xóa'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</section>

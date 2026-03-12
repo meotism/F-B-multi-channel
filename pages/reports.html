@@ -1,0 +1,242 @@
+<!-- Reports page template - loaded by router -->
+<!-- Chart.js loaded here (page-specific, not in index.html) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+<section x-data="reportsPage()" class="reports-page">
+
+  <!-- ================================================================
+       Reports Header
+       ================================================================ -->
+  <div class="reports-header">
+    <h2 class="reports-header__title">Bao cao</h2>
+  </div>
+
+  <!-- ================================================================
+       Date Range Picker Section
+       ================================================================ -->
+  <div class="reports-filters">
+
+    <!-- Quick date range selector buttons -->
+    <div class="reports-filters__quick">
+      <button class="reports-filter-btn"
+              :class="{ 'reports-filter-btn--active': $store.reports.viewMode === 'day' }"
+              @click="selectDateRange('day')">
+        Ngay
+      </button>
+      <button class="reports-filter-btn"
+              :class="{ 'reports-filter-btn--active': $store.reports.viewMode === 'week' }"
+              @click="selectDateRange('week')">
+        Tuan
+      </button>
+      <button class="reports-filter-btn"
+              :class="{ 'reports-filter-btn--active': $store.reports.viewMode === 'month' }"
+              @click="selectDateRange('month')">
+        Thang
+      </button>
+      <button class="reports-filter-btn"
+              :class="{ 'reports-filter-btn--active': $store.reports.viewMode === 'year' }"
+              @click="selectDateRange('year')">
+        Nam
+      </button>
+      <button class="reports-filter-btn"
+              :class="{ 'reports-filter-btn--active': $store.reports.viewMode === 'custom' }"
+              @click="selectDateRange('custom')">
+        Tuy chon
+      </button>
+    </div>
+
+    <!-- Date inputs -->
+    <div class="reports-filters__dates">
+      <div class="reports-filters__date-group">
+        <label class="form-label" for="report-date-from">Tu ngay</label>
+        <input type="date"
+               id="report-date-from"
+               class="form-input"
+               x-model="$store.reports.dateFrom"
+               @change="$store.reports.viewMode = 'custom'">
+      </div>
+      <div class="reports-filters__date-group">
+        <label class="form-label" for="report-date-to">Den ngay</label>
+        <input type="date"
+               id="report-date-to"
+               class="form-input"
+               x-model="$store.reports.dateTo"
+               @change="$store.reports.viewMode = 'custom'">
+      </div>
+    </div>
+
+    <!-- Category filter + Generate button -->
+    <div class="reports-filters__actions">
+      <div class="reports-filters__category">
+        <label class="form-label" for="report-category">Danh muc</label>
+        <select id="report-category"
+                class="form-select"
+                @change="onCategoryChange($event)">
+          <option value="">Tat ca danh muc</option>
+          <template x-for="cat in categories" :key="cat.id">
+            <option :value="cat.id" x-text="cat.name"></option>
+          </template>
+        </select>
+      </div>
+
+      <button class="btn btn--primary reports-filters__submit"
+              :disabled="$store.reports.isLoading"
+              @click="fetchReport()">
+        <span x-show="!$store.reports.isLoading">Xem bao cao</span>
+        <span x-show="$store.reports.isLoading" x-cloak class="spinner spinner--sm"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Error state
+       ================================================================ -->
+  <div x-show="$store.reports.error && !$store.reports.isLoading"
+       x-cloak
+       class="reports-error">
+    <p x-text="$store.reports.error"></p>
+  </div>
+
+  <!-- ================================================================
+       No Data State (Task 13.6)
+       ================================================================ -->
+  <div x-show="$store.reports.noData && !$store.reports.isLoading"
+       x-cloak
+       class="reports-no-data">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+         style="color: var(--color-text-secondary); margin-bottom: var(--space-3);">
+      <line x1="18" y1="20" x2="18" y2="10"></line>
+      <line x1="12" y1="20" x2="12" y2="4"></line>
+      <line x1="6" y1="20" x2="6" y2="14"></line>
+    </svg>
+    <p>Khong co du lieu cho khoang thoi gian nay</p>
+  </div>
+
+  <!-- ================================================================
+       Report Content (shown when data is available)
+       ================================================================ -->
+  <div x-show="!$store.reports.noData || $store.reports.isLoading">
+
+    <!-- ==============================================================
+         Revenue Summary Cards (Task 13.2)
+         ============================================================== -->
+    <div class="reports-summary">
+
+      <!-- Total Revenue Card -->
+      <div class="reports-card">
+        <div class="reports-card__label">Tong doanh thu</div>
+        <!-- Loading skeleton -->
+        <div x-show="$store.reports.isLoading" x-cloak
+             class="skeleton skeleton--text" style="width: 80%; height: 28px;"></div>
+        <!-- Value -->
+        <div x-show="!$store.reports.isLoading"
+             class="reports-card__value"
+             x-text="$store.reports.summary ? formatVND($store.reports.summary.total_revenue) + ' VND' : '0 VND'">
+        </div>
+      </div>
+
+      <!-- Bill Count Card -->
+      <div class="reports-card">
+        <div class="reports-card__label">So hoa don</div>
+        <div x-show="$store.reports.isLoading" x-cloak
+             class="skeleton skeleton--text" style="width: 60%; height: 28px;"></div>
+        <div x-show="!$store.reports.isLoading"
+             class="reports-card__value"
+             x-text="$store.reports.summary ? $store.reports.summary.bill_count : '0'">
+        </div>
+      </div>
+
+      <!-- Average Bill Value Card -->
+      <div class="reports-card">
+        <div class="reports-card__label">Trung binh/hoa don</div>
+        <div x-show="$store.reports.isLoading" x-cloak
+             class="skeleton skeleton--text" style="width: 70%; height: 28px;"></div>
+        <div x-show="!$store.reports.isLoading"
+             class="reports-card__value"
+             x-text="$store.reports.summary ? formatVND($store.reports.summary.average_value) + ' VND' : '0 VND'">
+        </div>
+      </div>
+    </div>
+
+    <!-- ==============================================================
+         Revenue Bar Chart (Task 13.3)
+         ============================================================== -->
+    <div class="reports-chart-section"
+         x-show="$store.reports.chartData && !$store.reports.isLoading"
+         x-cloak>
+      <h3 class="reports-section-title">Bieu do doanh thu</h3>
+      <div class="reports-chart-container">
+        <canvas x-ref="revenueCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Loading skeleton for chart -->
+    <div x-show="$store.reports.isLoading" x-cloak class="reports-chart-section">
+      <div class="skeleton skeleton--rect" style="height: 300px;"></div>
+    </div>
+
+    <!-- ==============================================================
+         Top Items Horizontal Bar Chart (Task 13.4)
+         ============================================================== -->
+    <div class="reports-chart-section"
+         x-show="($store.reports.topItemsByQty.length > 0 || $store.reports.topItemsByRevenue.length > 0) && !$store.reports.isLoading"
+         x-cloak>
+      <div class="reports-top-items-header">
+        <h3 class="reports-section-title">Mon ban chay</h3>
+        <div class="reports-top-items-tabs">
+          <button class="reports-filter-btn"
+                  :class="{ 'reports-filter-btn--active': topItemsTab === 'qty' }"
+                  @click="switchTopItemsTab('qty')">
+            Mon ban chay
+          </button>
+          <button class="reports-filter-btn"
+                  :class="{ 'reports-filter-btn--active': topItemsTab === 'revenue' }"
+                  @click="switchTopItemsTab('revenue')">
+            Doanh thu cao nhat
+          </button>
+        </div>
+      </div>
+      <div class="reports-chart-container reports-chart-container--horizontal">
+        <canvas x-ref="topItemsCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- ==============================================================
+         Data Table (Task 13.5)
+         ============================================================== -->
+    <div class="reports-table-section"
+         x-show="$store.reports.breakdownData.length > 0 && !$store.reports.isLoading"
+         x-cloak>
+      <h3 class="reports-section-title">Chi tiet theo ky</h3>
+      <div class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Ky</th>
+              <th>Doanh thu (VND)</th>
+              <th>So hoa don</th>
+              <th>Trung binh (VND)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="row in $store.reports.breakdownData" :key="row.period">
+              <tr>
+                <td x-text="row.period"></td>
+                <td x-text="formatVND(row.revenue)"></td>
+                <td x-text="row.bill_count"></td>
+                <td x-text="formatVND(row.average_value)"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Loading skeleton for table -->
+    <div x-show="$store.reports.isLoading" x-cloak class="reports-table-section">
+      <div class="skeleton skeleton--rect" style="height: 200px;"></div>
+    </div>
+
+  </div>
+</section>

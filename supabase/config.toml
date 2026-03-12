@@ -1,0 +1,5 @@
+# Supabase project configuration
+# See: https://supabase.com/docs/guides/cli/config
+
+[project]
+id = ""

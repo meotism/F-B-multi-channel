@@ -1,0 +1,112 @@
+/* ==========================================================================
+ * variables.css — CSS Custom Properties (Design Tokens)
+ *
+ * Single source of truth for all visual design tokens used across the app.
+ * Components and pages reference these variables instead of hardcoded values.
+ *
+ * Design reference: design.md Section 2.4 Responsive Layout (lines 858-938)
+ * ========================================================================== */
+
+:root {
+  /* ------------------------------------------------------------------
+   * Breakpoints (for documentation; used in media queries)
+   * Mobile:  < 768px
+   * Tablet:  768px - 1024px
+   * Desktop: > 1024px
+   * ------------------------------------------------------------------ */
+  --bp-mobile: 768px;
+  --bp-tablet: 1024px;
+
+  /* ------------------------------------------------------------------
+   * Layout Dimensions
+   * ------------------------------------------------------------------ */
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --bottom-nav-height: 56px;
+
+  /* ------------------------------------------------------------------
+   * Colors — Status
+   * Used for table status indicators and related badges.
+   * ------------------------------------------------------------------ */
+  --color-empty: #22c55e;            /* Green  — Ban trong */
+  --color-serving: #f97316;          /* Orange — Dang phuc vu */
+  --color-awaiting-payment: #ef4444; /* Red    — Cho thanh toan */
+  --color-paid: #3b82f6;            /* Blue   — Da thanh toan */
+
+  /* ------------------------------------------------------------------
+   * Colors — UI
+   * ------------------------------------------------------------------ */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-info: #3b82f6;
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-inverse: #ffffff;
+
+  /* ------------------------------------------------------------------
+   * Typography
+   * Inter is the primary font, loaded from Google Fonts CDN.
+   * System fonts serve as fallback for fast initial render.
+   * ------------------------------------------------------------------ */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+
+  /* ------------------------------------------------------------------
+   * Spacing
+   * Based on a 4px (0.25rem) scale. Used for margin, padding, gap.
+   * ------------------------------------------------------------------ */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+
+  /* ------------------------------------------------------------------
+   * Border Radius
+   * ------------------------------------------------------------------ */
+  --radius-sm: 0.25rem;   /* 4px  — subtle rounding */
+  --radius-md: 0.5rem;    /* 8px  — cards, inputs */
+  --radius-lg: 0.75rem;   /* 12px — modals, large cards */
+  --radius-full: 9999px;  /* pill shape / circles */
+
+  /* ------------------------------------------------------------------
+   * Shadows
+   * ------------------------------------------------------------------ */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+  /* ------------------------------------------------------------------
+   * Z-index Layers
+   * Ordered from lowest to highest to prevent stacking conflicts.
+   * ------------------------------------------------------------------ */
+  --z-sidebar: 100;
+  --z-header: 200;
+  --z-modal-backdrop: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
+  /* ------------------------------------------------------------------
+   * Transitions
+   * ------------------------------------------------------------------ */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+
+  /* ------------------------------------------------------------------
+   * Currency
+   * ------------------------------------------------------------------ */
+  --currency-suffix: ' VND';
+}

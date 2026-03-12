@@ -1,0 +1,78 @@
+// Report Service - Report queries (calls Edge Function or direct query)
+//
+// Provides functions to generate reports via the aggregate-reports Edge Function,
+// aggregate revenue data client-side, and sort/filter top items.
+// All operations use Supabase client (Functions).
+//
+// Requirements: 11 (Report Generation), 12 (Report Aggregation)
+// Design reference: Section 16 (Report Service)
+
+import { supabase } from './supabase-client.js';
+
+/**
+ * Generate a report by calling the aggregate-reports Edge Function.
+ * The Edge Function executes revenue summary, top items, and breakdown
+ * queries in parallel and returns the aggregated result.
+ *
+ * @param {string} from - Start date in YYYY-MM-DD format
+ * @param {string} to - End date in YYYY-MM-DD format
+ * @param {string} type - Report type: 'daily' | 'monthly' | 'yearly' | 'custom'
+ * @param {string|null} [categoryId=null] - Optional category UUID filter
+ * @param {number} [topN=10] - Number of top items to return (max 50)
+ * @returns {Promise<Object>} Report data with summary, top_items_by_qty, top_items_by_revenue, breakdown
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function generateReport(from, to, type, categoryId = null, topN = 10) {
+  const { data, error } = await supabase.functions.invoke('aggregate-reports', {
+    body: { from, to, type, category_id: categoryId, top_n: topN },
+  });
+
+  if (error) {
+    throw new Error('Khong the tao bao cao: ' + error.message);
+  }
+
+  // The Edge Function may return an error in the response body
+  if (data?.error) {
+    throw new Error(data.message || 'Loi tao bao cao');
+  }
+
+  return data;
+}
+
+/**
+ * Client-side revenue aggregation helper.
+ * Computes totals from an array of bill records.
+ *
+ * @param {Array<Object>} bills - Array of bill objects with { total, tax }
+ * @returns {{ totalRevenue: number, totalTax: number, billCount: number, averageBillValue: number }}
+ */
+export function aggregateRevenue(bills) {
+  if (!bills || !bills.length) {
+    return { totalRevenue: 0, totalTax: 0, billCount: 0, averageBillValue: 0 };
+  }
+
+  const totalRevenue = bills.reduce((sum, b) => sum + (b.total || 0), 0);
+  const totalTax = bills.reduce((sum, b) => sum + (b.tax || 0), 0);
+
+  return {
+    totalRevenue,
+    totalTax,
+    billCount: bills.length,
+    averageBillValue: Math.round(totalRevenue / bills.length),
+  };
+}
+
+/**
+ * Client-side helper to sort and limit top items.
+ * Returns a new array sorted by the given field in descending order.
+ *
+ * @param {Array<Object>} items - Array of item objects
+ * @param {string} [sortBy='total_qty'] - Field to sort by ('total_qty' or 'total_revenue')
+ * @param {number} [limit=10] - Maximum number of items to return
+ * @returns {Array<Object>} Sorted and limited array
+ */
+export function getTopItems(items, sortBy = 'total_qty', limit = 10) {
+  return [...items]
+    .sort((a, b) => (b[sortBy] || 0) - (a[sortBy] || 0))
+    .slice(0, limit);
+}

@@ -1,0 +1,400 @@
+/* ==========================================================================
+ * table-map.css — Table map page styles
+ *
+ * Styles for the table map page: toolbar, map container, table nodes,
+ * status colors, edit mode indicators, and selected-table details panel.
+ *
+ * Design reference: design.md Section 2.5 (lines 1425-1486)
+ * ========================================================================== */
+
+/* ------------------------------------------------------------------
+ * Map Toolbar
+ * ------------------------------------------------------------------ */
+.map-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.map-toolbar__view-actions,
+.map-toolbar__edit-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Lock indicator shown when another user is editing */
+.map-lock-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-warning);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------
+ * Map Container
+ * ------------------------------------------------------------------ */
+.map-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  touch-action: none; /* for interact.js */
+  margin: 0 var(--space-4) var(--space-4);
+  /* Subtract horizontal margins from width */
+  width: calc(100% - var(--space-4) * 2);
+}
+
+.map-container--edit {
+  border-color: var(--color-primary);
+  border-style: dashed;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 10% 10%; /* grid lines every 10% */
+}
+
+/* ------------------------------------------------------------------
+ * Map Empty State
+ * ------------------------------------------------------------------ */
+.map-empty-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* ------------------------------------------------------------------
+ * Table Node
+ * ------------------------------------------------------------------ */
+.table-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast);
+  user-select: none;
+  border: 2px solid transparent;
+  /* Default size (2-seat) */
+  width: 80px;
+  height: 80px;
+}
+
+/* Sizes based on capacity (design.md Section 2.5, lines 1463-1467) */
+.table-node[data-capacity="4"] { width: 100px; height: 100px; }
+.table-node[data-capacity="6"] { width: 120px; height: 80px; }
+.table-node[data-capacity="8"] { width: 140px; height: 90px; }
+
+/* Shapes (design.md Section 4.2.4, lines 6836-6839) */
+.table-node--square    { border-radius: var(--radius-sm); /* 4px */ }
+.table-node--round     { border-radius: 50%; }
+.table-node--rectangle { border-radius: var(--radius-sm); /* 4px */ }
+
+/*
+ * Rectangle shape: width = 1.5x height (overrides capacity-based sizing).
+ * The height is taken from the capacity default; width is 1.5x that height.
+ * - 2-seat: height 80px  -> width 120px
+ * - 4-seat: height 100px -> width 150px
+ * - 6-seat: height 80px  -> width 120px
+ * - 8-seat: height 90px  -> width 135px
+ */
+.table-node--rectangle                      { width: 120px; height: 80px;  }
+.table-node--rectangle[data-capacity="4"]   { width: 150px; height: 100px; }
+.table-node--rectangle[data-capacity="6"]   { width: 120px; height: 80px;  }
+.table-node--rectangle[data-capacity="8"]   { width: 135px; height: 90px;  }
+
+/* Status colors */
+.table-node--empty            { background: var(--color-empty);            color: white; }
+.table-node--serving          { background: var(--color-serving);          color: white; }
+.table-node--awaiting_payment { background: var(--color-awaiting-payment); color: white; }
+.table-node--paid             { background: var(--color-paid);             color: white; }
+
+/* Hover effect */
+.table-node:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Edit mode styling */
+.table-node.is-editable {
+  cursor: grab;
+  border: 2px dashed rgba(255, 255, 255, 0.5);
+}
+
+.table-node.is-editable:active {
+  cursor: grabbing;
+}
+
+/* Selected table in edit mode */
+.table-node.is-selected {
+  border: 2px solid white;
+  box-shadow: 0 0 0 3px var(--color-primary), var(--shadow-lg);
+}
+
+/* ------------------------------------------------------------------
+ * Table Node Contents
+ * ------------------------------------------------------------------ */
+.table-node__name {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.table-node__code {
+  font-size: var(--font-size-xs);
+  opacity: 0.8;
+  line-height: 1;
+}
+
+.table-node__seats {
+  font-size: var(--font-size-xs);
+  opacity: 0.7;
+  line-height: 1;
+}
+
+.table-node__timer {
+  font-size: var(--font-size-xs);
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Inline rename input (shown on double-click in edit mode) */
+.table-node__rename-input {
+  width: 90%;
+  max-width: 100px;
+  padding: 1px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.4;
+  outline: none;
+}
+
+.table-node__rename-input:focus {
+  border-color: white;
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+/* ------------------------------------------------------------------
+ * Selected Table Details Panel
+ * ------------------------------------------------------------------ */
+.map-selected-panel {
+  padding: var(--space-4);
+  margin: 0 var(--space-4) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Drag handle for bottom sheet (tablet/mobile only, hidden on desktop) */
+.map-selected-panel__drag-handle {
+  display: none;
+}
+
+.map-selected-panel__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+}
+
+.map-selected-panel__details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+.map-selected-panel__details dt {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.map-selected-panel__details dd {
+  margin: 0;
+  color: var(--color-text);
+}
+
+/* Action buttons row in selected table panel (edit/delete) */
+.map-selected-panel__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ------------------------------------------------------------------
+ * Desktop Layout (>1024px): Map with sidebar for table details
+ *
+ * Map and details panel sit side-by-side. The details panel acts
+ * as a sidebar on the right side of the map.
+ * ------------------------------------------------------------------ */
+@media (min-width: 1025px) {
+  /* When the selected panel is visible, use flex layout on parent section */
+  section[x-data*="tableMapPage"] {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  /* Toolbar spans full width */
+  .map-toolbar {
+    width: 100%;
+  }
+
+  /* Map takes up remaining space beside the panel */
+  .map-container {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Details panel acts as a right sidebar */
+  .map-selected-panel {
+    width: 300px;
+    flex-shrink: 0;
+    margin: 0 var(--space-4) var(--space-4) 0;
+    align-self: flex-start;
+    position: sticky;
+    top: calc(var(--header-height) + var(--space-4));
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Responsive: Tablet (768px - 1024px)
+ *
+ * Map takes full width. Table details shown in a collapsible
+ * bottom sheet that slides up from the bottom on table tap.
+ * Edit toolbar remains visible. Drag-and-drop works with touch.
+ * ------------------------------------------------------------------ */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .map-container {
+    width: calc(100% - var(--space-3) * 2);
+    margin: 0 var(--space-3) var(--space-3);
+  }
+
+  /* Selected panel becomes a collapsible bottom sheet on tablet */
+  .map-selected-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-modal-backdrop);
+    max-height: 50vh;
+    overflow-y: auto;
+    transform: translateY(0);
+    transition: transform 0.3s ease;
+  }
+
+  /* Collapsed state: panel slides down off-screen */
+  .map-selected-panel.is-collapsed {
+    transform: translateY(calc(100% - 48px));
+  }
+
+  /* Show drag handle on tablet for bottom sheet interaction */
+  .map-selected-panel__drag-handle {
+    display: block;
+    width: 40px;
+    height: 4px;
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+    margin: 0 auto var(--space-3);
+    cursor: grab;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Responsive: Mobile (<768px)
+ *
+ * Map is scrollable horizontally and vertically with pinch-to-zoom.
+ * Edit mode is DISABLED -- the "Chinh sua so do" button is hidden.
+ * Table details shown in bottom sheet on tap.
+ * ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .map-container {
+    aspect-ratio: auto;
+    min-height: 400px;
+    height: 70vh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Allow pinch-to-zoom; pan handled by overflow scrolling */
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
+  .map-toolbar {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .map-toolbar__edit-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  /* Hide button labels on mobile, show only icons */
+  .map-toolbar__edit-actions .btn span {
+    display: none;
+  }
+
+  /* Hide "Chinh sua so do" edit button on mobile -- edit mode disabled */
+  .map-toolbar__view-actions .btn--primary {
+    display: none;
+  }
+
+  /* Selected panel becomes bottom sheet on mobile */
+  .map-selected-panel {
+    position: fixed;
+    bottom: var(--bottom-nav-height);
+    left: 0;
+    right: 0;
+    margin: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-modal-backdrop);
+    max-height: 50vh;
+    overflow-y: auto;
+    transform: translateY(0);
+    transition: transform 0.3s ease;
+  }
+
+  /* Collapsed state for mobile bottom sheet */
+  .map-selected-panel.is-collapsed {
+    transform: translateY(calc(100% - 48px));
+  }
+
+  /* Show drag handle on mobile for bottom sheet interaction */
+  .map-selected-panel__drag-handle {
+    display: block;
+    width: 40px;
+    height: 4px;
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+    margin: 0 auto var(--space-3);
+    cursor: grab;
+  }
+}

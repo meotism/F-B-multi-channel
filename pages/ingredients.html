@@ -1,0 +1,210 @@
+<!-- Ingredients page template - loaded by router -->
+<section x-data="ingredientsPage()">
+  <div class="page-header">
+    <h2>Nguyên liệu</h2>
+    <button class="btn btn--primary"
+            @click="openCreateModal()">
+      + Thêm nguyên liệu
+    </button>
+  </div>
+
+  <div class="page-content">
+
+    <!-- Loading skeleton -->
+    <template x-if="isLoading">
+      <div class="ingredients-skeleton">
+        <div class="skeleton skeleton--row" style="height: 48px;"></div>
+        <div class="skeleton skeleton--row" style="height: 48px;"></div>
+        <div class="skeleton skeleton--row" style="height: 48px;"></div>
+        <div class="skeleton skeleton--row" style="height: 48px;"></div>
+      </div>
+    </template>
+
+    <!-- Empty state -->
+    <template x-if="!isLoading && ingredients.length === 0">
+      <div class="empty-state">
+        <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+        <p class="empty-state__text">Chưa có nguyên liệu nào</p>
+        <button class="btn btn--primary"
+                @click="openCreateModal()">
+          + Thêm nguyên liệu
+        </button>
+      </div>
+    </template>
+
+    <!-- Ingredients table (desktop) -->
+    <template x-if="!isLoading && ingredients.length > 0">
+      <div>
+        <!-- Desktop table view -->
+        <div class="data-table-wrapper ingredients-table-desktop">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Tên nguyên liệu</th>
+                <th>Đơn vị</th>
+                <th>Ngày tạo</th>
+                <th class="data-table__actions-col">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="ing in ingredients" :key="ing.id">
+                <tr>
+                  <td x-text="ing.name"></td>
+                  <td>
+                    <span class="badge badge--muted" x-text="ing.unit"></span>
+                  </td>
+                  <td x-text="formatDate(ing.created_at)"></td>
+                  <td class="data-table__actions">
+                    <button class="btn btn--outline btn--sm"
+                            @click="openEditModal(ing)">
+                      Sửa
+                    </button>
+                    <button class="btn btn--danger btn--sm"
+                            @click="confirmDelete(ing)">
+                      Xóa
+                    </button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile card view -->
+        <div class="ingredients-cards-mobile">
+          <template x-for="ing in ingredients" :key="ing.id">
+            <div class="ingredient-card">
+              <div class="ingredient-card__header">
+                <span class="ingredient-card__name" x-text="ing.name"></span>
+                <span class="badge badge--muted" x-text="ing.unit"></span>
+              </div>
+              <div class="ingredient-card__meta">
+                <span class="ingredient-card__date" x-text="'Tạo: ' + formatDate(ing.created_at)"></span>
+              </div>
+              <div class="ingredient-card__actions">
+                <button class="btn btn--outline btn--sm"
+                        @click="openEditModal(ing)">
+                  Sửa
+                </button>
+                <button class="btn btn--danger btn--sm"
+                        @click="confirmDelete(ing)">
+                  Xóa
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ===============================================================
+       Create / Edit Ingredient Modal
+       =============================================================== -->
+  <div class="modal-backdrop"
+       x-show="showModal"
+       x-transition.opacity
+       @click.self="closeModal()"
+       x-cloak>
+    <div class="modal-content" x-show="showModal" x-transition>
+      <div class="modal-content__header">
+        <h3 x-text="editingIngredient ? 'Sửa nguyên liệu' : 'Thêm nguyên liệu'"></h3>
+        <button class="modal-content__close"
+                @click="closeModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <form @submit.prevent="submitForm()">
+        <div class="modal-content__body">
+          <!-- Error message -->
+          <div class="form-error" x-show="formError" x-text="formError" x-cloak></div>
+
+          <!-- Name input -->
+          <div class="form-group">
+            <label class="form-label" for="ingredient-name">Tên nguyên liệu *</label>
+            <input type="text"
+                   id="ingredient-name"
+                   class="form-input"
+                   :class="{ 'form-input--error': formError && !formName.trim() }"
+                   x-model="formName"
+                   maxlength="255"
+                   placeholder="Ví dụ: Bột mì, Đường, Sữa..."
+                   required>
+          </div>
+
+          <!-- Unit input -->
+          <div class="form-group">
+            <label class="form-label" for="ingredient-unit">Đơn vị *</label>
+            <select id="ingredient-unit"
+                    class="form-select"
+                    x-model="formUnit"
+                    required>
+              <template x-for="u in unitOptions" :key="u">
+                <option :value="u" x-text="unitLabels[u] || u"></option>
+              </template>
+            </select>
+            <p class="form-hint">Chọn đơn vị đo lường cho nguyên liệu</p>
+          </div>
+        </div>
+
+        <div class="modal-content__footer">
+          <button type="button"
+                  class="btn btn--outline"
+                  @click="closeModal()">
+            Hủy
+          </button>
+          <button type="submit"
+                  class="btn btn--primary"
+                  :disabled="isSaving">
+            <span x-show="!isSaving" x-text="editingIngredient ? 'Cập nhật' : 'Thêm'"></span>
+            <span x-show="isSaving" class="spinner spinner--sm"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===============================================================
+       Delete Confirmation Modal
+       =============================================================== -->
+  <div class="modal-backdrop"
+       x-show="showDeleteModal"
+       x-transition.opacity
+       @click.self="closeDeleteModal()"
+       x-cloak>
+    <div class="modal-content" x-show="showDeleteModal" x-transition>
+      <div class="modal-content__header">
+        <h3>Xác nhận xóa</h3>
+        <button class="modal-content__close"
+                @click="closeDeleteModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <div class="modal-content__body">
+        <p>Bạn có chắc chắn muốn xóa nguyên liệu
+          <strong x-text="deleteTarget?.name"></strong>?
+        </p>
+        <p class="form-hint">Hành động này không thể hoàn tác. Nguyên liệu đang được sử dụng trong công thức sẽ không thể xóa.</p>
+      </div>
+
+      <div class="modal-content__footer">
+        <button type="button"
+                class="btn btn--outline"
+                @click="closeDeleteModal()">
+          Hủy
+        </button>
+        <button type="button"
+                class="btn btn--danger"
+                :disabled="isSaving"
+                @click="deleteIngredient()">
+          <span x-show="!isSaving">Xóa</span>
+          <span x-show="isSaving" class="spinner spinner--sm"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>

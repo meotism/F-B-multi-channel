@@ -1,0 +1,162 @@
+<!-- Menu list page template - loaded by router -->
+<section x-data="menuPage()">
+
+  <!-- Page header with title and add button -->
+  <div class="menu-page__header">
+    <h2>Quản lý thực đơn</h2>
+    <button class="btn btn--primary"
+            @click="goToCreate()">
+      <!-- Plus icon -->
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>Thêm món ăn</span>
+    </button>
+  </div>
+
+  <!-- Category filter bar and search -->
+  <div x-show="!isLoading" x-cloak class="menu-filter-bar">
+    <!-- Category filter buttons -->
+    <div class="menu-filter-bar__categories">
+      <button class="btn btn--sm"
+              :class="selectedCategory === null ? 'btn--primary' : 'btn--outline'"
+              @click="selectCategory(null)">
+        Tất cả
+      </button>
+      <template x-for="cat in categories" :key="cat.id">
+        <button class="btn btn--sm"
+                :class="selectedCategory === cat.id ? 'btn--primary' : 'btn--outline'"
+                @click="selectCategory(cat.id)"
+                x-text="cat.name">
+        </button>
+      </template>
+    </div>
+    <!-- Search input -->
+    <div class="menu-filter-bar__search">
+      <input type="text"
+             class="form-input"
+             x-model="searchQuery"
+             placeholder="Tìm kiếm món ăn...">
+    </div>
+  </div>
+
+  <!-- Loading skeleton -->
+  <div x-show="isLoading" x-cloak>
+    <div class="menu-skeleton">
+      <template x-for="i in 6" :key="i">
+        <div class="menu-skeleton__card skeleton skeleton--rect"
+             style="height: 120px;">
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div x-show="!isLoading && menuItems.length === 0"
+       x-cloak
+       class="menu-empty">
+    <!-- Utensils/plate icon -->
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+         style="color: var(--color-text-secondary); margin-bottom: var(--space-3);">
+      <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path>
+      <path d="M7 2v20"></path>
+      <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path>
+    </svg>
+    <p>Chưa có món ăn nào</p>
+    <button class="btn btn--primary btn--sm"
+            @click="goToCreate()"
+            style="margin-top: var(--space-3);">
+      Thêm món ăn đầu tiên
+    </button>
+  </div>
+
+  <!-- No results after filtering -->
+  <div x-show="!isLoading && menuItems.length > 0 && filteredItems.length === 0"
+       x-cloak
+       class="menu-empty">
+    <p>Không tìm thấy món ăn phù hợp</p>
+  </div>
+
+  <!-- Menu items grid -->
+  <div x-show="!isLoading && filteredItems.length > 0"
+       x-cloak
+       class="menu-grid">
+    <template x-for="item in filteredItems" :key="item.id">
+      <div class="menu-card"
+           :class="{ 'menu-card--inactive': !item.is_active }">
+        <div class="menu-card__body">
+          <div class="menu-card__header">
+            <span class="menu-card__name" x-text="item.name"></span>
+            <span class="badge"
+                  :class="item.is_active ? 'badge--success' : 'badge--muted'"
+                  x-text="item.is_active ? 'Hoạt động' : 'Đã ẩn'"></span>
+          </div>
+          <div class="menu-card__price" x-text="formatPrice(item.price) + ' VND'"></div>
+          <div class="menu-card__category" x-text="getCategoryName(item)"></div>
+        </div>
+        <div class="menu-card__actions">
+          <button class="btn btn--outline btn--sm"
+                  @click="goToEdit(item)">
+            Sửa
+          </button>
+          <button class="btn btn--outline btn--sm"
+                  @click="toggleActive(item)"
+                  x-text="item.is_active ? 'Ẩn' : 'Hiện'">
+          </button>
+          <button class="btn btn--danger btn--sm"
+                  @click="confirmDelete(item)">
+            Xóa
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ================================================================
+       Delete Confirmation Modal
+       ================================================================ -->
+  <div class="modal-backdrop"
+       x-show="showDeleteModal"
+       x-transition.opacity
+       @click.self="closeDeleteModal()"
+       x-cloak>
+    <div class="modal-content" x-show="showDeleteModal" x-transition>
+      <!-- Header -->
+      <div class="modal-content__header">
+        <h3>Xác nhận xóa</h3>
+        <button class="modal-content__close"
+                @click="closeDeleteModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-content__body">
+        <p>Bạn có chắc muốn xóa món
+          <strong x-text="deleteTarget?.name"></strong>?
+        </p>
+        <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: var(--space-2);">
+          Món ăn sẽ bị ẩn khỏi thực đơn nhưng dữ liệu đơn hàng cũ vẫn được giữ lại.
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-content__footer">
+        <button class="btn btn--outline"
+                @click="closeDeleteModal()"
+                :disabled="isSaving">
+          Hủy
+        </button>
+        <button class="btn btn--danger"
+                @click="submitDelete()"
+                :disabled="isSaving">
+          <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
+          <span x-text="isSaving ? 'Đang xóa...' : 'Xóa'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</section>

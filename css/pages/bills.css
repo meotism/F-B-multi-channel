@@ -1,0 +1,443 @@
+/* ==========================================================================
+ * bills.css — Bill finalization and printing page styles
+ *
+ * Receipt-like centered card layout for the bill page. Includes styles for
+ * the order summary table, totals section, payment method radio group,
+ * status badges, and action buttons.
+ *
+ * Design reference: design.md Section 5 (Bill Page)
+ * Requirements: 4 (Bill Page UI)
+ * ========================================================================== */
+
+/* ------------------------------------------------------------------
+ * Bill Page Layout
+ *
+ * Centered receipt-like card with max-width on desktop, full-width on mobile.
+ * ------------------------------------------------------------------ */
+.bill-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 0;
+}
+
+/* ------------------------------------------------------------------
+ * Bill Header — back button + title + status badge
+ * ------------------------------------------------------------------ */
+.bill-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.bill-header__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+  border: none;
+  background: none;
+}
+
+.bill-header__back:hover {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.bill-header__title {
+  flex: 1;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* ------------------------------------------------------------------
+ * Loading State
+ * ------------------------------------------------------------------ */
+.bill-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  gap: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* ------------------------------------------------------------------
+ * Bill Content — main container after loading
+ * ------------------------------------------------------------------ */
+.bill-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ------------------------------------------------------------------
+ * Bill Info — order metadata (table, staff, date)
+ * ------------------------------------------------------------------ */
+.bill-info {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.bill-info__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.bill-info__label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.bill-info__value {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------
+ * Bill Summary Table — order items list
+ * ------------------------------------------------------------------ */
+.bill-summary {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.bill-summary__header {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.bill-summary__header .bill-summary__col {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.bill-summary__row {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.bill-summary__row:last-child {
+  border-bottom: none;
+}
+
+.bill-summary__col {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.bill-summary__col--name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.bill-summary__col--qty {
+  width: 40px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.bill-summary__col--price {
+  width: 90px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.bill-summary__col--total {
+  width: 100px;
+  text-align: right;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.bill-summary__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------
+ * Bill Totals Section
+ * ------------------------------------------------------------------ */
+.bill-totals {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.bill-totals__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bill-totals__row--grand {
+  padding-top: var(--space-3);
+  margin-top: var(--space-2);
+  border-top: 2px solid var(--color-border);
+}
+
+.bill-totals__label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.bill-totals__value {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.bill-totals__row--grand .bill-totals__label {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.bill-totals__row--grand .bill-totals__value {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* ------------------------------------------------------------------
+ * Payment Method Radio Group
+ * ------------------------------------------------------------------ */
+.bill-payment-methods {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.bill-payment-methods__title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+
+.bill-payment-methods__options {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.bill-payment-methods__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast),
+              background-color var(--transition-fast);
+  flex: 1;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.bill-payment-methods__option:hover {
+  border-color: var(--color-primary);
+}
+
+.bill-payment-methods__option--selected {
+  border-color: var(--color-primary);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.bill-payment-methods__radio {
+  accent-color: var(--color-primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.bill-payment-methods__label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------
+ * Payment Method Display (after finalization, read-only)
+ * ------------------------------------------------------------------ */
+.bill-payment-display {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.bill-payment-display__label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.bill-payment-display__value {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* ------------------------------------------------------------------
+ * Bill Action Buttons
+ * ------------------------------------------------------------------ */
+.bill-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.bill-actions__notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-warning-bg, #fff3cd);
+  border: 1px solid var(--color-warning-border, #ffc107);
+  border-radius: var(--radius-md);
+  color: var(--color-warning-text, #856404);
+  font-size: var(--font-size-sm);
+}
+
+/* ------------------------------------------------------------------
+ * Badge variant: badge--info (used for bill status "Da xuat hoa don")
+ * Added here since components.css does not include it yet.
+ * ------------------------------------------------------------------ */
+.badge--info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* ------------------------------------------------------------------
+ * Button variant: btn--warning (used for retry print button)
+ * Added here since components.css does not include it yet.
+ * ------------------------------------------------------------------ */
+.btn--warning {
+  background: var(--color-warning);
+  color: var(--color-text-inverse);
+}
+
+.btn--warning:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+/* ------------------------------------------------------------------
+ * Responsive: Mobile (<768px)
+ *
+ * Full-width layout, sticky action buttons at bottom, larger touch
+ * targets for radio buttons.
+ * ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .bill-page {
+    gap: var(--space-3);
+  }
+
+  .bill-header {
+    gap: var(--space-2);
+  }
+
+  .bill-header__title {
+    font-size: var(--font-size-base);
+  }
+
+  .bill-info__label {
+    min-width: 80px;
+  }
+
+  /* Narrower columns for small screens */
+  .bill-summary__col--price {
+    width: 75px;
+  }
+
+  .bill-summary__col--total {
+    width: 85px;
+  }
+
+  /* Larger touch targets for payment method options */
+  .bill-payment-methods__option {
+    min-height: 44px;
+    min-width: 0;
+    padding: var(--space-3) var(--space-3);
+  }
+
+  .bill-payment-methods__radio {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Sticky action buttons at bottom */
+  .bill-actions {
+    position: sticky;
+    bottom: var(--bottom-nav-height);
+    background: var(--color-bg);
+    padding: var(--space-3) 0;
+    z-index: 10;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Responsive: Tablet (768px - 1024px)
+ *
+ * Centered card with some padding adjustments.
+ * ------------------------------------------------------------------ */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .bill-page {
+    max-width: 560px;
+  }
+
+  .bill-payment-methods__option {
+    min-height: 44px;
+  }
+}

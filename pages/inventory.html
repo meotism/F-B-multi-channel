@@ -1,0 +1,250 @@
+<!-- Inventory dashboard page template - loaded by router -->
+<section x-data="inventoryPage()">
+  <div class="page-header">
+    <h2>Ton kho</h2>
+    <a href="#/ingredients" class="btn btn--outline">
+      Quan ly nguyen lieu
+    </a>
+  </div>
+
+  <div class="page-content">
+
+    <!-- Summary cards -->
+    <div class="inventory-summary">
+      <div class="inventory-summary__card">
+        <span class="inventory-summary__label">Tong nguyen lieu</span>
+        <span class="inventory-summary__value" x-text="totalCount"></span>
+      </div>
+      <div class="inventory-summary__card inventory-summary__card--warning"
+           x-show="lowStockCount > 0">
+        <span class="inventory-summary__label">Sap het hang</span>
+        <span class="inventory-summary__value">
+          <span x-text="lowStockCount"></span>
+          <span class="badge badge--danger">Canh bao</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Search and sort controls -->
+    <div class="inventory-controls">
+      <div class="inventory-controls__search">
+        <input type="text"
+               class="form-input"
+               placeholder="Tim kiem nguyen lieu..."
+               x-model="searchQuery"
+               @input.debounce.300ms="$nextTick()">
+      </div>
+      <div class="inventory-controls__sort">
+        <button class="btn btn--outline btn--sm"
+                :class="{ 'btn--primary': sortBy === 'name' }"
+                @click="toggleSort('name')">
+          Ten
+          <span x-show="sortBy === 'name'" x-text="sortDir === 'asc' ? '&uarr;' : '&darr;'"></span>
+        </button>
+        <button class="btn btn--outline btn--sm"
+                :class="{ 'btn--primary': sortBy === 'qty_on_hand' }"
+                @click="toggleSort('qty_on_hand')">
+          Ton kho
+          <span x-show="sortBy === 'qty_on_hand'" x-text="sortDir === 'asc' ? '&uarr;' : '&darr;'"></span>
+        </button>
+        <button class="btn btn--outline btn--sm"
+                :class="{ 'btn--primary': sortBy === 'alert' }"
+                @click="toggleSort('alert')">
+          Trang thai
+          <span x-show="sortBy === 'alert'" x-text="sortDir === 'asc' ? '&uarr;' : '&darr;'"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading skeleton -->
+    <template x-if="isLoading">
+      <div class="inventory-skeleton">
+        <div class="skeleton skeleton--row" style="height: 48px;"></div>
+        <div class="skeleton skeleton--row" style="height: 48px;"></div>
+        <div class="skeleton skeleton--row" style="height: 48px;"></div>
+        <div class="skeleton skeleton--row" style="height: 48px;"></div>
+        <div class="skeleton skeleton--row" style="height: 48px;"></div>
+      </div>
+    </template>
+
+    <!-- Empty state -->
+    <template x-if="!isLoading && inventoryItems.length === 0">
+      <div class="empty-state">
+        <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+        <p class="empty-state__text">Chua co du lieu ton kho</p>
+        <a href="#/ingredients" class="btn btn--primary">
+          Them nguyen lieu
+        </a>
+      </div>
+    </template>
+
+    <!-- No search results -->
+    <template x-if="!isLoading && inventoryItems.length > 0 && filteredItems.length === 0">
+      <div class="empty-state">
+        <p class="empty-state__text">Khong tim thay nguyen lieu phu hop</p>
+      </div>
+    </template>
+
+    <!-- Inventory table (desktop) -->
+    <template x-if="!isLoading && filteredItems.length > 0">
+      <div>
+        <!-- Desktop table view -->
+        <div class="data-table-wrapper inventory-table-desktop">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Ten nguyen lieu</th>
+                <th>Don vi</th>
+                <th>Ton kho</th>
+                <th>Nguong canh bao</th>
+                <th>Trang thai</th>
+                <th>Cap nhat luc</th>
+                <th class="data-table__actions-col">Thao tac</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="item in filteredItems" :key="item.id">
+                <tr :class="{ 'inventory-row--low-stock': item.qty_on_hand <= item.threshold }">
+                  <td x-text="item.ingredients?.name || '---'"></td>
+                  <td>
+                    <span class="badge badge--muted" x-text="item.ingredients?.unit || '---'"></span>
+                  </td>
+                  <td>
+                    <span class="inventory-qty"
+                          :class="{ 'inventory-qty--low': item.qty_on_hand <= item.threshold }"
+                          x-text="formatQty(item.qty_on_hand)"></span>
+                  </td>
+                  <td x-text="formatQty(item.threshold)"></td>
+                  <td>
+                    <span class="badge"
+                          :class="item.qty_on_hand <= item.threshold ? 'badge--danger' : 'badge--success'"
+                          x-text="item.qty_on_hand <= item.threshold ? 'Sap het' : 'Binh thuong'"></span>
+                  </td>
+                  <td x-text="formatDate(item.updated_at)"></td>
+                  <td class="data-table__actions">
+                    <button class="btn btn--primary btn--sm"
+                            @click="openUpdateModal(item)">
+                      Cap nhat
+                    </button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile card view -->
+        <div class="inventory-cards-mobile">
+          <template x-for="item in filteredItems" :key="item.id">
+            <div class="inventory-card"
+                 :class="{ 'inventory-card--low-stock': item.qty_on_hand <= item.threshold }">
+              <div class="inventory-card__header">
+                <span class="inventory-card__name" x-text="item.ingredients?.name || '---'"></span>
+                <span class="badge"
+                      :class="item.qty_on_hand <= item.threshold ? 'badge--danger' : 'badge--success'"
+                      x-text="item.qty_on_hand <= item.threshold ? 'Sap het' : 'Binh thuong'"></span>
+              </div>
+              <div class="inventory-card__details">
+                <div class="inventory-card__row">
+                  <span class="inventory-card__label">Don vi:</span>
+                  <span class="badge badge--muted" x-text="item.ingredients?.unit || '---'"></span>
+                </div>
+                <div class="inventory-card__row">
+                  <span class="inventory-card__label">Ton kho:</span>
+                  <span class="inventory-qty"
+                        :class="{ 'inventory-qty--low': item.qty_on_hand <= item.threshold }"
+                        x-text="formatQty(item.qty_on_hand)"></span>
+                </div>
+                <div class="inventory-card__row">
+                  <span class="inventory-card__label">Nguong:</span>
+                  <span x-text="formatQty(item.threshold)"></span>
+                </div>
+                <div class="inventory-card__row">
+                  <span class="inventory-card__label">Cap nhat:</span>
+                  <span class="inventory-card__date" x-text="formatDate(item.updated_at)"></span>
+                </div>
+              </div>
+              <div class="inventory-card__actions">
+                <button class="btn btn--primary btn--sm"
+                        @click="openUpdateModal(item)">
+                  Cap nhat
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ===============================================================
+       Stock Update Modal
+       =============================================================== -->
+  <div class="modal-backdrop"
+       x-show="showUpdateModal"
+       x-transition.opacity
+       @click.self="closeUpdateModal()"
+       x-cloak>
+    <div class="modal-content" x-show="showUpdateModal" x-transition>
+      <div class="modal-content__header">
+        <h3>Cap nhat ton kho</h3>
+        <button class="modal-content__close"
+                @click="closeUpdateModal()"
+                aria-label="Dong">&times;</button>
+      </div>
+
+      <form @submit.prevent="submitUpdate()">
+        <div class="modal-content__body">
+          <!-- Error message -->
+          <div class="form-error" x-show="updateError" x-text="updateError" x-cloak></div>
+
+          <!-- Ingredient name display -->
+          <div class="form-group">
+            <label class="form-label">Nguyen lieu</label>
+            <p class="inventory-modal__ingredient-name"
+               x-text="updatingItem?.ingredients?.name || ''"></p>
+          </div>
+
+          <!-- Current stock display -->
+          <div class="form-group">
+            <label class="form-label">Ton kho hien tai</label>
+            <p class="inventory-modal__current-qty"
+               x-text="updatingItem ? formatQty(updatingItem.qty_on_hand) + ' ' + (updatingItem.ingredients?.unit || '') : ''"></p>
+          </div>
+
+          <!-- New quantity input -->
+          <div class="form-group">
+            <label class="form-label" for="new-qty">So luong moi *</label>
+            <input type="number"
+                   id="new-qty"
+                   class="form-input"
+                   x-model.number="newQty"
+                   step="0.001"
+                   min="0"
+                   placeholder="Nhap so luong moi..."
+                   required>
+            <p class="form-hint" x-text="updatingItem ? 'Don vi: ' + (updatingItem.ingredients?.unit || '') : ''"></p>
+          </div>
+        </div>
+
+        <div class="modal-content__footer">
+          <button type="button"
+                  class="btn btn--outline"
+                  @click="closeUpdateModal()">
+            Huy
+          </button>
+          <button type="submit"
+                  class="btn btn--primary"
+                  :disabled="isSaving">
+            <span x-show="!isSaving">Cap nhat</span>
+            <span x-show="isSaving" class="spinner spinner--sm"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>

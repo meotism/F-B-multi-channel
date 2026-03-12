@@ -1,0 +1,209 @@
+<!-- Menu edit page template - loaded by router -->
+<section x-data="menuEditPage()">
+
+  <!-- Page header -->
+  <div class="menu-page__header">
+    <h2 x-text="isNew ? 'Thêm món ăn' : 'Chỉnh sửa món ăn'"></h2>
+  </div>
+
+  <!-- Loading skeleton -->
+  <div x-show="isLoading" x-cloak class="menu-edit__loading">
+    <div class="skeleton skeleton--rect" style="height: 40px; margin-bottom: var(--space-4);"></div>
+    <div class="skeleton skeleton--rect" style="height: 40px; margin-bottom: var(--space-4);"></div>
+    <div class="skeleton skeleton--rect" style="height: 40px; margin-bottom: var(--space-4);"></div>
+  </div>
+
+  <!-- Edit form -->
+  <div x-show="!isLoading" x-cloak class="menu-edit">
+
+    <!-- Error message -->
+    <div class="menu-edit__error"
+         x-show="formError"
+         x-cloak>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="15" y1="9" x2="9" y2="15"></line>
+        <line x1="9" y1="9" x2="15" y2="15"></line>
+      </svg>
+      <span x-text="formError"></span>
+    </div>
+
+    <form @submit.prevent="save()">
+      <!-- Name -->
+      <div class="form-group">
+        <label class="form-label" for="menu-item-name">
+          Tên món ăn <span class="menu-edit__required">*</span>
+        </label>
+        <input id="menu-item-name"
+               type="text"
+               class="form-input"
+               x-model="formName"
+               placeholder="Nhập tên món ăn"
+               maxlength="255"
+               required
+               :disabled="isSaving">
+      </div>
+
+      <!-- Price -->
+      <div class="form-group">
+        <label class="form-label" for="menu-item-price">
+          Giá (VND) <span class="menu-edit__required">*</span>
+        </label>
+        <input id="menu-item-price"
+               type="number"
+               class="form-input"
+               x-model.number="formPrice"
+               placeholder="Nhập giá (ví dụ: 45000)"
+               min="0"
+               step="1000"
+               required
+               :disabled="isSaving">
+      </div>
+
+      <!-- Category -->
+      <div class="form-group">
+        <label class="form-label" for="menu-item-category">Danh mục</label>
+        <select id="menu-item-category"
+                class="form-select"
+                x-model="formCategoryId"
+                :disabled="isSaving">
+          <option value="">-- Chưa phân loại --</option>
+          <template x-for="cat in categories" :key="cat.id">
+            <option :value="cat.id" x-text="cat.name"></option>
+          </template>
+        </select>
+      </div>
+
+      <!-- Active toggle -->
+      <div class="form-group">
+        <label class="form-label">Trạng thái</label>
+        <div class="menu-edit__toggle-wrapper">
+          <button type="button"
+                  class="categories-toggle"
+                  :class="{ 'categories-toggle--active': formIsActive }"
+                  @click="formIsActive = !formIsActive"
+                  :disabled="isSaving"
+                  :aria-label="formIsActive ? 'Đang hoạt động' : 'Đã ẩn'">
+            <span class="categories-toggle__track">
+              <span class="categories-toggle__thumb"></span>
+            </span>
+            <span class="categories-toggle__label"
+                  x-text="formIsActive ? 'Hoạt động' : 'Đã ẩn'"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Recipe section (edit mode only - needs existing menu_item_id) -->
+      <div class="form-group" x-show="!isNew" x-cloak>
+        <label class="form-label">Công thức nguyên liệu</label>
+
+        <div class="recipe-section">
+
+          <!-- Loading state -->
+          <div x-show="recipesLoading" x-cloak class="recipe-section__loading">
+            <span class="spinner spinner--sm"></span>
+            <span>Đang tải công thức...</span>
+          </div>
+
+          <!-- Recipe list table -->
+          <div x-show="!recipesLoading && recipes.length > 0" x-cloak>
+            <table class="recipe-table">
+              <thead>
+                <tr>
+                  <th class="recipe-table__th">Nguyên liệu</th>
+                  <th class="recipe-table__th recipe-table__th--qty">Số lượng</th>
+                  <th class="recipe-table__th recipe-table__th--unit">Đơn vị</th>
+                  <th class="recipe-table__th recipe-table__th--action"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="recipe in recipes" :key="recipe.id">
+                  <tr class="recipe-table__row">
+                    <td class="recipe-table__td"
+                        x-text="recipe.ingredients?.name || getIngredientName(recipe.ingredient_id)">
+                    </td>
+                    <td class="recipe-table__td recipe-table__td--qty"
+                        x-text="recipe.qty">
+                    </td>
+                    <td class="recipe-table__td recipe-table__td--unit"
+                        x-text="recipe.ingredients?.unit || getIngredientUnit(recipe.ingredient_id)">
+                    </td>
+                    <td class="recipe-table__td recipe-table__td--action">
+                      <button type="button"
+                              class="btn btn--outline btn--sm recipe-table__delete"
+                              @click="removeRecipe(recipe.id)"
+                              title="Xóa nguyên liệu khỏi công thức">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Empty state -->
+          <div x-show="!recipesLoading && recipes.length === 0" x-cloak class="recipe-section__empty">
+            <p>Chưa có nguyên liệu nào trong công thức</p>
+          </div>
+
+          <!-- Add ingredient row -->
+          <div class="recipe-add" x-show="!recipesLoading" x-cloak>
+            <div class="recipe-add__label">Thêm nguyên liệu</div>
+            <div class="recipe-add__form">
+              <select class="form-select recipe-add__select"
+                      x-model="newIngredientId"
+                      :disabled="availableIngredients.length === 0">
+                <option value="">-- Chọn nguyên liệu --</option>
+                <template x-for="ing in availableIngredients" :key="ing.id">
+                  <option :value="ing.id" x-text="ing.name + ' (' + ing.unit + ')'"></option>
+                </template>
+              </select>
+              <input type="number"
+                     class="form-input recipe-add__qty"
+                     x-model="newIngredientQty"
+                     placeholder="Số lượng"
+                     min="0.001"
+                     step="any">
+              <button type="button"
+                      class="btn btn--primary btn--sm"
+                      @click="addRecipeIngredient()"
+                      :disabled="!newIngredientId || !newIngredientQty">
+                Thêm
+              </button>
+            </div>
+            <div x-show="availableIngredients.length === 0 && ingredients.length > 0"
+                 x-cloak
+                 class="recipe-add__hint">
+              Tất cả nguyên liệu đã được thêm vào công thức
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Form actions -->
+      <div class="menu-edit__actions">
+        <button type="button"
+                class="btn btn--outline"
+                @click="cancel()"
+                :disabled="isSaving">
+          Hủy
+        </button>
+        <button type="submit"
+                class="btn btn--primary"
+                :disabled="isSaving">
+          <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
+          <span x-text="isSaving ? 'Đang lưu...' : (isNew ? 'Tạo món ăn' : 'Lưu thay đổi')"></span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+</section>

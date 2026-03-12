@@ -1,0 +1,165 @@
+<!-- Settings page template - loaded by router -->
+<section x-data="settingsPage()">
+  <div class="page-header">
+    <h2>Cài đặt</h2>
+  </div>
+  <div class="page-content">
+
+    <!-- ================================================================
+         Printer Settings Section - Bluetooth printer management
+         Requirement 8: Printer Management
+         ================================================================ -->
+    <div class="settings-section">
+      <h3 class="settings-section__title">
+        <!-- Bluetooth icon -->
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             style="vertical-align: -4px; margin-right: 6px;">
+          <polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"></polyline>
+        </svg>
+        Máy in Bluetooth
+      </h3>
+
+      <!-- Bluetooth not supported warning -->
+      <template x-if="!$store.printer.isBluetoothSupported()">
+        <div class="settings-alert settings-alert--warning">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               style="flex-shrink: 0;">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span x-text="getBluetoothFallback()"></span>
+        </div>
+      </template>
+
+      <!-- Bluetooth supported: Scan button + printer list -->
+      <template x-if="$store.printer.isBluetoothSupported()">
+        <div>
+          <!-- Scan for printers button -->
+          <button class="btn btn--primary"
+                  @click="scanForPrinter()"
+                  :disabled="isScanning"
+                  style="margin-bottom: var(--space-4);">
+            <template x-if="!isScanning">
+              <span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     style="vertical-align: -3px; margin-right: 4px;">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                Quét máy in Bluetooth
+              </span>
+            </template>
+            <template x-if="isScanning">
+              <span>
+                <span class="spinner spinner--sm" style="margin-right: 6px;"></span>
+                Đang quét...
+              </span>
+            </template>
+          </button>
+
+          <!-- Empty state: no printers paired yet -->
+          <div x-show="printers.length === 0" class="settings-empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                 style="color: var(--color-text-secondary); margin-bottom: var(--space-2);">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            <p>Chưa có máy in nào được ghép nối</p>
+            <p style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">
+              Nhấn "Quét máy in Bluetooth" để thêm máy in mới
+            </p>
+          </div>
+
+          <!-- Printer list -->
+          <div x-show="printers.length > 0" class="settings-printer-list">
+            <template x-for="printer in printers" :key="printer.id">
+              <div class="settings-printer-card">
+                <!-- Printer header: name + active badge -->
+                <div class="settings-printer-card__header">
+                  <div class="settings-printer-card__info">
+                    <span class="settings-printer-card__name"
+                          x-text="printer.name || printer.device_info?.deviceName || 'Máy in'"></span>
+                    <span class="badge badge--success"
+                          x-show="$store.printer.activePrinterId === printer.id">
+                      Đang chọn
+                    </span>
+                  </div>
+                  <span class="settings-printer-card__paper"
+                        x-text="(printer.device_info?.paperWidth || 58) + 'mm'"></span>
+                </div>
+
+                <!-- Printer action buttons -->
+                <div class="settings-printer-card__actions">
+                  <button class="btn btn--outline btn--sm"
+                          x-show="$store.printer.activePrinterId !== printer.id"
+                          @click="setActivePrinter(printer.id)">
+                    Chọn
+                  </button>
+                  <button class="btn btn--outline btn--sm"
+                          @click="testPrint(printer.id)"
+                          :disabled="testPrintingId === printer.id">
+                    <template x-if="testPrintingId !== printer.id">
+                      <span>Thử in</span>
+                    </template>
+                    <template x-if="testPrintingId === printer.id">
+                      <span class="spinner spinner--sm"></span>
+                    </template>
+                  </button>
+                  <button class="btn btn--danger btn--sm"
+                          @click="removePrinter(printer.id)">
+                    Xóa
+                  </button>
+                </div>
+
+                <!-- Printer configuration -->
+                <div class="settings-printer-card__config">
+                  <!-- Paper width -->
+                  <div class="form-group" style="margin-bottom: var(--space-2);">
+                    <label class="form-label">Khổ giấy</label>
+                    <select class="form-select"
+                            :value="printer.device_info?.paperWidth || 58"
+                            @change="updatePrinterConfig(printer.id, 'paperWidth', $event.target.value)">
+                      <option value="58">58mm</option>
+                      <option value="80">80mm</option>
+                    </select>
+                  </div>
+
+                  <!-- Encoding -->
+                  <div class="form-group" style="margin-bottom: var(--space-2);">
+                    <label class="form-label">Bảng mã</label>
+                    <select class="form-select"
+                            :value="printer.device_info?.encoding || 'cp1258'"
+                            @change="updatePrinterConfig(printer.id, 'encoding', $event.target.value)">
+                      <option value="cp1258">CP1258</option>
+                      <option value="tcvn3">TCVN-3</option>
+                    </select>
+                  </div>
+
+                  <!-- Chunk size -->
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Kích thước gói (bytes)</label>
+                    <input type="number"
+                           class="form-input"
+                           :value="printer.device_info?.chunkSize || 100"
+                           min="20"
+                           max="512"
+                           step="10"
+                           @change="updatePrinterConfig(printer.id, 'chunkSize', $event.target.value)">
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+    <!-- END Printer Settings Section -->
+
+  </div>
+</section>

@@ -1,0 +1,319 @@
+/* ==========================================================================
+ * reports.css -- Report dashboard styles
+ *
+ * Responsive layout for the reports page including filters, summary cards,
+ * Chart.js containers, and the breakdown data table.
+ *
+ * Desktop: cards in row, chart full-width, table below.
+ * Tablet: cards in row (smaller), chart full-width.
+ * Mobile: cards stacked, chart + table horizontal scroll.
+ *
+ * All values reference CSS custom properties from variables.css.
+ *
+ * Requirements: 12 (Reports Dashboard)
+ * Design reference: Section 18 (Reports Page)
+ * ========================================================================== */
+
+
+/* ==========================================================================
+ * 1. PAGE LAYOUT
+ * ========================================================================== */
+
+.reports-page {
+  padding: var(--space-4);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.reports-header {
+  margin-bottom: var(--space-4);
+}
+
+.reports-header__title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+
+/* ==========================================================================
+ * 2. FILTERS SECTION
+ * ========================================================================== */
+
+.reports-filters {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Quick date range selector buttons */
+.reports-filters__quick {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.reports-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              color var(--transition-fast);
+  min-height: 36px;
+}
+
+.reports-filter-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.reports-filter-btn--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.reports-filter-btn--active:hover {
+  background: var(--color-primary-hover);
+  color: var(--color-text-inverse);
+}
+
+/* Date inputs row */
+.reports-filters__dates {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.reports-filters__date-group {
+  flex: 1;
+  min-width: 140px;
+}
+
+/* Category filter + submit button row */
+.reports-filters__actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.reports-filters__category {
+  flex: 1;
+  min-width: 160px;
+}
+
+.reports-filters__submit {
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+
+/* ==========================================================================
+ * 3. ERROR STATE
+ * ========================================================================== */
+
+.reports-error {
+  text-align: center;
+  padding: var(--space-6);
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+}
+
+
+/* ==========================================================================
+ * 4. NO DATA STATE
+ * ========================================================================== */
+
+.reports-no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  min-height: 200px;
+}
+
+
+/* ==========================================================================
+ * 5. SUMMARY CARDS
+ * ========================================================================== */
+
+.reports-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.reports-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-6);
+}
+
+.reports-card__label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  margin-bottom: var(--space-2);
+}
+
+.reports-card__value {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+
+/* ==========================================================================
+ * 6. CHART SECTIONS
+ * ========================================================================== */
+
+.reports-chart-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.reports-section-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+}
+
+.reports-chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+.reports-chart-container--horizontal {
+  height: 350px;
+}
+
+/* Top items header with tabs */
+.reports-top-items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.reports-top-items-tabs {
+  display: flex;
+  gap: var(--space-2);
+}
+
+
+/* ==========================================================================
+ * 7. DATA TABLE SECTION
+ * ========================================================================== */
+
+.reports-table-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+
+/* ==========================================================================
+ * 8. RESPONSIVE: TABLET (768px - 1024px)
+ * ========================================================================== */
+
+@media (max-width: 1024px) {
+  .reports-summary {
+    gap: var(--space-3);
+  }
+
+  .reports-card {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .reports-card__value {
+    font-size: var(--font-size-lg);
+  }
+}
+
+
+/* ==========================================================================
+ * 9. RESPONSIVE: MOBILE (< 768px)
+ * ========================================================================== */
+
+@media (max-width: 767px) {
+  .reports-page {
+    padding: var(--space-3);
+  }
+
+  /* Stack summary cards vertically */
+  .reports-summary {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  /* Stack filter controls */
+  .reports-filters__dates {
+    flex-direction: column;
+  }
+
+  .reports-filters__actions {
+    flex-direction: column;
+  }
+
+  .reports-filters__submit {
+    width: 100%;
+  }
+
+  /* Filter buttons: allow wrapping */
+  .reports-filter-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Chart: allow horizontal scroll */
+  .reports-chart-container {
+    min-width: 400px;
+    overflow-x: auto;
+  }
+
+  .reports-chart-section {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Table: horizontal scroll */
+  .reports-table-section {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Top items header: stack */
+  .reports-top-items-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

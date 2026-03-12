@@ -1,0 +1,389 @@
+/* ==========================================================================
+ * inventory.css -- Shared styles for Inventory and Ingredients pages
+ *
+ * Provides layout for the ingredients table/card views, empty state,
+ * unit badges, and responsive behavior.
+ *
+ * Design reference: design.md Section 3.1.8 (ingredients), Section 3.1.10 (inventory)
+ * ========================================================================== */
+
+
+/* ==========================================================================
+ * 1. PAGE HEADER (shared for ingredients and inventory)
+ * ========================================================================== */
+
+/* Override page-header for inline button alignment */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+
+/* ==========================================================================
+ * 2. EMPTY STATE
+ * ========================================================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-4);
+  text-align: center;
+}
+
+.empty-state__icon {
+  width: 64px;
+  height: 64px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+}
+
+.empty-state__text {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+
+/* ==========================================================================
+ * 3. INGREDIENTS TABLE (desktop)
+ * ========================================================================== */
+
+.data-table__actions-col {
+  text-align: right;
+  width: 160px;
+}
+
+.data-table__actions {
+  text-align: right;
+  white-space: nowrap;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+
+/* ==========================================================================
+ * 4. INGREDIENTS CARDS (mobile)
+ * ========================================================================== */
+
+/* Show table on desktop, cards on mobile */
+.ingredients-table-desktop {
+  display: block;
+}
+
+.ingredients-cards-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .ingredients-table-desktop {
+    display: none;
+  }
+
+  .ingredients-cards-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+}
+
+.ingredient-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.ingredient-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.ingredient-card__name {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.ingredient-card__meta {
+  margin-bottom: var(--space-3);
+}
+
+.ingredient-card__date {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.ingredient-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+
+/* ==========================================================================
+ * 5. SKELETON LOADING
+ * ========================================================================== */
+
+.ingredients-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+
+/* ==========================================================================
+ * 6. FORM HINT (helper text below form inputs)
+ * ========================================================================== */
+
+.form-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+}
+
+
+/* ==========================================================================
+ * 7. INVENTORY DASHBOARD - Summary Cards
+ * ========================================================================== */
+
+.inventory-summary {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.inventory-summary__card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 180px;
+  flex: 1;
+  max-width: 280px;
+}
+
+.inventory-summary__card--warning {
+  border-color: var(--color-danger);
+  background: #fef2f2;
+}
+
+.inventory-summary__label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.inventory-summary__value {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inventory-summary__card--warning .inventory-summary__value {
+  color: var(--color-danger);
+}
+
+@media (max-width: 767px) {
+  .inventory-summary {
+    flex-direction: column;
+  }
+
+  .inventory-summary__card {
+    max-width: 100%;
+  }
+}
+
+
+/* ==========================================================================
+ * 8. INVENTORY DASHBOARD - Search and Sort Controls
+ * ========================================================================== */
+
+.inventory-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.inventory-controls__search {
+  flex: 1;
+  min-width: 200px;
+  max-width: 400px;
+}
+
+.inventory-controls__sort {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 767px) {
+  .inventory-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .inventory-controls__search {
+    max-width: 100%;
+  }
+
+  .inventory-controls__sort {
+    justify-content: flex-start;
+  }
+}
+
+
+/* ==========================================================================
+ * 9. INVENTORY DASHBOARD - Table Row Highlighting
+ * ========================================================================== */
+
+.inventory-row--low-stock {
+  background: #fef2f2 !important;
+}
+
+.inventory-row--low-stock:hover {
+  background: #fee2e2 !important;
+}
+
+.inventory-qty {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.inventory-qty--low {
+  color: var(--color-danger);
+}
+
+
+/* ==========================================================================
+ * 10. INVENTORY DASHBOARD - Desktop/Mobile Toggle
+ * ========================================================================== */
+
+.inventory-table-desktop {
+  display: block;
+}
+
+.inventory-cards-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .inventory-table-desktop {
+    display: none;
+  }
+
+  .inventory-cards-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+}
+
+
+/* ==========================================================================
+ * 11. INVENTORY DASHBOARD - Mobile Card View
+ * ========================================================================== */
+
+.inventory-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.inventory-card--low-stock {
+  border-color: var(--color-danger);
+  background: #fef2f2;
+}
+
+.inventory-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.inventory-card__name {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.inventory-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.inventory-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-sm);
+}
+
+.inventory-card__label {
+  color: var(--color-text-secondary);
+}
+
+.inventory-card__date {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.inventory-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+
+/* ==========================================================================
+ * 12. INVENTORY DASHBOARD - Skeleton Loading
+ * ========================================================================== */
+
+.inventory-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+
+/* ==========================================================================
+ * 13. INVENTORY DASHBOARD - Update Modal
+ * ========================================================================== */
+
+.inventory-modal__ingredient-name {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.inventory-modal__current-qty {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-primary);
+  margin: 0;
+}

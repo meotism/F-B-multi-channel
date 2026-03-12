@@ -1,0 +1,35 @@
+{
+  "name": "F&B Manager - Quan ly nha hang",
+  "short_name": "F&B Manager",
+  "description": "Ung dung quan ly nha hang F&B da nen tang",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1e293b",
+  "theme_color": "#2563eb",
+  "lang": "vi",
+  "icons": [
+    { "src": "assets/icons/icon-72.png", "sizes": "72x72", "type": "image/png" },
+    { "src": "assets/icons/icon-96.png", "sizes": "96x96", "type": "image/png" },
+    { "src": "assets/icons/icon-128.png", "sizes": "128x128", "type": "image/png" },
+    { "src": "assets/icons/icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/icons/icon-384.png", "sizes": "384x384", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["business", "food"],
+  "shortcuts": [
+    {
+      "name": "So do ban",
+      "url": "./#/tables",
+      "icons": [{ "src": "assets/icons/shortcut-tables.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Bao cao",
+      "url": "./#/reports",
+      "icons": [{ "src": "assets/icons/shortcut-reports.png", "sizes": "96x96" }]
+    }
+  ]
+}

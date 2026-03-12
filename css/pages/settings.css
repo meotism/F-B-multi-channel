@@ -1,0 +1,165 @@
+/* ==========================================================================
+ * settings.css — Settings Page Styles
+ *
+ * Styles for the printer management section within the settings page.
+ * Uses CSS custom properties from variables.css and component classes
+ * from components.css.
+ *
+ * Requirements: 8 (Printer Management)
+ * Design reference: Section 2.10.8 (Settings Page)
+ * ========================================================================== */
+
+
+/* ==========================================================================
+ * 1. SETTINGS SECTION
+ * ========================================================================== */
+
+.settings-section {
+  max-width: 700px;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-section__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+}
+
+
+/* ==========================================================================
+ * 2. ALERT / WARNING BANNER
+ * ========================================================================== */
+
+.settings-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.settings-alert--warning {
+  background: var(--color-warning-bg, #fff3cd);
+  border: 1px solid var(--color-warning-border, #ffc107);
+  color: var(--color-warning-text, #856404);
+}
+
+
+/* ==========================================================================
+ * 3. EMPTY STATE
+ * ========================================================================== */
+
+.settings-empty {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+.settings-empty p {
+  margin: 0;
+}
+
+
+/* ==========================================================================
+ * 4. PRINTER LIST
+ * ========================================================================== */
+
+.settings-printer-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+
+/* ==========================================================================
+ * 5. PRINTER CARD
+ * ========================================================================== */
+
+.settings-printer-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.settings-printer-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.settings-printer-card__info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-printer-card__name {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+}
+
+.settings-printer-card__paper {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.settings-printer-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.settings-printer-card__config {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-3);
+}
+
+
+/* ==========================================================================
+ * 6. RESPONSIVE — Mobile
+ * ========================================================================== */
+
+@media (max-width: 767px) {
+  .settings-section {
+    padding: var(--space-4);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .settings-printer-card__config {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-printer-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+}
+
+/* ==========================================================================
+ * 7. RESPONSIVE — Tablet
+ * ========================================================================== */
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .settings-printer-card__config {
+    grid-template-columns: 1fr 1fr;
+  }
+}

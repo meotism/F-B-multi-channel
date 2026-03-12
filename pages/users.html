@@ -1,0 +1,375 @@
+<!-- Users page template - loaded by router -->
+<section x-data="usersPage()">
+
+  <!-- Page header with title and add button -->
+  <div class="users-page__header">
+    <h2>Quản lý người dùng</h2>
+    <button class="btn btn--primary"
+            @click="openCreateModal()">
+      <!-- Plus icon -->
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>Thêm người dùng</span>
+    </button>
+  </div>
+
+  <!-- Loading skeleton -->
+  <div x-show="isLoading" x-cloak>
+    <div class="users-skeleton">
+      <template x-for="i in 4" :key="i">
+        <div class="skeleton skeleton--row">
+          <div class="skeleton skeleton--text" style="width: 25%;"></div>
+          <div class="skeleton skeleton--text" style="width: 30%;"></div>
+          <div class="skeleton skeleton--text" style="width: 15%;"></div>
+          <div class="skeleton skeleton--text" style="width: 20%;"></div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div x-show="!isLoading && users.length === 0"
+       x-cloak
+       class="users-empty">
+    <!-- Users icon -->
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+         style="color: var(--color-text-secondary); margin-bottom: var(--space-3);">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+      <circle cx="9" cy="7" r="4"></circle>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+    </svg>
+    <p>Chưa có người dùng nào</p>
+    <button class="btn btn--primary btn--sm"
+            @click="openCreateModal()"
+            style="margin-top: var(--space-3);">
+      Thêm người dùng đầu tiên
+    </button>
+  </div>
+
+  <!-- User table (desktop/tablet) -->
+  <div x-show="!isLoading && users.length > 0"
+       x-cloak
+       class="users-table-wrapper data-table-wrapper">
+    <table class="data-table users-table">
+      <thead>
+        <tr>
+          <th>Tên</th>
+          <th>Email</th>
+          <th>Vai trò</th>
+          <th>Ngày tạo</th>
+          <th>Hành động</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="user in users" :key="user.id">
+          <tr>
+            <td x-text="user.name"></td>
+            <td x-text="user.email"></td>
+            <td>
+              <span class="badge"
+                    :class="getRoleBadgeClass(user.role)"
+                    x-text="getRoleLabel(user.role)"></span>
+            </td>
+            <td x-text="formatDate(user.created_at)"></td>
+            <td>
+              <div class="users-table__actions">
+                <button class="btn btn--outline btn--sm"
+                        @click="openEditModal(user)">
+                  Sửa
+                </button>
+                <button class="btn btn--danger btn--sm"
+                        @click="confirmDelete(user)">
+                  Xóa
+                </button>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- User cards (mobile) -->
+  <div x-show="!isLoading && users.length > 0"
+       x-cloak
+       class="users-cards">
+    <template x-for="user in users" :key="'card-' + user.id">
+      <div class="users-card">
+        <div class="users-card__header">
+          <span class="users-card__name" x-text="user.name"></span>
+          <span class="badge"
+                :class="getRoleBadgeClass(user.role)"
+                x-text="getRoleLabel(user.role)"></span>
+        </div>
+        <div class="users-card__email" x-text="user.email"></div>
+        <div class="users-card__date">
+          <span style="color: var(--color-text-secondary); font-size: var(--font-size-xs);">
+            Ngày tạo:
+          </span>
+          <span style="font-size: var(--font-size-xs);" x-text="formatDate(user.created_at)"></span>
+        </div>
+        <div class="users-card__actions">
+          <button class="btn btn--outline btn--sm"
+                  @click="openEditModal(user)">
+            Sửa
+          </button>
+          <button class="btn btn--danger btn--sm"
+                  @click="confirmDelete(user)">
+            Xóa
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ================================================================
+       Create User Modal
+       ================================================================ -->
+  <div class="modal-backdrop"
+       x-show="showCreateModal"
+       x-transition.opacity
+       @click.self="closeCreateModal()"
+       x-cloak>
+    <div class="modal-content" x-show="showCreateModal" x-transition>
+      <!-- Header -->
+      <div class="modal-content__header">
+        <h3>Thêm người dùng</h3>
+        <button class="modal-content__close"
+                @click="closeCreateModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-content__body">
+        <!-- Error message -->
+        <div class="users-form__error"
+             x-show="formError"
+             x-cloak>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          <span x-text="formError"></span>
+        </div>
+
+        <form @submit.prevent="submitCreate()">
+          <!-- Name -->
+          <div class="form-group">
+            <label class="form-label" for="create-user-name">Tên <span class="users-form__required">*</span></label>
+            <input id="create-user-name"
+                   type="text"
+                   class="form-input"
+                   x-model="formName"
+                   placeholder="Nhập tên người dùng"
+                   maxlength="255"
+                   required
+                   :disabled="isSaving">
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label class="form-label" for="create-user-email">Email <span class="users-form__required">*</span></label>
+            <input id="create-user-email"
+                   type="email"
+                   class="form-input"
+                   x-model="formEmail"
+                   placeholder="name@example.com"
+                   required
+                   :disabled="isSaving">
+          </div>
+
+          <!-- Role -->
+          <div class="form-group">
+            <label class="form-label" for="create-user-role">Vai trò <span class="users-form__required">*</span></label>
+            <select id="create-user-role"
+                    class="form-select"
+                    x-model="formRole"
+                    required
+                    :disabled="isSaving">
+              <template x-for="role in assignableRoles" :key="role">
+                <option :value="role" x-text="getRoleLabel(role)"></option>
+              </template>
+            </select>
+          </div>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label class="form-label" for="create-user-password">Mật khẩu tạm <span class="users-form__required">*</span></label>
+            <input id="create-user-password"
+                   type="password"
+                   class="form-input"
+                   x-model="formPassword"
+                   placeholder="Tối thiểu 8 ký tự"
+                   minlength="8"
+                   required
+                   :disabled="isSaving">
+          </div>
+
+          <!-- Hidden submit for enter key -->
+          <button type="submit" style="display: none;"></button>
+        </form>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-content__footer">
+        <button class="btn btn--outline"
+                @click="closeCreateModal()"
+                :disabled="isSaving">
+          Hủy
+        </button>
+        <button class="btn btn--primary"
+                @click="submitCreate()"
+                :disabled="isSaving">
+          <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
+          <span x-text="isSaving ? 'Đang tạo...' : 'Tạo người dùng'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Edit User Modal
+       ================================================================ -->
+  <div class="modal-backdrop"
+       x-show="showEditModal"
+       x-transition.opacity
+       @click.self="closeEditModal()"
+       x-cloak>
+    <div class="modal-content" x-show="showEditModal" x-transition>
+      <!-- Header -->
+      <div class="modal-content__header">
+        <h3>Sửa người dùng</h3>
+        <button class="modal-content__close"
+                @click="closeEditModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-content__body">
+        <!-- Error message -->
+        <div class="users-form__error"
+             x-show="formError"
+             x-cloak>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          <span x-text="formError"></span>
+        </div>
+
+        <form @submit.prevent="submitEdit()">
+          <!-- Name -->
+          <div class="form-group">
+            <label class="form-label" for="edit-user-name">Tên <span class="users-form__required">*</span></label>
+            <input id="edit-user-name"
+                   type="text"
+                   class="form-input"
+                   x-model="formName"
+                   placeholder="Nhập tên người dùng"
+                   maxlength="255"
+                   required
+                   :disabled="isSaving">
+          </div>
+
+          <!-- Email (read-only in edit mode) -->
+          <div class="form-group">
+            <label class="form-label" for="edit-user-email">Email</label>
+            <input id="edit-user-email"
+                   type="email"
+                   class="form-input"
+                   x-model="formEmail"
+                   readonly
+                   disabled
+                   style="opacity: 0.6; cursor: not-allowed;">
+          </div>
+
+          <!-- Role -->
+          <div class="form-group">
+            <label class="form-label" for="edit-user-role">Vai trò <span class="users-form__required">*</span></label>
+            <select id="edit-user-role"
+                    class="form-select"
+                    x-model="formRole"
+                    required
+                    :disabled="isSaving">
+              <template x-for="role in assignableRoles" :key="role">
+                <option :value="role" x-text="getRoleLabel(role)"></option>
+              </template>
+            </select>
+          </div>
+
+          <!-- Hidden submit for enter key -->
+          <button type="submit" style="display: none;"></button>
+        </form>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-content__footer">
+        <button class="btn btn--outline"
+                @click="closeEditModal()"
+                :disabled="isSaving">
+          Hủy
+        </button>
+        <button class="btn btn--primary"
+                @click="submitEdit()"
+                :disabled="isSaving">
+          <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
+          <span x-text="isSaving ? 'Đang lưu...' : 'Lưu thay đổi'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Delete Confirmation Modal
+       ================================================================ -->
+  <div class="modal-backdrop"
+       x-show="showDeleteModal"
+       x-transition.opacity
+       @click.self="closeDeleteModal()"
+       x-cloak>
+    <div class="modal-content" x-show="showDeleteModal" x-transition>
+      <!-- Header -->
+      <div class="modal-content__header">
+        <h3>Xác nhận xóa</h3>
+        <button class="modal-content__close"
+                @click="closeDeleteModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-content__body">
+        <p>Bạn có chắc muốn xóa người dùng
+          <strong x-text="deleteUserTarget?.name"></strong>?
+        </p>
+        <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: var(--space-2);">
+          Hành động này không thể hoàn tác.
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-content__footer">
+        <button class="btn btn--outline"
+                @click="closeDeleteModal()"
+                :disabled="isSaving">
+          Hủy
+        </button>
+        <button class="btn btn--danger"
+                @click="submitDelete()"
+                :disabled="isSaving">
+          <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
+          <span x-text="isSaving ? 'Đang xóa...' : 'Xóa'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</section>

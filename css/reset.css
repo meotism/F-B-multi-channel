@@ -1,0 +1,134 @@
+/* ==========================================================================
+ * reset.css — Modern CSS Reset / Normalize
+ *
+ * Establishes a consistent baseline across browsers. Removes default margins,
+ * sets box-sizing: border-box globally, and applies sensible typography defaults.
+ *
+ * Loaded before all other stylesheets in index.html.
+ * ========================================================================== */
+
+/* --- Box Model Reset --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* --- Remove default margins and padding --- */
+* {
+  margin: 0;
+  padding: 0;
+}
+
+/* --- Document --- */
+html {
+  /* Prevent font-size inflation on mobile */
+  -moz-text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+
+  /* Smooth scrolling for anchor links */
+  scroll-behavior: smooth;
+}
+
+/* --- Body --- */
+body {
+  min-height: 100vh;
+  line-height: 1.5;
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+
+  /* Font smoothing for sharper text on macOS/iOS */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Typography --- */
+h1, h2, h3, h4, h5, h6 {
+  /* Balance long headings across lines (where supported) */
+  text-wrap: balance;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* --- Media --- */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* --- Form Elements --- */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+textarea {
+  /* Prevent horizontal resize which breaks layouts */
+  resize: vertical;
+}
+
+fieldset {
+  border: none;
+}
+
+/* --- Links --- */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* --- Lists --- */
+ul,
+ol {
+  list-style: none;
+}
+
+/* --- Tables --- */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* --- Accessibility --- */
+
+/* Remove animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus ring — visible for keyboard navigation, hidden for mouse clicks */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}

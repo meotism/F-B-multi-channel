@@ -1,0 +1,1031 @@
+/* ==========================================================================
+ * order.css — Order creation/editing page styles
+ *
+ * Styles for the order page: header with back link, category tabs,
+ * menu item grid, cart panel, and responsive layout variations.
+ *
+ * Design reference: design.md Section 4.3.4
+ * Requirements: 5.2 AC-2 (create order with menu items)
+ * ========================================================================== */
+
+/* ------------------------------------------------------------------
+ * Order Page Layout
+ *
+ * Desktop: two-column layout (menu left, cart right)
+ * Tablet: menu grid + bottom cart drawer
+ * Mobile: full-screen menu with bottom sheet cart overlay
+ * ------------------------------------------------------------------ */
+.order-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+/* ------------------------------------------------------------------
+ * Order Header — back button + table info
+ * ------------------------------------------------------------------ */
+.order-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.order-header__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+  border: none;
+  background: none;
+}
+
+.order-header__back:hover {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.order-header__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* ------------------------------------------------------------------
+ * Category Tabs — horizontal scrollable tab bar
+ * ------------------------------------------------------------------ */
+.order-categories {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--space-1);
+  scrollbar-width: thin;
+}
+
+/* Hide scrollbar on WebKit browsers for cleaner look */
+.order-categories::-webkit-scrollbar {
+  height: 4px;
+}
+
+.order-categories::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.order-categories::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.order-category-tab {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast),
+              border-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.order-category-tab:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.order-category-tab--active {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-primary);
+}
+
+/* ------------------------------------------------------------------
+ * Order Body — Desktop two-column layout container
+ * ------------------------------------------------------------------ */
+.order-body {
+  display: flex;
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 0;
+}
+
+.order-body__menu {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-body__cart {
+  width: 360px;
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------------
+ * Menu Items Grid
+ * ------------------------------------------------------------------ */
+.order-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+.order-menu-item {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  transition: box-shadow var(--transition-fast),
+              border-color var(--transition-fast);
+  cursor: pointer;
+}
+
+.order-menu-item:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.order-menu-item__name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+  line-height: 1.3;
+  /* Clamp to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.order-menu-item__price {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.order-menu-item__add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  line-height: 1;
+  margin-left: auto;
+  transition: background-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.order-menu-item__add:hover {
+  background: var(--color-primary-hover);
+}
+
+/* ------------------------------------------------------------------
+ * Menu Loading Skeleton
+ * ------------------------------------------------------------------ */
+.order-menu-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+/* ------------------------------------------------------------------
+ * Menu Empty State
+ * ------------------------------------------------------------------ */
+.order-menu-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-secondary);
+  text-align: center;
+  font-size: var(--font-size-sm);
+}
+
+/* ------------------------------------------------------------------
+ * Cart Panel (sticky on desktop, bottom drawer on tablet/mobile)
+ * ------------------------------------------------------------------ */
+.order-cart {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--header-height) - var(--space-8) * 3);
+  position: sticky;
+  top: calc(var(--header-height) + var(--space-4));
+}
+
+.order-cart__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.order-cart__header-title {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.order-cart__count {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-inverse);
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-2);
+  min-width: 24px;
+  text-align: center;
+  line-height: 1;
+}
+
+.order-cart__items {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) 0;
+}
+
+.order-cart__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------
+ * Cart Item
+ * ------------------------------------------------------------------ */
+.order-cart-item {
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.order-cart-item:last-child {
+  border-bottom: none;
+}
+
+.order-cart-item__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.order-cart-item__name {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-cart-item__line-total {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  min-width: 70px;
+  text-align: right;
+}
+
+/* Quantity controls: [-] qty [+] */
+.order-cart-item__qty {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.order-cart-item__qty-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast);
+}
+
+.order-cart-item__qty-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.order-cart-item__qty-value {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Cart item action buttons (note toggle, remove) */
+.order-cart-item__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.order-cart-item__note-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition-fast),
+              border-color var(--transition-fast);
+}
+
+.order-cart-item__note-btn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.order-cart-item__note-btn--active {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.order-cart-item__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  line-height: 1;
+  transition: color var(--transition-fast),
+              background-color var(--transition-fast);
+}
+
+.order-cart-item__remove:hover {
+  color: var(--color-danger);
+  background: rgba(220, 38, 38, 0.06);
+}
+
+/* Note textarea (shown when toggled) */
+.order-cart-item__note {
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  font-size: var(--font-size-xs);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  resize: vertical;
+  min-height: 48px;
+  max-height: 120px;
+  font-family: inherit;
+}
+
+.order-cart-item__note:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+/* ------------------------------------------------------------------
+ * Cart Total + Confirm Button
+ * ------------------------------------------------------------------ */
+.order-cart-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-top: 2px solid var(--color-border);
+  flex-shrink: 0;
+  gap: var(--space-3);
+}
+
+.order-cart-total__label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.order-cart-total__amount {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.order-cart-total__confirm {
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------------
+ * Mobile Cart Toggle Button (visible on mobile/tablet only)
+ * ------------------------------------------------------------------ */
+.order-cart-toggle {
+  display: none;
+  position: fixed;
+  bottom: calc(var(--bottom-nav-height) + var(--space-3));
+  right: var(--space-3);
+  z-index: var(--z-sidebar);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border: none;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.order-cart-toggle__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-text-inverse);
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ------------------------------------------------------------------
+ * Desktop (>1024px): Two-column layout
+ *
+ * Menu items on the left, cart panel on the right as a sticky sidebar.
+ * ------------------------------------------------------------------ */
+@media (min-width: 1025px) {
+  .order-body {
+    display: flex;
+    gap: var(--space-4);
+  }
+
+  .order-body__menu {
+    flex: 1;
+  }
+
+  .order-body__cart {
+    width: 360px;
+  }
+
+  /* Cart toggle hidden on desktop — cart is always visible */
+  .order-cart-toggle {
+    display: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Tablet (768px - 1024px): Menu grid + bottom cart drawer
+ *
+ * Menu takes full width. Cart becomes a collapsible bottom drawer
+ * that slides up from the bottom.
+ * ------------------------------------------------------------------ */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .order-body {
+    flex-direction: column;
+  }
+
+  .order-body__menu {
+    flex: 1;
+  }
+
+  .order-body__cart {
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--z-modal-backdrop);
+    max-height: 50vh;
+    transition: transform 0.3s ease;
+  }
+
+  .order-body__cart.is-collapsed {
+    transform: translateY(calc(100% - 56px));
+  }
+
+  .order-cart {
+    position: static;
+    max-height: 50vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .order-cart-toggle {
+    display: inline-flex;
+    bottom: var(--space-3);
+  }
+
+  .order-menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Mobile (<768px): Full-screen menu with bottom sheet cart overlay
+ *
+ * Menu takes full width. Cart shown as a bottom sheet overlay that
+ * the user toggles via a floating action button. The cart overlays
+ * above the bottom navigation.
+ * ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .order-body {
+    flex-direction: column;
+  }
+
+  .order-body__menu {
+    flex: 1;
+  }
+
+  .order-body__cart {
+    width: 100%;
+    position: fixed;
+    bottom: var(--bottom-nav-height);
+    left: 0;
+    right: 0;
+    z-index: var(--z-modal-backdrop);
+    max-height: 60vh;
+    transition: transform 0.3s ease;
+  }
+
+  .order-body__cart.is-hidden {
+    transform: translateY(100%);
+  }
+
+  .order-cart {
+    position: static;
+    max-height: 60vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .order-cart-toggle {
+    display: inline-flex;
+  }
+
+  .order-menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .order-menu-item__add {
+    width: 36px;
+    height: 36px;
+  }
+
+  .order-category-tab {
+    min-height: 36px;
+  }
+
+  /* Increase touch targets for cart qty buttons on mobile */
+  .order-cart-item__qty-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .order-cart-item__remove {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Cart Backdrop (for mobile/tablet bottom sheet)
+ * ------------------------------------------------------------------ */
+.order-cart-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: calc(var(--z-modal-backdrop) - 1);
+}
+
+@media (max-width: 1024px) {
+  .order-cart-backdrop.is-visible {
+    display: block;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Drag Handle for Cart Bottom Sheet (tablet/mobile)
+ * ------------------------------------------------------------------ */
+.order-cart__drag-handle {
+  display: none;
+  width: 40px;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  margin: var(--space-2) auto 0;
+  cursor: grab;
+}
+
+@media (max-width: 1024px) {
+  .order-cart__drag-handle {
+    display: block;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Order Detail View — shown after order creation or when viewing
+ * an existing active order (table status = 'serving').
+ *
+ * Displays the ordered items with quantities, prices, and notes.
+ * Design reference: Section 4.3.5
+ * Requirements: 5.2 AC-2, 5.2 AC-3
+ * ------------------------------------------------------------------ */
+
+.order-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.order-detail__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  gap: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.order-detail__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Summary bar: status badge + item count */
+.order-detail__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.order-detail__item-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+/* Empty order state */
+.order-detail__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* Order items list */
+.order-detail__items {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.order-detail-item {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.order-detail-item:last-child {
+  border-bottom: none;
+}
+
+.order-detail-item__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.order-detail-item__name {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-detail-item__qty {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  min-width: 30px;
+  text-align: center;
+}
+
+.order-detail-item__price {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  min-width: 80px;
+  text-align: right;
+}
+
+.order-detail-item__note {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  padding-left: var(--space-1);
+}
+
+/* ------------------------------------------------------------------
+ * Order Detail Item — Inline Modification Controls
+ *
+ * When order status is 'active' (canModify = true), each item row shows:
+ *   - Item name
+ *   - Qty controls: [-] qty [+]
+ *   - Line price
+ *   - Actions: note toggle icon + remove [X]
+ *
+ * When the item is being saved (isSavingItem matches), the row reduces
+ * opacity to provide subtle loading feedback without a spinner.
+ *
+ * Design reference: Section 4.3.5
+ * Requirements: 5.2 AC-4, 5.2 AC-6
+ * ------------------------------------------------------------------ */
+
+/* Saving state: reduce opacity for visual feedback during API call */
+.order-detail-item--saving {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+
+/* Qty controls container: [-] qty [+] (reuses cart pattern) */
+.order-detail-item__qty-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+/* Qty buttons: [-] and [+] (consistent with cart qty buttons) */
+.order-detail-item__qty-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast);
+}
+
+.order-detail-item__qty-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.order-detail-item__qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Qty value display */
+.order-detail-item__qty-value {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Actions container: note toggle + remove */
+.order-detail-item__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+/* Note toggle button (pencil icon) */
+.order-detail-item__note-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast),
+              border-color var(--transition-fast),
+              background-color var(--transition-fast);
+}
+
+.order-detail-item__note-btn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.order-detail-item__note-btn--active {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+/* Remove button [X] */
+.order-detail-item__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  line-height: 1;
+  transition: color var(--transition-fast),
+              background-color var(--transition-fast);
+}
+
+.order-detail-item__remove:hover:not(:disabled) {
+  color: var(--color-danger);
+  background: rgba(220, 38, 38, 0.06);
+}
+
+.order-detail-item__remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Note textarea (editable, shown when expanded) */
+.order-detail-item__note-input {
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  font-size: var(--font-size-xs);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  resize: vertical;
+  min-height: 48px;
+  max-height: 120px;
+  font-family: inherit;
+}
+
+.order-detail-item__note-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.order-detail-item__note-input:disabled {
+  opacity: 0.5;
+}
+
+/* ------------------------------------------------------------------
+ * Order Detail — Action Buttons Section
+ *
+ * Contains the "Them mon" (Add items) button and placeholder area
+ * for future action buttons (S3-09 Request Payment, etc.).
+ * ------------------------------------------------------------------ */
+.order-detail__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.order-detail__add-items-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ------------------------------------------------------------------
+ * Order Detail — Menu Browser (Add Items mode)
+ *
+ * Shown when the user taps "Them mon". Reuses the category tabs
+ * and menu grid from create mode. Separated from the order items
+ * list with a subtle border.
+ * ------------------------------------------------------------------ */
+.order-detail__menu-browser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Order total bar */
+.order-detail__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.order-detail__total-label {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.order-detail__total-amount {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* ------------------------------------------------------------------
+ * Mobile: larger touch targets for detail mode qty/action buttons
+ * ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .order-detail-item__qty-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .order-detail-item__note-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .order-detail-item__remove {
+    width: 36px;
+    height: 36px;
+  }
+}

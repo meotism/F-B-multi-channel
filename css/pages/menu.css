@@ -1,0 +1,613 @@
+/* Menu - Menu and categories management styles
+ *
+ * Shared styles for the categories management page and menu management page.
+ * Includes list/table layout, responsive cards on mobile, active/inactive
+ * toggle switch, and sort order display.
+ *
+ * Design reference: design.md Section 2.10.4 Categories Management Page
+ */
+
+
+/* ==========================================================================
+ * 1. CATEGORIES PAGE HEADER
+ * ========================================================================== */
+
+.categories-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.categories-page__header h2 {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+}
+
+
+/* ==========================================================================
+ * 2. CATEGORIES TABLE (desktop/tablet)
+ * ========================================================================== */
+
+.categories-table-wrapper {
+  padding: var(--space-4) var(--space-6);
+}
+
+/* Fade inactive rows to visually distinguish them */
+.categories-table__row--inactive {
+  opacity: 0.6;
+}
+
+.categories-table__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Hide table on mobile, show cards instead */
+@media (max-width: 767px) {
+  .categories-table-wrapper {
+    display: none;
+  }
+}
+
+
+/* ==========================================================================
+ * 3. CATEGORIES CARDS (mobile only)
+ * ========================================================================== */
+
+.categories-cards {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+@media (max-width: 767px) {
+  .categories-cards {
+    display: flex;
+  }
+}
+
+.categories-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.categories-card--inactive {
+  opacity: 0.6;
+}
+
+.categories-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.categories-card__name {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+}
+
+.categories-card__meta {
+  margin-bottom: var(--space-3);
+}
+
+.categories-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+
+/* ==========================================================================
+ * 4. ACTIVE/INACTIVE TOGGLE SWITCH
+ * ========================================================================== */
+
+.categories-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-1);
+  min-height: 32px;
+}
+
+.categories-toggle__track {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  transition: background-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.categories-toggle--active .categories-toggle__track {
+  background: var(--color-success);
+}
+
+.categories-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: var(--color-surface);
+  border-radius: 50%;
+  transition: transform var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.categories-toggle--active .categories-toggle__thumb {
+  transform: translateX(18px);
+}
+
+.categories-toggle__label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* Larger touch targets on mobile */
+@media (max-width: 767px) {
+  .categories-toggle {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Compact variant for mobile cards (no label, just toggle) */
+.categories-toggle--compact .categories-toggle__label {
+  display: none;
+}
+
+
+/* ==========================================================================
+ * 5. CATEGORIES SKELETON (loading state)
+ * ========================================================================== */
+
+.categories-skeleton {
+  padding: var(--space-4) var(--space-6);
+}
+
+
+/* ==========================================================================
+ * 6. CATEGORIES EMPTY STATE
+ * ========================================================================== */
+
+.categories-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  min-height: 200px;
+}
+
+
+/* ==========================================================================
+ * 7. CATEGORIES FORM (modal form elements)
+ * ========================================================================== */
+
+.categories-form__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  background: #fef2f2;
+  color: var(--color-danger);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.categories-form__required {
+  color: var(--color-danger);
+}
+
+
+/* ==========================================================================
+ * 8. MENU PAGE HEADER
+ * ========================================================================== */
+
+.menu-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.menu-page__header h2 {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+}
+
+
+/* ==========================================================================
+ * 9. MENU FILTER BAR (category chips + search)
+ * ========================================================================== */
+
+.menu-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.menu-filter-bar__categories {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-filter-bar__search {
+  width: 240px;
+  flex-shrink: 0;
+}
+
+.menu-filter-bar__search .form-input {
+  min-height: 36px;
+  font-size: var(--font-size-sm);
+}
+
+/* Stack filter bar vertically on mobile */
+@media (max-width: 767px) {
+  .menu-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .menu-filter-bar__categories {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--space-1);
+  }
+
+  .menu-filter-bar__search {
+    width: 100%;
+  }
+}
+
+
+/* ==========================================================================
+ * 10. MENU ITEMS GRID
+ * ========================================================================== */
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+}
+
+@media (max-width: 767px) {
+  .menu-grid {
+    grid-template-columns: 1fr;
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-3);
+  }
+}
+
+
+/* ==========================================================================
+ * 11. MENU ITEM CARD
+ * ========================================================================== */
+
+.menu-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: box-shadow var(--transition-fast);
+}
+
+.menu-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.menu-card--inactive {
+  opacity: 0.6;
+}
+
+.menu-card__body {
+  padding: var(--space-4);
+}
+
+.menu-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.menu-card__name {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.menu-card__price {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: var(--space-1);
+}
+
+.menu-card__category {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.menu-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+
+/* ==========================================================================
+ * 12. MENU SKELETON (loading state)
+ * ========================================================================== */
+
+.menu-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+}
+
+@media (max-width: 767px) {
+  .menu-skeleton {
+    grid-template-columns: 1fr;
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-3);
+  }
+}
+
+
+/* ==========================================================================
+ * 13. MENU EMPTY STATE
+ * ========================================================================== */
+
+.menu-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  min-height: 200px;
+}
+
+
+/* ==========================================================================
+ * 14. MENU EDIT FORM
+ * ========================================================================== */
+
+.menu-edit {
+  max-width: 600px;
+  padding: var(--space-6);
+}
+
+.menu-edit__loading {
+  max-width: 600px;
+  padding: var(--space-6);
+}
+
+.menu-edit__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  background: #fef2f2;
+  color: var(--color-danger);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.menu-edit__required {
+  color: var(--color-danger);
+}
+
+.menu-edit__toggle-wrapper {
+  padding: var(--space-1) 0;
+}
+
+/* ==========================================================================
+ * 14a. RECIPE SECTION (within menu edit form)
+ * ========================================================================== */
+
+.recipe-section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.recipe-section__loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.recipe-section__empty {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* Recipe list table */
+.recipe-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-4);
+}
+
+.recipe-table__th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.recipe-table__th--qty,
+.recipe-table__td--qty {
+  text-align: right;
+  width: 100px;
+}
+
+.recipe-table__th--unit,
+.recipe-table__td--unit {
+  width: 80px;
+}
+
+.recipe-table__th--action,
+.recipe-table__td--action {
+  width: 48px;
+  text-align: center;
+}
+
+.recipe-table__row {
+  transition: background-color var(--transition-fast);
+}
+
+.recipe-table__row:hover {
+  background-color: var(--color-bg);
+}
+
+.recipe-table__td {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.recipe-table__delete {
+  padding: var(--space-1);
+  color: var(--color-danger);
+  border-color: transparent;
+  min-width: auto;
+  min-height: auto;
+}
+
+.recipe-table__delete:hover {
+  background: #fef2f2;
+  border-color: var(--color-danger);
+}
+
+/* Add ingredient inline form */
+.recipe-add {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.recipe-add__label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.recipe-add__form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.recipe-add__select {
+  flex: 1;
+  min-width: 0;
+}
+
+.recipe-add__qty {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.recipe-add__hint {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Responsive: stack add form vertically on mobile */
+@media (max-width: 767px) {
+  .recipe-add__form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .recipe-add__qty {
+    width: 100%;
+  }
+
+  .recipe-table__th--unit,
+  .recipe-table__td--unit {
+    display: none;
+  }
+
+  .recipe-table__th--qty,
+  .recipe-table__td--qty {
+    width: 80px;
+  }
+}
+
+.menu-edit__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 767px) {
+  .menu-edit {
+    padding: var(--space-4);
+  }
+
+  .menu-edit__loading {
+    padding: var(--space-4);
+  }
+
+  .menu-edit__actions {
+    flex-direction: column-reverse;
+  }
+
+  .menu-edit__actions .btn {
+    width: 100%;
+  }
+}

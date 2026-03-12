@@ -1,0 +1,428 @@
+<!-- Table map page template - loaded by router -->
+<section x-data="tableMapPage()" x-init="init()" @beforeunload.window="destroy()">
+
+  <!-- ================================================================
+       Map Toolbar
+       ================================================================ -->
+  <div class="map-toolbar">
+    <!-- View mode toolbar -->
+    <template x-if="!isEditMode">
+      <div class="map-toolbar__view-actions">
+        <button class="btn btn--primary"
+                @click="enterEditMode()"
+                x-show="$store.auth.canEditMap()"
+                :disabled="!!lockOwner">
+          <!-- Edit icon -->
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          <span>Chỉnh sửa sơ đồ</span>
+        </button>
+      </div>
+    </template>
+
+    <!-- Edit mode toolbar -->
+    <template x-if="isEditMode">
+      <div class="map-toolbar__edit-actions">
+        <button class="btn btn--success"
+                @click="saveMap()"
+                :disabled="isSaving || !$store.tableMap.hasUnsavedChanges">
+          <!-- Spinner shown during save -->
+          <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
+          <!-- Save icon (hidden during save) -->
+          <svg x-show="!isSaving" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          <span x-text="isSaving ? 'Đang lưu...' : 'Lưu sơ đồ'"></span>
+        </button>
+        <button class="btn btn--outline" @click="undo()" :disabled="undoStack.length === 0">
+          <!-- Undo icon -->
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+          <span>Hoàn tác</span>
+        </button>
+        <button class="btn btn--outline" @click="openAddModal()">
+          <!-- Plus icon -->
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Thêm bàn</span>
+        </button>
+        <button class="btn btn--danger" @click="handleExitEditMode()">
+          <!-- X icon -->
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Thoát chỉnh sửa</span>
+        </button>
+      </div>
+    </template>
+
+    <!-- Lock indicator: shown when another user is editing -->
+    <div x-show="lockOwner && !isEditMode"
+         x-cloak
+         class="map-lock-indicator">
+      <!-- Lock icon -->
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+      <span x-text="lockOwner?.user_name + ' đang chỉnh sửa sơ đồ bàn'"></span>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Map Container
+       ================================================================ -->
+  <div id="map-container"
+       class="map-container"
+       :class="{ 'map-container--edit': isEditMode }">
+
+    <!-- Empty state when no tables exist -->
+    <div x-show="tables.length === 0"
+         x-cloak
+         class="map-empty-state">
+      <!-- Grid/map icon -->
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+           style="color: var(--color-text-secondary); margin-bottom: var(--space-3);">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+      </svg>
+      <p>Chưa có bàn nào trên sơ đồ</p>
+    </div>
+
+    <!-- Table nodes rendered from store data -->
+    <template x-for="table in tables" :key="table.id">
+      <div class="table-node"
+           :class="[
+             'table-node--' + table.status,
+             'table-node--' + table.shape,
+             { 'is-editable': isEditMode, 'is-selected': selectedTable?.id === table.id }
+           ]"
+           :style="`left: ${table.x}%; top: ${table.y}%; transform: rotate(${table.rotation || 0}deg);`"
+           :data-table-id="table.id"
+           :data-capacity="table.capacity"
+           @click="handleTableClick(table)">
+        <!-- Table name: double-click to inline rename in edit mode -->
+        <span class="table-node__name"
+              x-show="!(isEditMode && inlineRenameTableId === table.id)"
+              x-text="table.name"
+              @dblclick.stop="startInlineRename(table)"></span>
+        <!-- Inline rename input: shown on double-click -->
+        <input x-show="isEditMode && inlineRenameTableId === table.id"
+               x-cloak
+               type="text"
+               class="table-node__rename-input"
+               x-model="inlineRenameValue"
+               @keydown.enter.stop="confirmInlineRename()"
+               @keydown.escape.stop="cancelInlineRename()"
+               @blur="confirmInlineRename()"
+               @click.stop>
+        <span class="table-node__code" x-text="table.table_code"></span>
+        <span class="table-node__seats" x-text="table.capacity + ' chỗ'"></span>
+        <!-- Timer for serving tables -->
+        <span class="table-node__timer"
+              x-show="table.status === 'serving'"
+              x-text="getElapsedTime(table.activeOrderStartedAt)"
+              x-cloak>
+        </span>
+      </div>
+    </template>
+  </div>
+
+  <!-- ================================================================
+       Selected Table Details Panel
+       Desktop: sidebar panel (visible in edit mode when a table is selected)
+       Tablet/Mobile: collapsible bottom sheet (visible on table tap)
+       ================================================================ -->
+  <div x-show="selectedTable"
+       x-cloak
+       class="map-selected-panel"
+       :class="{ 'is-collapsed': isDetailsPanelCollapsed }"
+       @click="isDetailsPanelCollapsed = false">
+    <!-- Drag handle for bottom sheet (visible on tablet/mobile only via CSS) -->
+    <div class="map-selected-panel__drag-handle"
+         @click.stop="isDetailsPanelCollapsed = !isDetailsPanelCollapsed"
+         aria-label="Thu gọn/mở rộng chi tiết bàn"></div>
+    <h3 class="map-selected-panel__title" x-text="selectedTable?.name"></h3>
+    <dl class="map-selected-panel__details">
+      <dt>Mã bàn</dt>
+      <dd x-text="selectedTable?.table_code"></dd>
+      <dt>Số chỗ</dt>
+      <dd x-text="selectedTable?.capacity"></dd>
+      <dt>Trạng thái</dt>
+      <dd x-text="selectedTable?.status"></dd>
+      <dt>Vị trí</dt>
+      <dd x-text="selectedTable ? ('X: ' + Math.round(selectedTable.x) + '% / Y: ' + Math.round(selectedTable.y) + '%') : ''"></dd>
+    </dl>
+    <!-- Edit button: visible only in edit mode when a table is selected -->
+    <div x-show="isEditMode && selectedTable"
+         x-cloak
+         class="map-selected-panel__actions">
+      <button class="btn btn--primary btn--sm"
+              @click="openEditModal()">
+        <!-- Edit/pencil icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        <span>Sửa</span>
+      </button>
+      <button class="btn btn--danger btn--sm"
+              @click="confirmDeleteTable()">
+        <!-- Trash icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+        <span>Xóa bàn</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Add Table Modal
+       Controlled by showAddModal state. Visible only in edit mode.
+       ================================================================ -->
+  <div x-show="showAddModal"
+       x-cloak
+       class="modal-backdrop"
+       @click.self="closeAddModal()"
+       @keydown.escape.window="closeAddModal()">
+    <div class="modal-content" @click.stop>
+      <!-- Header -->
+      <div class="modal-content__header">
+        <h3>Thêm bàn mới</h3>
+        <button class="modal-content__close"
+                @click="closeAddModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Body: Form fields -->
+      <div class="modal-content__body">
+        <!-- Error message -->
+        <div x-show="addFormError"
+             x-cloak
+             class="form-error"
+             style="margin-bottom: var(--space-4);"
+             x-text="addFormError"></div>
+
+        <!-- Table name -->
+        <div class="form-group">
+          <label class="form-label" for="add-table-name">Tên bàn <span style="color: var(--color-danger);">*</span></label>
+          <input id="add-table-name"
+                 type="text"
+                 class="form-input"
+                 x-model="addForm.name"
+                 placeholder="VD: Bàn 1"
+                 required>
+        </div>
+
+        <!-- Table code -->
+        <div class="form-group">
+          <label class="form-label" for="add-table-code">Mã bàn <span style="color: var(--color-danger);">*</span></label>
+          <input id="add-table-code"
+                 type="text"
+                 class="form-input"
+                 x-model="addForm.table_code"
+                 placeholder="VD: B01"
+                 required>
+        </div>
+
+        <!-- Capacity -->
+        <div class="form-group">
+          <label class="form-label" for="add-table-capacity">Số chỗ <span style="color: var(--color-danger);">*</span></label>
+          <input id="add-table-capacity"
+                 type="number"
+                 class="form-input"
+                 x-model.number="addForm.capacity"
+                 min="1"
+                 required>
+        </div>
+
+        <!-- Shape -->
+        <div class="form-group">
+          <label class="form-label" for="add-table-shape">Hình dạng</label>
+          <select id="add-table-shape"
+                  class="form-select"
+                  x-model="addForm.shape">
+            <option value="square">Vuông</option>
+            <option value="round">Tròn</option>
+            <option value="rectangle">Chữ nhật</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Footer: Action buttons -->
+      <div class="modal-content__footer">
+        <button class="btn btn--outline" @click="closeAddModal()">Hủy</button>
+        <button class="btn btn--primary" @click="submitAddTable()">Thêm bàn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Edit Table Modal
+       Controlled by showEditModal state. Visible only in edit mode.
+       Pre-filled with the selected table's current values.
+       ================================================================ -->
+  <div x-show="showEditModal"
+       x-cloak
+       class="modal-backdrop"
+       @click.self="closeEditModal()"
+       @keydown.escape.window="showEditModal && closeEditModal()">
+    <div class="modal-content" @click.stop>
+      <!-- Header -->
+      <div class="modal-content__header">
+        <h3>Chỉnh sửa bàn</h3>
+        <button class="modal-content__close"
+                @click="closeEditModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Body: Form fields -->
+      <div class="modal-content__body">
+        <!-- Error message -->
+        <div x-show="editFormError"
+             x-cloak
+             class="form-error"
+             style="margin-bottom: var(--space-4);"
+             x-text="editFormError"></div>
+
+        <!-- Table name -->
+        <div class="form-group">
+          <label class="form-label" for="edit-table-name">Tên bàn <span style="color: var(--color-danger);">*</span></label>
+          <input id="edit-table-name"
+                 type="text"
+                 class="form-input"
+                 x-model="editForm.name"
+                 placeholder="VD: Bàn 1"
+                 required>
+        </div>
+
+        <!-- Table code -->
+        <div class="form-group">
+          <label class="form-label" for="edit-table-code">Mã bàn <span style="color: var(--color-danger);">*</span></label>
+          <input id="edit-table-code"
+                 type="text"
+                 class="form-input"
+                 x-model="editForm.table_code"
+                 placeholder="VD: B01"
+                 required>
+        </div>
+
+        <!-- Capacity -->
+        <div class="form-group">
+          <label class="form-label" for="edit-table-capacity">Số chỗ <span style="color: var(--color-danger);">*</span></label>
+          <input id="edit-table-capacity"
+                 type="number"
+                 class="form-input"
+                 x-model.number="editForm.capacity"
+                 min="1"
+                 required>
+        </div>
+
+        <!-- Shape -->
+        <div class="form-group">
+          <label class="form-label" for="edit-table-shape">Hình dạng</label>
+          <select id="edit-table-shape"
+                  class="form-select"
+                  x-model="editForm.shape">
+            <option value="square">Vuông</option>
+            <option value="round">Tròn</option>
+            <option value="rectangle">Chữ nhật</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Footer: Action buttons -->
+      <div class="modal-content__footer">
+        <button class="btn btn--outline" @click="closeEditModal()">Hủy</button>
+        <button class="btn btn--primary" @click="submitEditTable()">Lưu thay đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Delete Table Confirmation Modal
+       Controlled by showDeleteModal state. Visible only in edit mode
+       when user clicks "Xóa bàn" on a selected table.
+       ================================================================ -->
+  <div x-show="showDeleteModal"
+       x-cloak
+       class="modal-backdrop"
+       @click.self="closeDeleteModal()"
+       @keydown.escape.window="showDeleteModal && closeDeleteModal()">
+    <div class="modal-content" @click.stop>
+      <!-- Header -->
+      <div class="modal-content__header">
+        <h3>Xác nhận xóa bàn</h3>
+        <button class="modal-content__close"
+                @click="closeDeleteModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Body: Confirmation message -->
+      <div class="modal-content__body">
+        <p x-text="'Bạn có chắc muốn xóa bàn ' + (selectedTable?.name || '') + '?'"></p>
+      </div>
+
+      <!-- Footer: Action buttons -->
+      <div class="modal-content__footer">
+        <button class="btn btn--outline" @click="closeDeleteModal()">Hủy</button>
+        <button class="btn btn--danger" @click="submitDeleteTable()">Xóa bàn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       S3-23: Reset Table Confirmation Modal (Paid -> Empty)
+       ================================================================ -->
+  <div class="modal-backdrop" x-show="showResetPanel" x-cloak
+       @click.self="showResetPanel = false; resetTableTarget = null;">
+    <div class="modal-content">
+      <h3 class="modal-content__title">Dọn dẹp bàn</h3>
+      <p>
+        Xác nhận dọn dẹp bàn
+        <strong x-text="resetTableTarget?.name || ''"></strong>?
+      </p>
+      <p style="margin-top: 8px; font-size: 0.875rem; color: var(--color-text-secondary);">
+        Bàn sẽ chuyển về trạng thái trống và sẵn sàng cho khách mới.
+      </p>
+      <div class="modal-content__actions">
+        <button class="btn btn--secondary"
+                @click="showResetPanel = false; resetTableTarget = null;"
+                :disabled="isResetting">
+          Hủy
+        </button>
+        <button class="btn btn--primary"
+                @click="confirmResetTable()"
+                :disabled="isResetting">
+          <span x-show="!isResetting">Dọn dẹp bàn</span>
+          <span x-show="isResetting" x-cloak class="spinner spinner--sm"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</section>

@@ -1,0 +1,177 @@
+/* Users - User management page styles
+ *
+ * Responsive layout: data table on desktop/tablet, card layout on mobile.
+ * Reuses component classes from components.css (btn, form-group, modal-content,
+ * badge, data-table, skeleton).
+ *
+ * Design reference: design.md Section 2.10.7 User Management Page
+ */
+
+
+/* --------------------------------------------------------------------------
+ * Page header: title + add button
+ * -------------------------------------------------------------------------- */
+
+.users-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.users-page__header h2 {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+
+/* --------------------------------------------------------------------------
+ * Loading skeleton
+ * -------------------------------------------------------------------------- */
+
+.users-skeleton {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+
+/* --------------------------------------------------------------------------
+ * Empty state
+ * -------------------------------------------------------------------------- */
+
+.users-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.users-empty p {
+  font-size: var(--font-size-base);
+  margin: 0;
+}
+
+
+/* --------------------------------------------------------------------------
+ * User table (desktop/tablet view)
+ * -------------------------------------------------------------------------- */
+
+.users-table-wrapper {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.users-table__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+
+/* --------------------------------------------------------------------------
+ * User cards (mobile view) -- hidden on desktop/tablet
+ * -------------------------------------------------------------------------- */
+
+.users-cards {
+  display: none;
+}
+
+.users-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.users-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.users-card__name {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.users-card__email {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2);
+  word-break: break-all;
+}
+
+.users-card__date {
+  margin-bottom: var(--space-3);
+}
+
+.users-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.users-card__actions .btn {
+  flex: 1;
+}
+
+
+/* --------------------------------------------------------------------------
+ * Form error message (inside modals)
+ * -------------------------------------------------------------------------- */
+
+.users-form__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+}
+
+.users-form__error svg {
+  flex-shrink: 0;
+}
+
+.users-form__required {
+  color: var(--color-danger);
+}
+
+
+/* --------------------------------------------------------------------------
+ * Responsive: Mobile (< 768px) -- switch to card layout
+ * -------------------------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  /* Hide table on mobile */
+  .users-table-wrapper {
+    display: none;
+  }
+
+  /* Show cards on mobile */
+  .users-cards {
+    display: block;
+  }
+
+  .users-page__header h2 {
+    font-size: var(--font-size-lg);
+  }
+}

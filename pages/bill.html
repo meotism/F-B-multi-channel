@@ -1,0 +1,253 @@
+<!-- Bill page template - loaded by router -->
+<section x-data="billPage()" class="bill-page">
+
+  <!-- ================================================================
+       Bill Header — Back button + title + status badge
+       ================================================================ -->
+  <div class="bill-header">
+    <button class="bill-header__back" @click="goBack()">
+      <!-- Left arrow icon -->
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+      <span>Quay lai</span>
+    </button>
+    <h2 class="bill-header__title">Hoa don thanh toan</h2>
+    <span class="badge" :class="statusBadge.class" x-text="statusBadge.text"></span>
+  </div>
+
+  <!-- ================================================================
+       Loading State
+       ================================================================ -->
+  <div x-show="isLoading" x-cloak class="bill-loading">
+    <div class="spinner"></div>
+    <p>Dang tai hoa don...</p>
+  </div>
+
+  <!-- ================================================================
+       Bill Content — shown after loading
+       ================================================================ -->
+  <div x-show="!isLoading" x-cloak class="bill-content">
+
+    <!-- ============================================================
+         Order Info — Table name, staff, date/time
+         ============================================================ -->
+    <div class="bill-info">
+      <div class="bill-info__row">
+        <span class="bill-info__label">Ban:</span>
+        <span class="bill-info__value" x-text="table?.name || 'Khong xac dinh'"></span>
+      </div>
+      <div class="bill-info__row">
+        <span class="bill-info__label">Nhan vien:</span>
+        <span class="bill-info__value" x-text="staffName || 'Khong xac dinh'"></span>
+      </div>
+      <div class="bill-info__row">
+        <span class="bill-info__label">Thoi gian:</span>
+        <span class="bill-info__value" x-text="formatDateTime(order?.started_at)"></span>
+      </div>
+      <template x-if="bill?.finalized_at">
+        <div class="bill-info__row">
+          <span class="bill-info__label">Xuat hoa don:</span>
+          <span class="bill-info__value" x-text="formatDateTime(bill.finalized_at)"></span>
+        </div>
+      </template>
+      <div class="bill-info__row">
+        <span class="bill-info__label">So mon:</span>
+        <span class="bill-info__value" x-text="itemCount + ' mon'"></span>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         Order Items Summary Table
+         ============================================================ -->
+    <div class="bill-summary">
+      <!-- Table header -->
+      <div class="bill-summary__header">
+        <span class="bill-summary__col bill-summary__col--name">Mon</span>
+        <span class="bill-summary__col bill-summary__col--qty">SL</span>
+        <span class="bill-summary__col bill-summary__col--price">Don gia</span>
+        <span class="bill-summary__col bill-summary__col--total">Thanh tien</span>
+      </div>
+
+      <!-- Empty state -->
+      <div x-show="orderItems.length === 0" class="bill-summary__empty">
+        <p>Khong co mon nao trong don hang</p>
+      </div>
+
+      <!-- Item rows -->
+      <template x-for="item in orderItems" :key="item.id">
+        <div class="bill-summary__row">
+          <span class="bill-summary__col bill-summary__col--name"
+                x-text="item.menuItemName || item.menu_items?.name || ''"></span>
+          <span class="bill-summary__col bill-summary__col--qty"
+                x-text="item.qty"></span>
+          <span class="bill-summary__col bill-summary__col--price"
+                x-text="formatVND(item.price) + 'd'"></span>
+          <span class="bill-summary__col bill-summary__col--total"
+                x-text="formatVND(item.price * item.qty) + 'd'"></span>
+        </div>
+      </template>
+    </div>
+
+    <!-- ============================================================
+         Totals Section
+         ============================================================ -->
+    <div class="bill-totals">
+      <div class="bill-totals__row">
+        <span class="bill-totals__label">Tam tinh:</span>
+        <span class="bill-totals__value" x-text="formatVND(subtotal) + 'd'"></span>
+      </div>
+      <template x-if="tax > 0">
+        <div class="bill-totals__row">
+          <span class="bill-totals__label">Thue:</span>
+          <span class="bill-totals__value" x-text="formatVND(tax) + 'd'"></span>
+        </div>
+      </template>
+      <div class="bill-totals__row bill-totals__row--grand">
+        <span class="bill-totals__label">Tong cong:</span>
+        <span class="bill-totals__value" x-text="formatVND(grandTotal) + 'd'"></span>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         Payment Method Selection — only editable before finalization
+         ============================================================ -->
+    <div class="bill-payment-methods" x-show="!isBillFinalized">
+      <h3 class="bill-payment-methods__title">Phuong thuc thanh toan</h3>
+      <div class="bill-payment-methods__options">
+        <label class="bill-payment-methods__option"
+               :class="{ 'bill-payment-methods__option--selected': paymentMethod === 'cash' }">
+          <input type="radio" name="paymentMethod" value="cash"
+                 x-model="paymentMethod" class="bill-payment-methods__radio">
+          <span class="bill-payment-methods__label">Tien mat</span>
+        </label>
+        <label class="bill-payment-methods__option"
+               :class="{ 'bill-payment-methods__option--selected': paymentMethod === 'card' }">
+          <input type="radio" name="paymentMethod" value="card"
+                 x-model="paymentMethod" class="bill-payment-methods__radio">
+          <span class="bill-payment-methods__label">The</span>
+        </label>
+        <label class="bill-payment-methods__option"
+               :class="{ 'bill-payment-methods__option--selected': paymentMethod === 'transfer' }">
+          <input type="radio" name="paymentMethod" value="transfer"
+                 x-model="paymentMethod" class="bill-payment-methods__radio">
+          <span class="bill-payment-methods__label">Chuyen khoan</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Payment method display (after finalization) -->
+    <div class="bill-payment-display" x-show="isBillFinalized" x-cloak>
+      <span class="bill-payment-display__label">Phuong thuc:</span>
+      <span class="bill-payment-display__value" x-text="formatPaymentMethod(paymentMethod)"></span>
+    </div>
+
+    <!-- ============================================================
+         Action Buttons
+         ============================================================ -->
+    <div class="bill-actions">
+
+      <!-- Finalize button — shown when order is completed and no bill exists -->
+      <button class="btn btn--primary btn--lg btn--block"
+              x-show="canFinalize"
+              :disabled="isFinalizing"
+              @click="showFinalizeConfirm = true">
+        <span x-show="!isFinalizing">Xuat hoa don</span>
+        <span x-show="isFinalizing" x-cloak class="spinner spinner--sm"></span>
+      </button>
+
+      <!-- Notice when order is not yet ready for billing -->
+      <div class="bill-actions__notice"
+           x-show="!canFinalize && !isBillFinalized && order?.status !== 'completed'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             style="vertical-align: -2px; margin-right: 4px;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        Don hang chua hoan thanh. Yeu cau thanh toan truoc khi xuat hoa don.
+      </div>
+
+      <!-- Print button — shown when bill is finalized and Bluetooth is supported -->
+      <button class="btn btn--success btn--lg btn--block"
+              x-show="canPrint"
+              x-cloak
+              :disabled="isPrinting"
+              @click="printBill()">
+        <span x-show="!isPrinting">
+          <!-- Printer icon -->
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               style="vertical-align: -2px; margin-right: 4px;">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          In hoa don
+        </span>
+        <span x-show="isPrinting" x-cloak class="spinner spinner--sm"></span>
+      </button>
+
+      <!-- Retry print button — shown when bill status is pending_print -->
+      <button class="btn btn--warning btn--lg btn--block"
+              x-show="bill?.status === 'pending_print'"
+              x-cloak
+              :disabled="isPrinting"
+              @click="retryPrint()">
+        <span x-show="!isPrinting">
+          <!-- Retry icon -->
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               style="vertical-align: -2px; margin-right: 4px;">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          Thu lai
+        </span>
+        <span x-show="isPrinting" x-cloak class="spinner spinner--sm"></span>
+      </button>
+
+      <!-- Back to table map button -->
+      <button class="btn btn--outline btn--block"
+              @click="window.location.hash = '#/tables'"
+              x-show="isBillFinalized">
+        Quay ve so do ban
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ================================================================
+       Finalize Confirmation Modal
+       ================================================================ -->
+  <div class="modal-backdrop" x-show="showFinalizeConfirm" x-cloak
+       @click.self="showFinalizeConfirm = false">
+    <div class="modal-content">
+      <h3 class="modal-content__title">Xac nhan xuat hoa don</h3>
+      <p>Ban co chac muon xuat hoa don cho don hang nay?</p>
+      <div style="margin-top: var(--space-3);">
+        <p><strong>Tong cong:</strong> <span x-text="formatVND(grandTotal) + 'd'"></span></p>
+        <p><strong>Phuong thuc:</strong> <span x-text="formatPaymentMethod(paymentMethod)"></span></p>
+      </div>
+      <p style="margin-top: var(--space-3); font-size: var(--font-size-xs); color: var(--color-text-secondary);">
+        Sau khi xuat hoa don, don hang se bi khoa va khong the chinh sua.
+      </p>
+      <div class="modal-content__actions">
+        <button class="btn btn--outline"
+                @click="showFinalizeConfirm = false"
+                :disabled="isFinalizing">
+          Huy
+        </button>
+        <button class="btn btn--primary"
+                @click="finalizeBillAction()"
+                :disabled="isFinalizing">
+          <span x-show="!isFinalizing">Xac nhan</span>
+          <span x-show="isFinalizing" x-cloak class="spinner spinner--sm"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</section>

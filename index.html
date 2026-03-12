@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="description" content="Ứng dụng quản lý nhà hàng F&B đa nền tảng">
+  <!-- Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://esm.sh;
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://esm.sh;
+    img-src 'self' data: blob: https://*.supabase.co;
+  ">
+  <title>F&B Management</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json">
+  <!-- Apple touch icon for iOS home screen -->
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- CSS (order matters: reset -> tokens -> layout -> components -> utilities) -->
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/utilities.css">
+
+  <!-- Page-specific styles -->
+  <link rel="stylesheet" href="css/pages/auth.css">
+  <link rel="stylesheet" href="css/pages/table-map.css">
+  <link rel="stylesheet" href="css/pages/users.css">
+  <link rel="stylesheet" href="css/pages/inventory.css">
+  <link rel="stylesheet" href="css/pages/menu.css">
+  <link rel="stylesheet" href="css/pages/order.css">
+  <link rel="stylesheet" href="css/pages/bills.css">
+  <link rel="stylesheet" href="css/pages/settings.css">
+  <link rel="stylesheet" href="css/pages/reports.css">
+
+  <!-- interact.js for drag-and-drop on table map (loaded before Alpine) -->
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+
+  <!-- Alpine.js from CDN -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+
+  <!-- App bootstrap (module) -->
+  <script type="module" src="js/app.js"></script>
+</head>
+<body x-data>
+
+  <!-- ===================================================================
+       Sidebar (desktop: fixed visible, tablet: overlay slide, mobile: hidden)
+       =================================================================== -->
+  <aside class="sidebar"
+         :class="{ 'sidebar--open': $store.ui.sidebarOpen }"
+         x-show="$store.auth.isAuthenticated"
+         x-cloak>
+    <!-- Sidebar header: outlet name -->
+    <div class="sidebar__header">
+      <span class="sidebar__logo" x-text="$store.outlet.currentOutlet?.name || 'F&B'"></span>
+    </div>
+
+    <!-- Navigation items (role-filtered via hasPermission) -->
+    <nav class="sidebar__nav">
+      <a href="#/tables"
+         class="sidebar__link"
+         :class="{ 'sidebar__link--active': window.location.hash === '#/tables' }"
+         x-show="$store.auth.hasPermission('view_table_map')">
+        <!-- Table map icon -->
+        <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+        </svg>
+        <span>Sơ đồ bàn</span>
+      </a>
+
+      <a href="#/menu"
+         class="sidebar__link"
+         :class="{ 'sidebar__link--active': window.location.hash === '#/menu' }"
+         x-show="$store.auth.hasPermission('manage_menu')">
+        <!-- Menu icon -->
+        <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18M3 12h18M3 18h18"></path>
+        </svg>
+        <span>Thực đơn</span>
+      </a>
+
+      <a href="#/categories"
+         class="sidebar__link"
+         :class="{ 'sidebar__link--active': window.location.hash === '#/categories' }"
+         x-show="$store.auth.hasPermission('manage_menu')">
+        <!-- Categories icon -->
+        <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Danh mục</span>
+      </a>
+
+      <a href="#/inventory"
+         class="sidebar__link"
+         :class="{ 'sidebar__link--active': window.location.hash === '#/inventory' }"
+         x-show="$store.auth.hasPermission('manage_inventory')">
+        <!-- Inventory icon -->
+        <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+        <span>Tồn kho</span>
+      </a>
+
+      <a href="#/ingredients"
+         class="sidebar__link"
+         :class="{ 'sidebar__link--active': window.location.hash === '#/ingredients' }"
+         x-show="$store.auth.hasPermission('manage_inventory')">
+        <!-- Ingredients icon -->
+        <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+          <path d="M2 17l10 5 10-5"></path>
+          <path d="M2 12l10 5 10-5"></path>
+        </svg>
+        <span>Nguyên liệu</span>
+      </a>
+
+      <a href="#/reports"
+         class="sidebar__link"
+         :class="{ 'sidebar__link--active': window.location.hash === '#/reports' }"
+         x-show="$store.auth.hasPermission('view_reports')">
+        <!-- Reports icon -->
+        <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+        <span>Báo cáo</span>
+      </a>
+
+      <a href="#/users"
+         class="sidebar__link"
+         :class="{ 'sidebar__link--active': window.location.hash === '#/users' }"
+         x-show="$store.auth.hasPermission('manage_users')">
+        <!-- Users icon -->
+        <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        <span>Người dùng</span>
+      </a>
+
+      <a href="#/settings"
+         class="sidebar__link"
+         :class="{ 'sidebar__link--active': window.location.hash === '#/settings' }"
+         x-show="$store.auth.hasPermission('manage_settings')">
+        <!-- Settings icon -->
+        <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>Cài đặt</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- ===================================================================
+       Sidebar backdrop overlay (tablet mode)
+       =================================================================== -->
+  <div class="sidebar-backdrop"
+       x-show="$store.ui.sidebarOpen && $store.auth.isAuthenticated"
+       @click="$store.ui.sidebarOpen = false"
+       x-transition.opacity
+       x-cloak>
+  </div>
+
+  <!-- ===================================================================
+       Main content area
+       =================================================================== -->
+  <div class="main">
+    <!-- Header bar -->
+    <header class="header" x-show="$store.auth.isAuthenticated" x-cloak>
+      <!-- Hamburger toggle (visible on tablet, hidden on mobile/desktop via CSS) -->
+      <button class="header__menu-btn"
+              @click="$store.ui.sidebarOpen = !$store.ui.sidebarOpen"
+              aria-label="Mở menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+
+      <!-- Page title (set by router) -->
+      <h1 class="header__title" id="page-title">F&B Management</h1>
+
+      <!-- User info and logout -->
+      <div class="header__user">
+        <span class="header__user-name" x-text="$store.auth.user?.name"></span>
+        <button class="btn btn--outline btn--sm"
+                @click="$store.auth.logout()">
+          Đăng xuất
+        </button>
+      </div>
+    </header>
+
+    <!-- Page content container (swapped by router) -->
+    <main id="page-container" class="content">
+      <!-- Dynamic page content injected here by the router -->
+    </main>
+  </div>
+
+  <!-- ===================================================================
+       Bottom navigation bar (mobile only)
+       =================================================================== -->
+  <nav class="bottom-nav"
+       x-show="$store.auth.isAuthenticated"
+       x-cloak>
+    <a href="#/tables"
+       class="bottom-nav__item"
+       :class="{ 'bottom-nav__item--active': window.location.hash === '#/tables' }"
+       x-show="$store.auth.hasPermission('view_table_map')">
+      <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+      </svg>
+      <span>Bàn</span>
+    </a>
+
+    <a href="#/menu"
+       class="bottom-nav__item"
+       :class="{ 'bottom-nav__item--active': window.location.hash === '#/menu' }"
+       x-show="$store.auth.hasPermission('manage_menu')">
+      <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18M3 12h18M3 18h18"></path>
+      </svg>
+      <span>Thực đơn</span>
+    </a>
+
+    <a href="#/inventory"
+       class="bottom-nav__item"
+       :class="{ 'bottom-nav__item--active': window.location.hash === '#/inventory' }"
+       x-show="$store.auth.hasPermission('manage_inventory')">
+      <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+      </svg>
+      <span>Tồn kho</span>
+    </a>
+
+    <a href="#/reports"
+       class="bottom-nav__item"
+       :class="{ 'bottom-nav__item--active': window.location.hash === '#/reports' }"
+       x-show="$store.auth.hasPermission('view_reports')">
+      <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+      </svg>
+      <span>Báo cáo</span>
+    </a>
+
+    <a href="#/settings"
+       class="bottom-nav__item"
+       :class="{ 'bottom-nav__item--active': window.location.hash === '#/settings' }"
+       x-show="$store.auth.hasPermission('manage_settings')">
+      <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      <span>Cài đặt</span>
+    </a>
+  </nav>
+
+  <!-- ===================================================================
+       Toast notification container
+       =================================================================== -->
+  <div class="toast-container" x-data>
+    <template x-for="toast in $store.ui.toasts" :key="toast.id">
+      <div class="toast"
+           :class="'toast--' + toast.type"
+           x-transition:enter="toast-enter"
+           x-transition:leave="toast-leave">
+        <!-- Toast type icons -->
+        <div class="toast__icon">
+          <template x-if="toast.type === 'success'">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </template>
+          <template x-if="toast.type === 'error'">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+          </template>
+          <template x-if="toast.type === 'warning'">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </template>
+          <template x-if="toast.type === 'info'">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </template>
+        </div>
+        <span class="toast__message" x-text="toast.message"></span>
+        <button class="toast__dismiss"
+                @click="$store.ui.dismissToast(toast.id)"
+                aria-label="Đóng thông báo">&times;</button>
+      </div>
+    </template>
+  </div>
+
+  <!-- ===================================================================
+       Modal backdrop and container
+       =================================================================== -->
+  <div class="modal-backdrop"
+       x-show="$store.ui.activeModal"
+       x-transition.opacity
+       @click.self="$store.ui.closeModal()"
+       x-cloak>
+    <div class="modal-content" x-show="$store.ui.activeModal" x-transition>
+      <!-- Modal content loaded dynamically based on activeModal -->
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       Global loading overlay
+       =================================================================== -->
+  <div class="loading-overlay"
+       x-show="$store.ui.globalLoading"
+       x-transition.opacity
+       x-cloak>
+    <div class="loading-spinner"></div>
+    <p x-text="$store.ui.loadingMessage"></p>
+  </div>
+
+  <!-- ===================================================================
+       Service Worker Registration
+       =================================================================== -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('SW registered:', reg.scope))
+          .catch((err) => console.warn('SW registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
