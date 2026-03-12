@@ -11,9 +11,9 @@
            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="15 18 9 12 15 6"></polyline>
       </svg>
-      <span>Quay lai</span>
+      <span>Quay lại</span>
     </button>
-    <h2 class="bill-header__title">Hoa don thanh toan</h2>
+    <h2 class="bill-header__title">Hóa đơn thanh toán</h2>
     <span class="badge" :class="statusBadge.class" x-text="statusBadge.text"></span>
   </div>
 
@@ -22,7 +22,7 @@
        ================================================================ -->
   <div x-show="isLoading" x-cloak class="bill-loading">
     <div class="spinner"></div>
-    <p>Dang tai hoa don...</p>
+    <p>Đang tải hóa đơn...</p>
   </div>
 
   <!-- ================================================================
@@ -35,26 +35,26 @@
          ============================================================ -->
     <div class="bill-info">
       <div class="bill-info__row">
-        <span class="bill-info__label">Ban:</span>
-        <span class="bill-info__value" x-text="table?.name || 'Khong xac dinh'"></span>
+        <span class="bill-info__label">Bàn:</span>
+        <span class="bill-info__value" x-text="table?.name || 'Không xác định'"></span>
       </div>
       <div class="bill-info__row">
-        <span class="bill-info__label">Nhan vien:</span>
-        <span class="bill-info__value" x-text="staffName || 'Khong xac dinh'"></span>
+        <span class="bill-info__label">Nhân viên:</span>
+        <span class="bill-info__value" x-text="staffName || 'Không xác định'"></span>
       </div>
       <div class="bill-info__row">
-        <span class="bill-info__label">Thoi gian:</span>
+        <span class="bill-info__label">Thời gian:</span>
         <span class="bill-info__value" x-text="formatDateTime(order?.started_at)"></span>
       </div>
       <template x-if="bill?.finalized_at">
         <div class="bill-info__row">
-          <span class="bill-info__label">Xuat hoa don:</span>
+          <span class="bill-info__label">Xuất hóa đơn:</span>
           <span class="bill-info__value" x-text="formatDateTime(bill.finalized_at)"></span>
         </div>
       </template>
       <div class="bill-info__row">
-        <span class="bill-info__label">So mon:</span>
-        <span class="bill-info__value" x-text="itemCount + ' mon'"></span>
+        <span class="bill-info__label">Số món:</span>
+        <span class="bill-info__value" x-text="itemCount + ' món'"></span>
       </div>
     </div>
 
@@ -64,15 +64,15 @@
     <div class="bill-summary">
       <!-- Table header -->
       <div class="bill-summary__header">
-        <span class="bill-summary__col bill-summary__col--name">Mon</span>
+        <span class="bill-summary__col bill-summary__col--name">Món</span>
         <span class="bill-summary__col bill-summary__col--qty">SL</span>
-        <span class="bill-summary__col bill-summary__col--price">Don gia</span>
-        <span class="bill-summary__col bill-summary__col--total">Thanh tien</span>
+        <span class="bill-summary__col bill-summary__col--price">Đơn giá</span>
+        <span class="bill-summary__col bill-summary__col--total">Thành tiền</span>
       </div>
 
       <!-- Empty state -->
       <div x-show="orderItems.length === 0" class="bill-summary__empty">
-        <p>Khong co mon nao trong don hang</p>
+        <p>Không có món nào trong đơn hàng</p>
       </div>
 
       <!-- Item rows -->
@@ -83,9 +83,9 @@
           <span class="bill-summary__col bill-summary__col--qty"
                 x-text="item.qty"></span>
           <span class="bill-summary__col bill-summary__col--price"
-                x-text="formatVND(item.price) + 'd'"></span>
+                x-text="formatVND(item.price) + 'đ'"></span>
           <span class="bill-summary__col bill-summary__col--total"
-                x-text="formatVND(item.price * item.qty) + 'd'"></span>
+                x-text="formatVND(item.price * item.qty) + 'đ'"></span>
         </div>
       </template>
     </div>
@@ -95,18 +95,18 @@
          ============================================================ -->
     <div class="bill-totals">
       <div class="bill-totals__row">
-        <span class="bill-totals__label">Tam tinh:</span>
-        <span class="bill-totals__value" x-text="formatVND(subtotal) + 'd'"></span>
+        <span class="bill-totals__label">Tạm tính:</span>
+        <span class="bill-totals__value" x-text="formatVND(subtotal) + 'đ'"></span>
       </div>
       <template x-if="tax > 0">
         <div class="bill-totals__row">
-          <span class="bill-totals__label">Thue:</span>
-          <span class="bill-totals__value" x-text="formatVND(tax) + 'd'"></span>
+          <span class="bill-totals__label">Thuế:</span>
+          <span class="bill-totals__value" x-text="formatVND(tax) + 'đ'"></span>
         </div>
       </template>
       <div class="bill-totals__row bill-totals__row--grand">
-        <span class="bill-totals__label">Tong cong:</span>
-        <span class="bill-totals__value" x-text="formatVND(grandTotal) + 'd'"></span>
+        <span class="bill-totals__label">Tổng cộng:</span>
+        <span class="bill-totals__value" x-text="formatVND(grandTotal) + 'đ'"></span>
       </div>
     </div>
 
@@ -114,32 +114,32 @@
          Payment Method Selection — only editable before finalization
          ============================================================ -->
     <div class="bill-payment-methods" x-show="!isBillFinalized">
-      <h3 class="bill-payment-methods__title">Phuong thuc thanh toan</h3>
+      <h3 class="bill-payment-methods__title">Phương thức thanh toán</h3>
       <div class="bill-payment-methods__options">
         <label class="bill-payment-methods__option"
                :class="{ 'bill-payment-methods__option--selected': paymentMethod === 'cash' }">
           <input type="radio" name="paymentMethod" value="cash"
                  x-model="paymentMethod" class="bill-payment-methods__radio">
-          <span class="bill-payment-methods__label">Tien mat</span>
+          <span class="bill-payment-methods__label">Tiền mặt</span>
         </label>
         <label class="bill-payment-methods__option"
                :class="{ 'bill-payment-methods__option--selected': paymentMethod === 'card' }">
           <input type="radio" name="paymentMethod" value="card"
                  x-model="paymentMethod" class="bill-payment-methods__radio">
-          <span class="bill-payment-methods__label">The</span>
+          <span class="bill-payment-methods__label">Thẻ</span>
         </label>
         <label class="bill-payment-methods__option"
                :class="{ 'bill-payment-methods__option--selected': paymentMethod === 'transfer' }">
           <input type="radio" name="paymentMethod" value="transfer"
                  x-model="paymentMethod" class="bill-payment-methods__radio">
-          <span class="bill-payment-methods__label">Chuyen khoan</span>
+          <span class="bill-payment-methods__label">Chuyển khoản</span>
         </label>
       </div>
     </div>
 
     <!-- Payment method display (after finalization) -->
     <div class="bill-payment-display" x-show="isBillFinalized" x-cloak>
-      <span class="bill-payment-display__label">Phuong thuc:</span>
+      <span class="bill-payment-display__label">Phương thức:</span>
       <span class="bill-payment-display__value" x-text="formatPaymentMethod(paymentMethod)"></span>
     </div>
 
@@ -153,7 +153,7 @@
               x-show="canFinalize"
               :disabled="isFinalizing"
               @click="showFinalizeConfirm = true">
-        <span x-show="!isFinalizing">Xuat hoa don</span>
+        <span x-show="!isFinalizing">Xuất hóa đơn</span>
         <span x-show="isFinalizing" x-cloak class="spinner spinner--sm"></span>
       </button>
 
@@ -167,7 +167,7 @@
           <line x1="12" y1="16" x2="12" y2="12"></line>
           <line x1="12" y1="8" x2="12.01" y2="8"></line>
         </svg>
-        Don hang chua hoan thanh. Yeu cau thanh toan truoc khi xuat hoa don.
+        Đơn hàng chưa hoàn thành. Yêu cầu thanh toán trước khi xuất hóa đơn.
       </div>
 
       <!-- Print button — shown when bill is finalized and Bluetooth is supported -->
@@ -185,7 +185,7 @@
             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
             <rect x="6" y="14" width="12" height="8"></rect>
           </svg>
-          In hoa don
+          In hóa đơn
         </span>
         <span x-show="isPrinting" x-cloak class="spinner spinner--sm"></span>
       </button>
@@ -204,16 +204,16 @@
             <polyline points="23 4 23 10 17 10"></polyline>
             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
           </svg>
-          Thu lai
+          Thử lại
         </span>
         <span x-show="isPrinting" x-cloak class="spinner spinner--sm"></span>
       </button>
 
       <!-- Back to table map button -->
       <button class="btn btn--outline btn--block"
-              @click="window.location.hash = '#/tables'"
+              @click="goToTableMap()"
               x-show="isBillFinalized">
-        Quay ve so do ban
+        Quay về sơ đồ bàn
       </button>
     </div>
 
@@ -225,25 +225,25 @@
   <div class="modal-backdrop" x-show="showFinalizeConfirm" x-cloak
        @click.self="showFinalizeConfirm = false">
     <div class="modal-content">
-      <h3 class="modal-content__title">Xac nhan xuat hoa don</h3>
-      <p>Ban co chac muon xuat hoa don cho don hang nay?</p>
+      <h3 class="modal-content__title">Xác nhận xuất hóa đơn</h3>
+      <p>Bạn có chắc muốn xuất hóa đơn cho đơn hàng này?</p>
       <div style="margin-top: var(--space-3);">
-        <p><strong>Tong cong:</strong> <span x-text="formatVND(grandTotal) + 'd'"></span></p>
-        <p><strong>Phuong thuc:</strong> <span x-text="formatPaymentMethod(paymentMethod)"></span></p>
+        <p><strong>Tổng cộng:</strong> <span x-text="formatVND(grandTotal) + 'đ'"></span></p>
+        <p><strong>Phương thức:</strong> <span x-text="formatPaymentMethod(paymentMethod)"></span></p>
       </div>
       <p style="margin-top: var(--space-3); font-size: var(--font-size-xs); color: var(--color-text-secondary);">
-        Sau khi xuat hoa don, don hang se bi khoa va khong the chinh sua.
+        Sau khi xuất hóa đơn, đơn hàng sẽ bị khóa và không thể chỉnh sửa.
       </p>
       <div class="modal-content__actions">
         <button class="btn btn--outline"
                 @click="showFinalizeConfirm = false"
                 :disabled="isFinalizing">
-          Huy
+          Hủy
         </button>
         <button class="btn btn--primary"
                 @click="finalizeBillAction()"
                 :disabled="isFinalizing">
-          <span x-show="!isFinalizing">Xac nhan</span>
+          <span x-show="!isFinalizing">Xác nhận</span>
           <span x-show="isFinalizing" x-cloak class="spinner spinner--sm"></span>
         </button>
       </div>

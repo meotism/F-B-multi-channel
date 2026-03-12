@@ -451,6 +451,13 @@
           </svg>
           Đơn hàng đang chờ thanh toán — không thể chỉnh sửa
         </div>
+        <!-- Navigate to bill page for cashier/manager/owner to finalize payment -->
+        <button class="btn btn--primary"
+                x-show="$store.auth.isManager || $store.auth.isCashier || $store.auth.isOwner"
+                x-cloak
+                @click="goToBill()">
+          Xuất hóa đơn
+        </button>
         <button class="btn btn--secondary"
                 @click="cancelPaymentRequest()"
                 :disabled="isRequestingPayment">

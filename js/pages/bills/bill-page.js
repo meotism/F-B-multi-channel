@@ -104,12 +104,12 @@ export function billPage() {
      */
     get statusBadge() {
       if (!this.bill) {
-        return { text: 'Chua xuat hoa don', class: 'badge--muted' };
+        return { text: 'Chưa xuất hóa đơn', class: 'badge--muted' };
       }
       const map = {
-        finalized: { text: 'Da xuat hoa don', class: 'badge--info' },
-        printed: { text: 'Da in', class: 'badge--success' },
-        pending_print: { text: 'Cho in lai', class: 'badge--warning' },
+        finalized: { text: 'Đã xuất hóa đơn', class: 'badge--info' },
+        printed: { text: 'Đã in', class: 'badge--success' },
+        pending_print: { text: 'Chờ in lại', class: 'badge--warning' },
       };
       return map[this.bill.status] || { text: this.bill.status, class: 'badge--muted' };
     },
@@ -137,7 +137,7 @@ export function billPage() {
       this.orderId = params.orderId;
 
       if (!this.orderId) {
-        Alpine.store('ui').showToast('Thieu thong tin don hang', 'error');
+        Alpine.store('ui').showToast('Thiếu thông tin đơn hàng', 'error');
         navigate('/tables');
         return;
       }
@@ -226,7 +226,7 @@ export function billPage() {
         }
       } catch (err) {
         console.error('[billPage] loadOrderData failed:', err);
-        Alpine.store('ui').showToast(err.message || 'Khong the tai du lieu hoa don.', 'error');
+        Alpine.store('ui').showToast(err.message || 'Không thể tải dữ liệu hóa đơn.', 'error');
       } finally {
         this.isLoading = false;
       }
@@ -241,6 +241,13 @@ export function billPage() {
       } else {
         navigate('/tables');
       }
+    },
+
+    /**
+     * Navigate to the table map.
+     */
+    goToTableMap() {
+      navigate('/tables');
     },
 
     /**
@@ -263,12 +270,7 @@ export function billPage() {
           this.order.status = 'finalized';
         }
 
-        // Update table status in tableMap store
-        if (this.table) {
-          this.table.status = 'awaiting_payment';
-        }
-
-        Alpine.store('ui').showToast('Hoa don da duoc xuat thanh cong', 'success');
+        Alpine.store('ui').showToast('Hóa đơn đã được xuất thành công', 'success');
 
         // Auto-trigger print if Bluetooth is supported and a printer is configured
         // (Requirement 9 AC-1: auto-print after finalize when printer connected)
@@ -277,7 +279,7 @@ export function billPage() {
         }
       } catch (err) {
         console.error('[billPage] finalizeBill failed:', err);
-        Alpine.store('ui').showToast(err.message || 'Khong the xuat hoa don.', 'error');
+        Alpine.store('ui').showToast(err.message || 'Không thể xuất hóa đơn.', 'error');
       } finally {
         this.isFinalizing = false;
       }
@@ -303,7 +305,7 @@ export function billPage() {
         // 2. Get outlet info for receipt header
         const outlet = Alpine.store('outlet').currentOutlet;
         if (!outlet) {
-          throw new Error('Khong tim thay thong tin cua hang');
+          throw new Error('Không tìm thấy thông tin cửa hàng');
         }
 
         // 3. Build ESC/POS byte data
@@ -354,13 +356,13 @@ export function billPage() {
           }
 
           Alpine.store('printer').isConnected = true;
-          Alpine.store('ui').showToast('In hoa don thanh cong!', 'success');
+          Alpine.store('ui').showToast('In hóa đơn thành công!', 'success');
         } else {
           // Update bill status to 'pending_print' (Requirement 9 AC-3)
           const updatedBill = await updateBillStatus(this.bill.id, 'pending_print', userId);
           this.bill = updatedBill;
 
-          Alpine.store('ui').showToast('In that bai. Vui long thu lai.', 'error');
+          Alpine.store('ui').showToast('In thất bại. Vui lòng thử lại.', 'error');
         }
       } catch (err) {
         console.error('[billPage] printBill failed:', err);
@@ -370,7 +372,7 @@ export function billPage() {
           return;
         }
 
-        Alpine.store('ui').showToast('Loi in hoa don: ' + err.message, 'error');
+        Alpine.store('ui').showToast('Lỗi in hóa đơn: ' + err.message, 'error');
       } finally {
         this.isPrinting = false;
       }
@@ -446,9 +448,9 @@ export function billPage() {
      */
     formatPaymentMethod(method) {
       const map = {
-        cash: 'Tien mat',
-        card: 'The',
-        transfer: 'Chuyen khoan',
+        cash: 'Tiền mặt',
+        card: 'Thẻ',
+        transfer: 'Chuyển khoản',
       };
       return map[method] || method;
     },

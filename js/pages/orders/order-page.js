@@ -125,6 +125,17 @@ export function orderPage() {
     },
 
     /**
+     * Navigate to the bill page for the current order.
+     * Only callable when order status is 'completed' and user has cashier/manager/owner role.
+     */
+    goToBill() {
+      const orderId = Alpine.store('orders').currentOrder?.id;
+      if (orderId) {
+        navigate(`/bills/${orderId}`);
+      }
+    },
+
+    /**
      * Select a category filter tab. Pass null for "All" (Tat ca).
      * Delegates to the orders store.
      *
