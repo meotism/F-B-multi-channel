@@ -320,7 +320,7 @@ describe('RLS: order_items INSERT blocked when order is finalized', () => {
   //   - The INSERT fails or returns 0 rows affected
   //   - RLS policy order_items_insert (migration 020) requires:
   //     EXISTS (SELECT 1 FROM orders o WHERE o.id = order_items.order_id
-  //             AND o.outlet_id = auth.user_outlet_id() AND o.status = 'active')
+  //             AND o.outlet_id = public.user_outlet_id() AND o.status = 'active')
   //   - Since order.status = 'finalized' (not 'active'), the WITH CHECK fails
   //
   // Assertions:
@@ -352,7 +352,7 @@ describe('RLS: order_items UPDATE blocked when order is finalized', () => {
   //   - The UPDATE fails or affects 0 rows
   //   - RLS policy order_items_update (migration 003) requires:
   //     EXISTS (SELECT 1 FROM orders o WHERE o.id = order_items.order_id
-  //             AND o.outlet_id = auth.user_outlet_id() AND o.status = 'active')
+  //             AND o.outlet_id = public.user_outlet_id() AND o.status = 'active')
   //   - Since order.status = 'finalized', the USING clause fails
   //
   // Assertions:
@@ -387,7 +387,7 @@ describe('RLS: order_items DELETE blocked when order is finalized', () => {
   //   - The DELETE fails or affects 0 rows
   //   - RLS policy order_items_delete (migration 003) requires:
   //     EXISTS (SELECT 1 FROM orders o WHERE o.id = order_items.order_id
-  //             AND o.outlet_id = auth.user_outlet_id() AND o.status = 'active')
+  //             AND o.outlet_id = public.user_outlet_id() AND o.status = 'active')
   //   - Since order.status = 'finalized', the USING clause fails
   //
   // Assertions:

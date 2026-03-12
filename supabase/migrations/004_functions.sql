@@ -20,7 +20,7 @@ BEGIN;
 -- Mirrors role changes from public.users to auth.users.raw_app_meta_data
 -- so that JWT claims reflect the current role without requiring a
 -- manual token refresh. The primary source of truth remains the
--- public.users.role column, queried by auth.user_role().
+-- public.users.role column, queried by public.user_role().
 --
 -- SECURITY DEFINER: required to write to the auth.users table.
 

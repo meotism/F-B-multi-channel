@@ -139,6 +139,7 @@ Deno.serve(async (req: Request) => {
         p_order_id: order_id,
         p_payment_method: payment_method,
         p_user_id: authUser.id,
+        p_outlet_id: callerProfile.outlet_id,
       },
     );
 

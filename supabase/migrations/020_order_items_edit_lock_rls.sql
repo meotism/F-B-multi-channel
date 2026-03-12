@@ -38,10 +38,10 @@ CREATE POLICY order_items_insert ON order_items
         EXISTS (
             SELECT 1 FROM orders o
             WHERE o.id = order_items.order_id
-            AND o.outlet_id = auth.user_outlet_id()
+            AND o.outlet_id = public.user_outlet_id()
             AND o.status = 'active'
         )
-        AND auth.user_role() IN ('manager', 'staff', 'cashier')
+        AND public.user_role() IN ('manager', 'staff', 'cashier')
     );
 
 COMMIT;

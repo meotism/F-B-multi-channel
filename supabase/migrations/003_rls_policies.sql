@@ -5,13 +5,13 @@
 -- fine-grained policies based on the user's outlet_id and role.
 --
 -- All policies enforce multi-tenant data isolation by filtering
--- on outlet_id = auth.user_outlet_id(). Role checks use
--- auth.user_role() which queries the users table directly
+-- on outlet_id = public.user_outlet_id(). Role checks use
+-- public.user_role() which queries the users table directly
 -- (not JWT claims) so changes take effect immediately.
 --
 -- Dependencies:
 --   - 001_initial_schema.sql  (table definitions)
---   - 002_rls_helpers.sql     (auth.user_outlet_id, auth.user_role)
+--   - 002_rls_helpers.sql     (public.user_outlet_id, public.user_role)
 --
 -- Design reference: Section 3.2 (RLS Policies), Summary Matrix 3.2.15
 -- Requirements reference: 5.8 AC-3/4/5/7, 6.3.3
@@ -45,12 +45,12 @@ ALTER TABLE audit_logs   ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY outlets_select ON outlets
     FOR SELECT
-    USING (id = auth.user_outlet_id());
+    USING (id = public.user_outlet_id());
 
 CREATE POLICY outlets_update ON outlets
     FOR UPDATE
-    USING (id = auth.user_outlet_id() AND auth.user_role() = 'owner')
-    WITH CHECK (id = auth.user_outlet_id() AND auth.user_role() = 'owner');
+    USING (id = public.user_outlet_id() AND public.user_role() = 'owner')
+    WITH CHECK (id = public.user_outlet_id() AND public.user_role() = 'owner');
 
 -- ============================================================
 -- 3. RLS POLICIES: users
@@ -60,31 +60,31 @@ CREATE POLICY outlets_update ON outlets
 
 CREATE POLICY users_select ON users
     FOR SELECT
-    USING (outlet_id = auth.user_outlet_id());
+    USING (outlet_id = public.user_outlet_id());
 
 CREATE POLICY users_insert ON users
     FOR INSERT
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() = 'owner'
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() = 'owner'
     );
 
 CREATE POLICY users_update ON users
     FOR UPDATE
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() = 'owner'
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() = 'owner'
     )
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() = 'owner'
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() = 'owner'
     );
 
 CREATE POLICY users_delete ON users
     FOR DELETE
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() = 'owner'
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() = 'owner'
     );
 
 -- ============================================================
@@ -102,33 +102,33 @@ CREATE POLICY users_delete ON users
 CREATE POLICY tables_select ON tables
     FOR SELECT
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('owner', 'manager', 'staff', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('owner', 'manager', 'staff', 'cashier')
     );
 
 CREATE POLICY tables_insert ON tables
     FOR INSERT
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() = 'manager'
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() = 'manager'
     );
 
 CREATE POLICY tables_update ON tables
     FOR UPDATE
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'staff', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'staff', 'cashier')
     )
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'staff', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'staff', 'cashier')
     );
 
 CREATE POLICY tables_delete ON tables
     FOR DELETE
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() = 'manager'
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() = 'manager'
     );
 
 -- ============================================================
@@ -140,25 +140,25 @@ CREATE POLICY tables_delete ON tables
 CREATE POLICY categories_select ON categories
     FOR SELECT
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('owner', 'manager', 'staff', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('owner', 'manager', 'staff', 'cashier')
     );
 
 CREATE POLICY categories_insert ON categories
     FOR INSERT
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() = 'manager'
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() = 'manager'
     );
 
 CREATE POLICY categories_update ON categories
     FOR UPDATE
-    USING (outlet_id = auth.user_outlet_id() AND auth.user_role() = 'manager')
-    WITH CHECK (outlet_id = auth.user_outlet_id() AND auth.user_role() = 'manager');
+    USING (outlet_id = public.user_outlet_id() AND public.user_role() = 'manager')
+    WITH CHECK (outlet_id = public.user_outlet_id() AND public.user_role() = 'manager');
 
 CREATE POLICY categories_delete ON categories
     FOR DELETE
-    USING (outlet_id = auth.user_outlet_id() AND auth.user_role() = 'manager');
+    USING (outlet_id = public.user_outlet_id() AND public.user_role() = 'manager');
 
 -- ============================================================
 -- 6. RLS POLICIES: menu_items
@@ -169,25 +169,25 @@ CREATE POLICY categories_delete ON categories
 CREATE POLICY menu_items_select ON menu_items
     FOR SELECT
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('owner', 'manager', 'staff', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('owner', 'manager', 'staff', 'cashier')
     );
 
 CREATE POLICY menu_items_insert ON menu_items
     FOR INSERT
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() = 'manager'
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() = 'manager'
     );
 
 CREATE POLICY menu_items_update ON menu_items
     FOR UPDATE
-    USING (outlet_id = auth.user_outlet_id() AND auth.user_role() = 'manager')
-    WITH CHECK (outlet_id = auth.user_outlet_id() AND auth.user_role() = 'manager');
+    USING (outlet_id = public.user_outlet_id() AND public.user_role() = 'manager')
+    WITH CHECK (outlet_id = public.user_outlet_id() AND public.user_role() = 'manager');
 
 CREATE POLICY menu_items_delete ON menu_items
     FOR DELETE
-    USING (outlet_id = auth.user_outlet_id() AND auth.user_role() = 'manager');
+    USING (outlet_id = public.user_outlet_id() AND public.user_role() = 'manager');
 
 -- ============================================================
 -- 7. RLS POLICIES: ingredients
@@ -198,25 +198,25 @@ CREATE POLICY menu_items_delete ON menu_items
 CREATE POLICY ingredients_select ON ingredients
     FOR SELECT
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'warehouse')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'warehouse')
     );
 
 CREATE POLICY ingredients_insert ON ingredients
     FOR INSERT
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() = 'manager'
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() = 'manager'
     );
 
 CREATE POLICY ingredients_update ON ingredients
     FOR UPDATE
-    USING (outlet_id = auth.user_outlet_id() AND auth.user_role() = 'manager')
-    WITH CHECK (outlet_id = auth.user_outlet_id() AND auth.user_role() = 'manager');
+    USING (outlet_id = public.user_outlet_id() AND public.user_role() = 'manager')
+    WITH CHECK (outlet_id = public.user_outlet_id() AND public.user_role() = 'manager');
 
 CREATE POLICY ingredients_delete ON ingredients
     FOR DELETE
-    USING (outlet_id = auth.user_outlet_id() AND auth.user_role() = 'manager');
+    USING (outlet_id = public.user_outlet_id() AND public.user_role() = 'manager');
 
 -- ============================================================
 -- 8. RLS POLICIES: recipes
@@ -233,9 +233,9 @@ CREATE POLICY recipes_select ON recipes
         EXISTS (
             SELECT 1 FROM menu_items mi
             WHERE mi.id = recipes.menu_item_id
-            AND mi.outlet_id = auth.user_outlet_id()
+            AND mi.outlet_id = public.user_outlet_id()
         )
-        AND auth.user_role() IN ('manager', 'warehouse', 'staff', 'cashier')
+        AND public.user_role() IN ('manager', 'warehouse', 'staff', 'cashier')
     );
 
 CREATE POLICY recipes_insert ON recipes
@@ -244,9 +244,9 @@ CREATE POLICY recipes_insert ON recipes
         EXISTS (
             SELECT 1 FROM menu_items mi
             WHERE mi.id = recipes.menu_item_id
-            AND mi.outlet_id = auth.user_outlet_id()
+            AND mi.outlet_id = public.user_outlet_id()
         )
-        AND auth.user_role() = 'manager'
+        AND public.user_role() = 'manager'
     );
 
 CREATE POLICY recipes_update ON recipes
@@ -255,17 +255,17 @@ CREATE POLICY recipes_update ON recipes
         EXISTS (
             SELECT 1 FROM menu_items mi
             WHERE mi.id = recipes.menu_item_id
-            AND mi.outlet_id = auth.user_outlet_id()
+            AND mi.outlet_id = public.user_outlet_id()
         )
-        AND auth.user_role() = 'manager'
+        AND public.user_role() = 'manager'
     )
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM menu_items mi
             WHERE mi.id = recipes.menu_item_id
-            AND mi.outlet_id = auth.user_outlet_id()
+            AND mi.outlet_id = public.user_outlet_id()
         )
-        AND auth.user_role() = 'manager'
+        AND public.user_role() = 'manager'
     );
 
 CREATE POLICY recipes_delete ON recipes
@@ -274,9 +274,9 @@ CREATE POLICY recipes_delete ON recipes
         EXISTS (
             SELECT 1 FROM menu_items mi
             WHERE mi.id = recipes.menu_item_id
-            AND mi.outlet_id = auth.user_outlet_id()
+            AND mi.outlet_id = public.user_outlet_id()
         )
-        AND auth.user_role() = 'manager'
+        AND public.user_role() = 'manager'
     );
 
 -- ============================================================
@@ -289,26 +289,26 @@ CREATE POLICY recipes_delete ON recipes
 CREATE POLICY inventory_select ON inventory
     FOR SELECT
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'warehouse')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'warehouse')
     );
 
 CREATE POLICY inventory_insert ON inventory
     FOR INSERT
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'warehouse')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'warehouse')
     );
 
 CREATE POLICY inventory_update ON inventory
     FOR UPDATE
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'warehouse')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'warehouse')
     )
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'warehouse')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'warehouse')
     );
 
 -- No DELETE policy for inventory rows (deactivate ingredient instead)
@@ -323,26 +323,26 @@ CREATE POLICY inventory_update ON inventory
 CREATE POLICY orders_select ON orders
     FOR SELECT
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('owner', 'manager', 'staff', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('owner', 'manager', 'staff', 'cashier')
     );
 
 CREATE POLICY orders_insert ON orders
     FOR INSERT
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'staff', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'staff', 'cashier')
     );
 
 CREATE POLICY orders_update ON orders
     FOR UPDATE
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'staff', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'staff', 'cashier')
     )
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'staff', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'staff', 'cashier')
     );
 
 -- Orders are soft-deleted (status = 'cancelled'), no hard delete policy needed
@@ -365,9 +365,9 @@ CREATE POLICY order_items_select ON order_items
         EXISTS (
             SELECT 1 FROM orders o
             WHERE o.id = order_items.order_id
-            AND o.outlet_id = auth.user_outlet_id()
+            AND o.outlet_id = public.user_outlet_id()
         )
-        AND auth.user_role() IN ('owner', 'manager', 'staff', 'cashier')
+        AND public.user_role() IN ('owner', 'manager', 'staff', 'cashier')
     );
 
 CREATE POLICY order_items_insert ON order_items
@@ -376,9 +376,9 @@ CREATE POLICY order_items_insert ON order_items
         EXISTS (
             SELECT 1 FROM orders o
             WHERE o.id = order_items.order_id
-            AND o.outlet_id = auth.user_outlet_id()
+            AND o.outlet_id = public.user_outlet_id()
         )
-        AND auth.user_role() IN ('manager', 'staff', 'cashier')
+        AND public.user_role() IN ('manager', 'staff', 'cashier')
     );
 
 CREATE POLICY order_items_update ON order_items
@@ -387,19 +387,19 @@ CREATE POLICY order_items_update ON order_items
         EXISTS (
             SELECT 1 FROM orders o
             WHERE o.id = order_items.order_id
-            AND o.outlet_id = auth.user_outlet_id()
+            AND o.outlet_id = public.user_outlet_id()
             AND o.status = 'active'
         )
-        AND auth.user_role() IN ('manager', 'staff', 'cashier')
+        AND public.user_role() IN ('manager', 'staff', 'cashier')
     )
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM orders o
             WHERE o.id = order_items.order_id
-            AND o.outlet_id = auth.user_outlet_id()
+            AND o.outlet_id = public.user_outlet_id()
             AND o.status = 'active'
         )
-        AND auth.user_role() IN ('manager', 'staff', 'cashier')
+        AND public.user_role() IN ('manager', 'staff', 'cashier')
     );
 
 CREATE POLICY order_items_delete ON order_items
@@ -408,10 +408,10 @@ CREATE POLICY order_items_delete ON order_items
         EXISTS (
             SELECT 1 FROM orders o
             WHERE o.id = order_items.order_id
-            AND o.outlet_id = auth.user_outlet_id()
+            AND o.outlet_id = public.user_outlet_id()
             AND o.status = 'active'
         )
-        AND auth.user_role() IN ('manager', 'staff', 'cashier')
+        AND public.user_role() IN ('manager', 'staff', 'cashier')
     );
 
 -- ============================================================
@@ -428,26 +428,26 @@ CREATE POLICY order_items_delete ON order_items
 CREATE POLICY bills_select ON bills
     FOR SELECT
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('owner', 'manager', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('owner', 'manager', 'cashier')
     );
 
 CREATE POLICY bills_insert ON bills
     FOR INSERT
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'cashier')
     );
 
 CREATE POLICY bills_update ON bills
     FOR UPDATE
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'cashier')
     )
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'cashier')
     );
 
 -- No DELETE policy: bills are never deleted
@@ -461,25 +461,25 @@ CREATE POLICY bills_update ON bills
 CREATE POLICY printers_select ON printers
     FOR SELECT
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'cashier')
     );
 
 CREATE POLICY printers_insert ON printers
     FOR INSERT
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('manager', 'cashier')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('manager', 'cashier')
     );
 
 CREATE POLICY printers_update ON printers
     FOR UPDATE
-    USING (outlet_id = auth.user_outlet_id() AND auth.user_role() IN ('manager', 'cashier'))
-    WITH CHECK (outlet_id = auth.user_outlet_id() AND auth.user_role() IN ('manager', 'cashier'));
+    USING (outlet_id = public.user_outlet_id() AND public.user_role() IN ('manager', 'cashier'))
+    WITH CHECK (outlet_id = public.user_outlet_id() AND public.user_role() IN ('manager', 'cashier'));
 
 CREATE POLICY printers_delete ON printers
     FOR DELETE
-    USING (outlet_id = auth.user_outlet_id() AND auth.user_role() = 'manager');
+    USING (outlet_id = public.user_outlet_id() AND public.user_role() = 'manager');
 
 -- ============================================================
 -- 14. RLS POLICIES: audit_logs
@@ -496,14 +496,14 @@ CREATE POLICY printers_delete ON printers
 CREATE POLICY audit_logs_select ON audit_logs
     FOR SELECT
     USING (
-        outlet_id = auth.user_outlet_id()
-        AND auth.user_role() IN ('owner', 'manager')
+        outlet_id = public.user_outlet_id()
+        AND public.user_role() IN ('owner', 'manager')
     );
 
 CREATE POLICY audit_logs_insert ON audit_logs
     FOR INSERT
     WITH CHECK (
-        outlet_id = auth.user_outlet_id()
+        outlet_id = public.user_outlet_id()
         AND user_id = auth.uid()
     );
 

@@ -13,7 +13,7 @@
 -- ============================================================
 
 -- Get the current user's outlet_id
-CREATE OR REPLACE FUNCTION auth.user_outlet_id()
+CREATE OR REPLACE FUNCTION public.user_outlet_id()
 RETURNS UUID
 LANGUAGE sql
 SECURITY DEFINER
@@ -23,7 +23,7 @@ AS $$
 $$;
 
 -- Get the current user's role
-CREATE OR REPLACE FUNCTION auth.user_role()
+CREATE OR REPLACE FUNCTION public.user_role()
 RETURNS public.user_role
 LANGUAGE sql
 SECURITY DEFINER
@@ -32,8 +32,8 @@ AS $$
   SELECT role FROM public.users WHERE id = auth.uid()
 $$;
 
-COMMENT ON FUNCTION auth.user_outlet_id() IS
+COMMENT ON FUNCTION public.user_outlet_id() IS
   'Returns the outlet_id of the currently authenticated user. SECURITY DEFINER to bypass RLS on users table.';
 
-COMMENT ON FUNCTION auth.user_role() IS
+COMMENT ON FUNCTION public.user_role() IS
   'Returns the role of the currently authenticated user. SECURITY DEFINER to bypass RLS on users table.';
