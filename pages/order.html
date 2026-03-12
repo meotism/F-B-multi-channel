@@ -420,7 +420,7 @@
 
         <!-- S3-11: Cancel Order button (manager/cashier/owner only) -->
         <button class="btn btn--danger"
-                x-show="$store.auth.isManager || $store.auth.isCashier || $store.auth.isOwner"
+                x-show="$store.auth.hasPermission('cancel_order')"
                 @click="showCancelConfirm = true">
           Hủy đơn hàng
         </button>
@@ -451,9 +451,9 @@
           </svg>
           Đơn hàng đang chờ thanh toán — không thể chỉnh sửa
         </div>
-        <!-- Navigate to bill page for cashier/manager/owner to finalize payment -->
+        <!-- Navigate to bill page to finalize payment -->
         <button class="btn btn--primary"
-                x-show="$store.auth.isManager || $store.auth.isCashier || $store.auth.isOwner"
+                x-show="$store.auth.hasPermission('finalize_bill')"
                 x-cloak
                 @click="goToBill()">
           Xuất hóa đơn

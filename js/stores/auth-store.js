@@ -18,19 +18,19 @@ import { navigate } from '../utils/navigate.js';
 const ROLE_PERMISSIONS = {
   owner: [
     'view_table_map', 'edit_table_map', 'create_order', 'finalize_bill',
-    'print_bill', 'manage_menu', 'manage_categories', 'manage_inventory',
+    'print_bill', 'cancel_order', 'manage_menu', 'manage_categories', 'manage_inventory',
     'view_reports', 'manage_users', 'manage_settings',
     'view_orders', 'view_bills', 'view_menu', 'view_inventory',
     'transfer_order', 'merge_orders',
   ],
   manager: [
     'view_table_map', 'edit_table_map', 'create_order', 'finalize_bill',
-    'manage_menu', 'manage_categories', 'manage_inventory', 'view_reports',
+    'cancel_order', 'manage_menu', 'manage_categories', 'manage_inventory', 'view_reports',
     'manage_settings', 'view_orders', 'view_bills', 'transfer_order', 'merge_orders',
   ],
   cashier: [
     'view_table_map', 'create_order', 'finalize_bill', 'print_bill',
-    'manage_settings', 'view_orders', 'view_bills', 'transfer_order',
+    'cancel_order', 'manage_settings', 'view_orders', 'view_bills', 'transfer_order',
   ],
   staff: [
     'view_table_map', 'create_order', 'view_orders', 'transfer_order',

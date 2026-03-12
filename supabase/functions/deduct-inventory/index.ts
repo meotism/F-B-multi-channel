@@ -24,7 +24,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const VALID_ACTIONS = ['deduct', 'restore'] as const;
 
 /** Roles permitted to call this function */
-const ALLOWED_ROLES = ['manager', 'staff', 'cashier'];
+const ALLOWED_ROLES = ['manager', 'staff', 'cashier', 'owner'];
 
 Deno.serve(async (req: Request) => {
   // 1. Handle CORS preflight
