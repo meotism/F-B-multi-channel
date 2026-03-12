@@ -638,11 +638,8 @@ export function tableMapPage() {
       this.isSaving = true;
 
       try {
-        // The RPC function accepts a JSONB parameter; Supabase JS client
-        // serializes objects automatically, but the SQL function expects
-        // a JSON array so we stringify explicitly for safety.
         const { error } = await supabase.rpc('batch_update_table_positions', {
-          positions: JSON.stringify(positions),
+          positions,
         });
 
         if (error) {
