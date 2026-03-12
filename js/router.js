@@ -18,7 +18,7 @@ const routes = [
   { pattern: '/tables',           page: 'table-map',  title: 'Sơ đồ bàn',           auth: true,  roles: ['owner', 'manager', 'staff', 'cashier'] },
   { pattern: '/orders/:tableId',  page: 'order',      title: 'Đặt món',             auth: true,  roles: ['owner', 'manager', 'staff', 'cashier'] },
   { pattern: '/bills/:orderId',   page: 'bill',       title: 'Hóa đơn',             auth: true,  roles: ['owner', 'manager', 'cashier'] },
-  { pattern: '/menu/:id',         page: 'menu-edit',  title: 'Chỉnh sửa món ăn',    auth: true,  roles: ['manager'] },
+  { pattern: '/menu/:id',         page: 'menu-edit',  title: 'Chỉnh sửa món ăn',    auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/menu',             page: 'menu-list',  title: 'Quản lý thực đơn',     auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/categories',       page: 'categories', title: 'Quản lý danh mục',     auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/inventory',        page: 'inventory',  title: 'Quản lý tồn kho',      auth: true,  roles: ['owner', 'manager', 'warehouse'] },
