@@ -576,6 +576,7 @@ export function tableMapPage() {
 
           move: (event) => {
             const target = event.target;
+            const tableId = target.dataset.tableId;
 
             // Get container dimensions for pixel-to-percentage conversion
             const container = document.getElementById('map-container');
@@ -587,16 +588,18 @@ export function tableMapPage() {
             const dxPercent = (event.dx / containerRect.width) * 100;
             const dyPercent = (event.dy / containerRect.height) * 100;
 
-            // Current position in percentage (from inline style set by Alpine template)
-            const currentX = parseFloat(target.style.left) || 0;
-            const currentY = parseFloat(target.style.top) || 0;
+            // Read current position from the store (not DOM) to avoid
+            // conflicts with Alpine's reactive :style binding
+            const store = Alpine.store('tableMap');
+            const table = store.getTableById(tableId);
+            if (!table) return;
 
-            const newX = currentX + dxPercent;
-            const newY = currentY + dyPercent;
+            const newX = Math.max(0, Math.min(100, table.x + dxPercent));
+            const newY = Math.max(0, Math.min(100, table.y + dyPercent));
 
-            // Update element position directly for immediate visual feedback
-            target.style.left = `${newX}%`;
-            target.style.top = `${newY}%`;
+            // Update the store directly — Alpine's :style binding will
+            // update the DOM position reactively, keeping them in sync
+            store.updateLocalPosition(tableId, newX, newY);
           },
 
           end: (event) => {
@@ -606,20 +609,17 @@ export function tableMapPage() {
             // Reset inactivity timer on drag end (user interaction)
             this.resetInactivityTimer();
 
-            const tableId = event.target.dataset.tableId;
-            const newX = parseFloat(event.target.style.left) || 0;
-            const newY = parseFloat(event.target.style.top) || 0;
-
-            // Update the store's local table position (no DB write yet)
-            const store = Alpine.store('tableMap');
-            store.updateLocalPosition(tableId, newX, newY);
-
             // Mark that there are unsaved layout changes
+            const store = Alpine.store('tableMap');
             store.hasUnsavedChanges = true;
 
-            console.log(
-              `[TableMapPage] Table ${tableId} moved to (${newX.toFixed(1)}%, ${newY.toFixed(1)}%)`,
-            );
+            const tableId = event.target.dataset.tableId;
+            const table = store.getTableById(tableId);
+            if (table) {
+              console.log(
+                `[TableMapPage] Table ${tableId} moved to (${table.x.toFixed(1)}%, ${table.y.toFixed(1)}%)`,
+              );
+            }
           },
         },
       });

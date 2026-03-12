@@ -129,16 +129,8 @@ export function tableMapStore() {
       const table = this.tables.find(t => t.id === tableId);
       if (!table) return;
 
-      // Push previous position onto undo stack before updating
-      this.undoStack.push({
-        tableId: table.id,
-        prevX: table.x,
-        prevY: table.y,
-      });
-
       table.x = x;
       table.y = y;
-      this.hasUnsavedChanges = true;
     },
 
     /**
