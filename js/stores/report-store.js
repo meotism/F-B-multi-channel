@@ -97,6 +97,7 @@ export function reportStore() {
     isLoading: false,
     error: null,
     noData: false,
+    hasGeneratedReport: false,
 
     /**
      * Set date range based on view mode and trigger report generation.
@@ -142,6 +143,7 @@ export function reportStore() {
       this.isLoading = true;
       this.error = null;
       this.noData = false;
+      this.hasGeneratedReport = true;
 
       // Map viewMode to Edge Function type parameter
       const typeMap = {

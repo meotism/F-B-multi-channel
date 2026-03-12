@@ -46,25 +46,9 @@ export function reportsPage() {
         }
       }
 
-      // Set default date range to today
+      // Set default date range to today and auto-fetch
       Alpine.store('reports').setDateRange('day');
-
-      // Watch for chart data changes and re-render charts
-      this.$watch('$store.reports.chartData', (newData) => {
-        this.renderRevenueChart(newData);
-      });
-
-      this.$watch('$store.reports.topItemsByQty', () => {
-        if (this.topItemsTab === 'qty') {
-          this.renderTopItemsChart();
-        }
-      });
-
-      this.$watch('$store.reports.topItemsByRevenue', () => {
-        if (this.topItemsTab === 'revenue') {
-          this.renderTopItemsChart();
-        }
-      });
+      await this.fetchReport();
     },
 
     // --- Actions ---
@@ -89,10 +73,20 @@ export function reportsPage() {
     },
 
     /**
-     * Trigger report generation via the store.
+     * Trigger report generation via the store, then render charts after the
+     * DOM updates (x-show removes display:none before Chart.js measures canvas).
      */
     async fetchReport() {
       await Alpine.store('reports').generateReport();
+      this.$nextTick(() => {
+        const store = Alpine.store('reports');
+        if (store.chartData) {
+          this.renderRevenueChart(store.chartData);
+        }
+        if (store.topItemsByQty.length > 0 || store.topItemsByRevenue.length > 0) {
+          this.renderTopItemsChart();
+        }
+      });
     },
 
     /**
@@ -102,7 +96,7 @@ export function reportsPage() {
      */
     switchTopItemsTab(tab) {
       this.topItemsTab = tab;
-      this.renderTopItemsChart();
+      this.$nextTick(() => this.renderTopItemsChart());
     },
 
     // --- Chart Rendering ---
