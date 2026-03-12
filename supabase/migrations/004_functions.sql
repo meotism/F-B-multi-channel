@@ -158,12 +158,12 @@ COMMENT ON FUNCTION finalize_bill(UUID, payment_method, UUID, UUID) IS
 -- Requirements: 5.1 AC-4 (persist all table positions on save).
 
 CREATE OR REPLACE FUNCTION batch_update_table_positions(
-    positions JSONB
+    positions TEXT
 ) RETURNS VOID AS $$
 DECLARE
     item JSONB;
 BEGIN
-    FOR item IN SELECT * FROM jsonb_array_elements(positions)
+    FOR item IN SELECT * FROM jsonb_array_elements(positions::jsonb)
     LOOP
         UPDATE tables
         SET
@@ -175,9 +175,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION batch_update_table_positions(JSONB) IS
+COMMENT ON FUNCTION batch_update_table_positions(TEXT) IS
   'Atomically updates x, y, and rotation for multiple tables in a single transaction. '
-  'Input: JSONB array of {id, x, y, rotation} objects. '
+  'Input: JSON string of array [{id, x, y, rotation}, ...]. '
   'Called via rpc from the table map save action.';
 
 COMMIT;

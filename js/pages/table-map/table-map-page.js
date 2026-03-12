@@ -638,8 +638,11 @@ export function tableMapPage() {
       this.isSaving = true;
 
       try {
+        // The SQL function expects TEXT, cast to jsonb internally.
+        // JSON.stringify ensures the array is sent as a JSON string
+        // regardless of how supabase-js serializes the parameter.
         const { error } = await supabase.rpc('batch_update_table_positions', {
-          positions,
+          positions: JSON.stringify(positions),
         });
 
         if (error) {
