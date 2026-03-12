@@ -1,7 +1,7 @@
 // Supabase configuration
 // Replace these with your actual Supabase project values
-export const SUPABASE_URL = 'https://your-project.supabase.co';
-export const SUPABASE_ANON_KEY = 'your-anon-key';
+export const SUPABASE_URL = 'https://gaaeyrnonbevkxpllwue.supabase.co';
+export const SUPABASE_ANON_KEY = 'sb_publishable_xKbfPU-p75J78J9NKUGuag_sD6iKV2Q';
 
 // App configuration
 export const APP_NAME = 'F&B Manager';
