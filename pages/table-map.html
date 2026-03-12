@@ -118,7 +118,9 @@
            :style="`left: ${table.x}%; top: ${table.y}%; transform: rotate(${table.rotation || 0}deg);`"
            :data-table-id="table.id"
            :data-capacity="table.capacity"
-           @click="handleTableClick(table)">
+           @click="handleTableClick(table)"
+           @pointerdown="isEditMode && startDrag($event, table)"
+           @dragstart.prevent>
         <!-- Table name: double-click to inline rename in edit mode -->
         <span class="table-node__name"
               x-show="!(isEditMode && inlineRenameTableId === table.id)"

@@ -527,121 +527,88 @@ export function tableMapPage() {
      *
      * Requirements: 5.1 AC-3 (drag updates x,y), 5.1 EC-2 (snap to grid)
      */
-    initDragAndDrop() {
+    /**
+     * Start dragging a table node. Called from @pointerdown on the template.
+     * Uses setPointerCapture so pointermove/pointerup keep firing on the node
+     * even when the pointer leaves it. Manipulates DOM style directly during
+     * drag (bypassing Alpine :style) and syncs back to the store on drop.
+     *
+     * @param {PointerEvent} e - The pointerdown event
+     * @param {Object} tableData - The Alpine table data object from x-for
+     */
+    startDrag(e, tableData) {
+      // Only primary button (left click / single touch)
+      if (e.button !== 0) return;
+
+      const node = e.currentTarget;
+      e.preventDefault();
+
+      // Capture all future pointer events to this node, even if pointer
+      // leaves the element bounds — this is the key to reliable drag.
+      node.setPointerCapture(e.pointerId);
+
+      this.isDragging = true;
+      node.classList.add('is-dragging');
+
+      // Save position for undo
+      this.undoStack.push({
+        tableId: tableData.id,
+        prevX: tableData.x,
+        prevY: tableData.y,
+      });
+
+      this.resetInactivityTimer();
+
       const container = document.getElementById('map-container');
-      if (!container) {
-        console.error('[TableMapPage] map-container not found');
-        return;
-      }
 
-      // State tracked across pointer events
-      let dragTableId = null;
-      let lastX = 0;
-      let lastY = 0;
-
-      const onPointerDown = (e) => {
-        // Find the closest .table-node ancestor (handles clicks on child spans)
-        const node = e.target.closest('.table-node.is-editable');
-        if (!node) return;
-
-        e.preventDefault();
-        node.setPointerCapture(e.pointerId);
-
-        dragTableId = node.dataset.tableId;
-        lastX = e.clientX;
-        lastY = e.clientY;
-
-        this.isDragging = true;
-
-        const store = Alpine.store('tableMap');
-        const table = store.getTableById(dragTableId);
-        if (table) {
-          this.undoStack.push({
-            tableId: dragTableId,
-            prevX: table.x,
-            prevY: table.y,
-          });
-        }
-
-        node.classList.add('is-dragging');
-        this.resetInactivityTimer();
-      };
-
-      const onPointerMove = (e) => {
-        if (!dragTableId) return;
-        e.preventDefault();
-
+      const onMove = (ev) => {
+        // movementX/Y = delta since last pointermove, built into the API
         const containerRect = container.getBoundingClientRect();
         if (containerRect.width === 0 || containerRect.height === 0) return;
 
-        const dx = e.clientX - lastX;
-        const dy = e.clientY - lastY;
-        lastX = e.clientX;
-        lastY = e.clientY;
-
-        const dxPercent = (dx / containerRect.width) * 100;
-        const dyPercent = (dy / containerRect.height) * 100;
-
-        const store = Alpine.store('tableMap');
-        const table = store.getTableById(dragTableId);
-        if (!table) return;
-
-        const newX = Math.max(0, Math.min(100, table.x + dxPercent));
-        const newY = Math.max(0, Math.min(100, table.y + dyPercent));
-
-        store.updateLocalPosition(dragTableId, newX, newY);
+        // Direct DOM manipulation — bypasses Alpine :style during drag.
+        // This avoids the reactive re-render cycle that was killing drag.
+        const curLeft = parseFloat(node.style.left) || 0;
+        const curTop = parseFloat(node.style.top) || 0;
+        const dxPct = (ev.movementX / containerRect.width) * 100;
+        const dyPct = (ev.movementY / containerRect.height) * 100;
+        const newX = Math.max(0, Math.min(100, curLeft + dxPct));
+        const newY = Math.max(0, Math.min(100, curTop + dyPct));
+        node.style.left = newX + '%';
+        node.style.top = newY + '%';
       };
 
-      const onPointerUp = () => {
-        if (!dragTableId) return;
+      const onUp = () => {
+        node.removeEventListener('pointermove', onMove);
+        node.removeEventListener('pointerup', onUp);
+        node.removeEventListener('pointercancel', onUp);
+        node.classList.remove('is-dragging');
 
-        const node = container.querySelector(
-          `.table-node[data-table-id="${dragTableId}"]`,
-        );
-        if (node) node.classList.remove('is-dragging');
-
+        // Sync final position back to the store so Alpine data matches DOM
+        const finalX = parseFloat(node.style.left) || 0;
+        const finalY = parseFloat(node.style.top) || 0;
         const store = Alpine.store('tableMap');
+        store.updateLocalPosition(tableData.id, finalX, finalY);
         store.hasUnsavedChanges = true;
 
-        const table = store.getTableById(dragTableId);
-        if (table) {
-          console.log(
-            `[TableMapPage] Table ${dragTableId} moved to (${table.x.toFixed(1)}%, ${table.y.toFixed(1)}%)`,
-          );
-        }
-
-        dragTableId = null;
         this.isDragging = false;
         this.resetInactivityTimer();
+
+        console.log(
+          `[TableMapPage] Table ${tableData.id} moved to (${finalX.toFixed(1)}%, ${finalY.toFixed(1)}%)`,
+        );
       };
 
-      container.addEventListener('pointerdown', onPointerDown);
-      container.addEventListener('pointermove', onPointerMove);
-      container.addEventListener('pointerup', onPointerUp);
-      container.addEventListener('pointercancel', onPointerUp);
-
-      // Store cleanup references
-      this._dragCleanup = () => {
-        container.removeEventListener('pointerdown', onPointerDown);
-        container.removeEventListener('pointermove', onPointerMove);
-        container.removeEventListener('pointerup', onPointerUp);
-        container.removeEventListener('pointercancel', onPointerUp);
-      };
-
-      console.log('[TableMapPage] Drag-and-drop initialized (native pointer events)');
+      node.addEventListener('pointermove', onMove);
+      node.addEventListener('pointerup', onUp);
+      node.addEventListener('pointercancel', onUp);
     },
 
-    /**
-     * Remove pointer event listeners for drag-and-drop.
-     * Called from exitEditMode() to disable drag when leaving edit mode.
-     */
-    destroyDragAndDrop() {
-      if (this._dragCleanup) {
-        this._dragCleanup();
-        this._dragCleanup = null;
-      }
-      console.log('[TableMapPage] Drag-and-drop destroyed');
-    },
+    // initDragAndDrop / destroyDragAndDrop are no longer needed — drag is
+    // handled per-element via @pointerdown="startDrag($event, table)" in the
+    // template, so there's nothing to set up or tear down globally.
+    initDragAndDrop() {},
+    destroyDragAndDrop() {},
 
     /**
      * Save all table positions to the database via batch RPC.

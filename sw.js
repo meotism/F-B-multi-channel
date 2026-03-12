@@ -10,7 +10,7 @@
  *   - Other requests: network-only
  */
 
-const CACHE_NAME = 'fb-restaurant-v8';
+const CACHE_NAME = 'fb-restaurant-v9';
 
 // Critical static assets to pre-cache during installation.
 // This list covers the app shell, all CSS, core JS, store modules, and page HTML.
