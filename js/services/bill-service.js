@@ -8,6 +8,7 @@
 // Design reference: Sections 1, 2 (Bill Service, Edge Function)
 
 import { supabase } from './supabase-client.js';
+import { cachedSupabase } from './cached-query.js';
 
 // ============================================================
 // Bill Status State Machine
@@ -120,6 +121,8 @@ export async function updateBillStatus(billId, newStatus, userId) {
     throw new Error('Không thể cập nhật trạng thái hóa đơn: ' + error.message);
   }
 
+  cachedSupabase.invalidate('bills');
+
   // 5. Create audit log entry
   const action = newStatus === 'printed' ? 'print' : 'print_failed';
   await supabase.from('audit_logs').insert({
@@ -147,7 +150,7 @@ export async function updateBillStatus(billId, newStatus, userId) {
  * @throws {Error} With Vietnamese message on unexpected failure
  */
 export async function getBillByOrderId(orderId) {
-  const { data, error } = await supabase
+  const { data, error } = await cachedSupabase
     .from('bills')
     .select('*')
     .eq('order_id', orderId)

@@ -5,6 +5,7 @@
 // Do NOT duplicate permission logic elsewhere.
 
 import { signIn, signOut, restoreSession, setupAuthListener } from '../services/auth-service.js';
+import { cacheManager } from '../services/cache-manager.js';
 import {
   initRealtimeSubscriptions,
   unsubscribeAll as unsubscribeAllRealtime,
@@ -185,6 +186,7 @@ export function authStore() {
 
       // Clean up centralized realtime subscriptions before signing out
       unsubscribeAllRealtime();
+      cacheManager.clear();
 
       await signOut();
     },

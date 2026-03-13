@@ -24,6 +24,8 @@ import {
   subscribeToOrderItems,
   onReconnect,
 } from '../services/realtime-service.js';
+import { withCacheInvalidation } from '../services/cache-invalidation.js';
+import { cacheManager } from '../services/cache-manager.js';
 
 export function orderStore() {
   return {
@@ -530,8 +532,8 @@ export function orderStore() {
         return;
       }
 
-      subscribeToOrders(outletId, (payload) => this.handleOrderChange(payload));
-      subscribeToOrderItems(outletId, (payload) => this.handleOrderItemChange(payload));
+      subscribeToOrders(outletId, withCacheInvalidation('orders', (payload) => this.handleOrderChange(payload), cacheManager));
+      subscribeToOrderItems(outletId, withCacheInvalidation('order_items', (payload) => this.handleOrderItemChange(payload), cacheManager));
 
       // On reconnect after a disconnection, reload the current order
       // to reconcile any events that were missed while offline

@@ -6,6 +6,7 @@
 
 import { navigate } from '../../utils/navigate.js';
 import { supabase } from '../../services/supabase-client.js';
+import { cachedSupabase } from '../../services/cached-query.js';
 import {
   subscribeToMapLock,
   acquireLock,
@@ -648,6 +649,8 @@ export function tableMapPage() {
         if (error) {
           throw error;
         }
+
+        cachedSupabase.invalidate('tables');
 
         // Success: reset change tracking and undo history
         store.hasUnsavedChanges = false;

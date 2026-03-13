@@ -15,6 +15,8 @@ import { orderStore } from './stores/order-store.js';
 import { reportStore } from './stores/report-store.js';
 import { initRouter } from './router.js';
 import { initRealtimeSubscriptions } from './services/realtime-service.js';
+import { cacheManager } from './services/cache-manager.js';
+import { initCacheInvalidation } from './services/cache-invalidation.js';
 
 // Page components -- imported for side effects (registers on window for x-data)
 import './pages/auth/login-page.js';
@@ -45,6 +47,17 @@ Alpine.store('reports', reportStore());
 // Start Alpine - processes all x-data, x-show, etc. directives in the DOM
 Alpine.start();
 
+// Offline cache notification — show toast once per offline period
+let offlineToastShown = false;
+window.addEventListener('cache:offline-served', () => {
+  if (!offlineToastShown) {
+    Alpine.store('ui').showToast('Đang offline — hiển thị dữ liệu từ cache', 'warning');
+    offlineToastShown = true;
+  }
+});
+// Reset when back online so the toast can show again next time
+window.addEventListener('online', () => { offlineToastShown = false; });
+
 // Bootstrap: init auth, load data, start router
 async function bootstrap() {
   try {
@@ -54,6 +67,7 @@ async function bootstrap() {
       await Alpine.store('outlet').loadOutlet(outletId);
       await Alpine.store('tableMap').loadTables(outletId);
       initRealtimeSubscriptions(outletId);
+      initCacheInvalidation(cacheManager, outletId);
     }
   } catch (err) {
     console.error('[App] Bootstrap error:', err);

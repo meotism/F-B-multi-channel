@@ -9,6 +9,7 @@
 // Design reference: Sections 4.3.3, 4.3.5, 4.3.6
 
 import { supabase } from './supabase-client.js';
+import { cachedSupabase } from './cached-query.js';
 
 // ============================================================
 // Order CRUD
@@ -80,6 +81,8 @@ export async function createOrder(tableId, outletId, userId, cartItems) {
     console.warn('[order-service] Table status guard: table not empty or update failed');
   }
 
+  cachedSupabase.invalidate('orders');
+  cachedSupabase.invalidate('order_items');
   return { order, items: items || [] };
 }
 
@@ -115,7 +118,7 @@ export async function loadOrder(orderId) {
  * @throws {Error} With Vietnamese message on failure
  */
 export async function loadOrderByTable(tableId) {
-  const { data, error } = await supabase
+  const { data, error } = await cachedSupabase
     .from('orders')
     .select('*, order_items(*, menu_items(name))')
     .eq('table_id', tableId)
@@ -168,6 +171,7 @@ export async function addItem(orderId, menuItem, qty, note) {
     throw new Error('Không thể thêm món vào đơn hàng: ' + error.message);
   }
 
+  cachedSupabase.invalidate('order_items');
   return data;
 }
 
@@ -198,6 +202,7 @@ export async function updateItemQty(orderItemId, newQty) {
     throw new Error('Không thể cập nhật số lượng: ' + error.message);
   }
 
+  cachedSupabase.invalidate('order_items');
   return data;
 }
 
@@ -221,6 +226,7 @@ export async function updateItemNote(orderItemId, note) {
     throw new Error('Không thể cập nhật ghi chú: ' + error.message);
   }
 
+  cachedSupabase.invalidate('order_items');
   return data;
 }
 
@@ -240,6 +246,8 @@ export async function removeItem(orderItemId) {
   if (error) {
     throw new Error('Không thể xóa món khỏi đơn hàng: ' + error.message);
   }
+
+  cachedSupabase.invalidate('order_items');
 }
 
 // ============================================================
@@ -278,6 +286,7 @@ export async function requestPayment(orderId) {
     throw new Error('Không thể cập nhật trạng thái bàn: ' + tableError.message);
   }
 
+  cachedSupabase.invalidate('orders');
   return order;
 }
 
@@ -313,6 +322,7 @@ export async function cancelPaymentRequest(orderId) {
     throw new Error('Không thể cập nhật trạng thái bàn: ' + tableError.message);
   }
 
+  cachedSupabase.invalidate('orders');
   return order;
 }
 

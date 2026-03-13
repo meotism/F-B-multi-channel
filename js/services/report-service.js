@@ -8,6 +8,7 @@
 // Design reference: Section 16 (Report Service)
 
 import { supabase } from './supabase-client.js';
+import { cachedSupabase } from './cached-query.js';
 
 /**
  * Generate a report by calling the aggregate-reports Edge Function.
@@ -23,8 +24,9 @@ import { supabase } from './supabase-client.js';
  * @throws {Error} With Vietnamese message on failure
  */
 export async function generateReport(from, to, type, categoryId = null, topN = 10) {
-  const { data, error } = await supabase.functions.invoke('aggregate-reports', {
+  const { data, error } = await cachedSupabase.functions.invoke('aggregate-reports', {
     body: { from, to, type, category_id: categoryId, top_n: topN },
+    cache: { ttl: 120000 },
   });
 
   if (error) {

@@ -12,6 +12,8 @@
 import { listInventory, updateInventory } from '../../services/inventory-service.js';
 import { formatDate } from '../../utils/formatters.js';
 import { supabase } from '../../services/supabase-client.js';
+import { withCacheInvalidation } from '../../services/cache-invalidation.js';
+import { cacheManager } from '../../services/cache-manager.js';
 
 /**
  * Alpine component factory for the inventory dashboard page.
@@ -267,9 +269,9 @@ export function inventoryPage() {
             table: 'inventory',
             filter: 'outlet_id=eq.' + outletId,
           },
-          (payload) => {
+          withCacheInvalidation('inventory', (payload) => {
             this.handleRealtimeUpdate(payload);
-          },
+          }, cacheManager),
         )
         .subscribe();
     },

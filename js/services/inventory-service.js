@@ -8,6 +8,7 @@
 // RLS: Section 3.2.7 (ingredients), Section 3.2.9 (inventory)
 
 import { supabase } from './supabase-client.js';
+import { cachedSupabase } from './cached-query.js';
 
 // ---------------------------------------------------------------------------
 // Ingredients CRUD
@@ -21,7 +22,7 @@ import { supabase } from './supabase-client.js';
  * @throws {Error} With Vietnamese message on failure
  */
 export async function listIngredients(outletId) {
-  const { data, error } = await supabase
+  const { data, error } = await cachedSupabase
     .from('ingredients')
     .select('*')
     .eq('outlet_id', outletId)
@@ -72,8 +73,11 @@ export async function createIngredient(data) {
     // Log but do not fail -- the ingredient was created successfully.
     // The inventory record can be created later if needed.
     console.error('[InventoryService] Failed to auto-create inventory record:', inventoryError.message);
+  } else {
+    cachedSupabase.invalidate('inventory');
   }
 
+  cachedSupabase.invalidate('ingredients');
   return ingredient;
 }
 
@@ -97,6 +101,7 @@ export async function updateIngredient(id, updates) {
     throw new Error('Không thể cập nhật nguyên liệu: ' + error.message);
   }
 
+  cachedSupabase.invalidate('ingredients');
   return data;
 }
 
@@ -122,6 +127,8 @@ export async function deleteIngredient(id) {
     }
     throw new Error('Không thể xóa nguyên liệu: ' + error.message);
   }
+
+  cachedSupabase.invalidate('ingredients');
 }
 
 // ---------------------------------------------------------------------------
@@ -140,7 +147,7 @@ export async function deleteIngredient(id) {
  * @throws {Error} With Vietnamese message on failure
  */
 export async function listInventory(outletId) {
-  const { data, error } = await supabase
+  const { data, error } = await cachedSupabase
     .from('inventory')
     .select('*, ingredients(name, unit)')
     .eq('outlet_id', outletId)
@@ -175,5 +182,6 @@ export async function updateInventory(id, newQty) {
     throw new Error('Khong the cap nhat ton kho: ' + error.message);
   }
 
+  cachedSupabase.invalidate('inventory');
   return data;
 }

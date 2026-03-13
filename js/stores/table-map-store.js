@@ -9,6 +9,7 @@
 // Requirements: 6.1 AC-3 (changes from other devices appear within 2 seconds).
 
 import { supabase } from '../services/supabase-client.js';
+import { cachedSupabase } from '../services/cached-query.js';
 
 export function tableMapStore() {
   return {
@@ -37,7 +38,7 @@ export function tableMapStore() {
       this.error = null;
 
       try {
-        const { data, error } = await supabase
+        const { data, error } = await cachedSupabase
           .from('tables')
           .select('*')
           .eq('outlet_id', outletId);

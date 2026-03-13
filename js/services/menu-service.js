@@ -6,6 +6,7 @@
 // RLS policies enforce outlet isolation and manager-only write access.
 
 import { supabase } from './supabase-client.js';
+import { cachedSupabase } from './cached-query.js';
 
 // ============================================================
 // Categories
@@ -19,7 +20,7 @@ import { supabase } from './supabase-client.js';
  * @throws {Error} With Vietnamese message on failure
  */
 export async function listCategories(outletId) {
-  const { data, error } = await supabase
+  const { data, error } = await cachedSupabase
     .from('categories')
     .select('*')
     .eq('outlet_id', outletId)
@@ -51,6 +52,7 @@ export async function createCategory(data) {
     throw new Error('Không thể tạo danh mục: ' + error.message);
   }
 
+  cachedSupabase.invalidate('categories');
   return created;
 }
 
@@ -74,6 +76,7 @@ export async function updateCategory(id, updates) {
     throw new Error('Không thể cập nhật danh mục: ' + error.message);
   }
 
+  cachedSupabase.invalidate('categories');
   return data;
 }
 
@@ -100,6 +103,8 @@ export async function deleteCategory(id) {
     }
     throw new Error('Không thể xóa danh mục: ' + error.message);
   }
+
+  cachedSupabase.invalidate('categories');
 }
 
 
@@ -116,7 +121,7 @@ export async function deleteCategory(id) {
  * @throws {Error} With Vietnamese message on failure
  */
 export async function listMenuItems(outletId) {
-  const { data, error } = await supabase
+  const { data, error } = await cachedSupabase
     .from('menu_items')
     .select('*, categories(name)')
     .eq('outlet_id', outletId)
@@ -168,6 +173,7 @@ export async function createMenuItem(data) {
     throw new Error('Không thể tạo món ăn: ' + error.message);
   }
 
+  cachedSupabase.invalidate('menu_items');
   return created;
 }
 
@@ -191,6 +197,7 @@ export async function updateMenuItem(id, updates) {
     throw new Error('Không thể cập nhật món ăn: ' + error.message);
   }
 
+  cachedSupabase.invalidate('menu_items');
   return data;
 }
 
@@ -214,6 +221,7 @@ export async function deleteMenuItem(id) {
     throw new Error('Không thể xóa món ăn: ' + error.message);
   }
 
+  cachedSupabase.invalidate('menu_items');
   return data;
 }
 
