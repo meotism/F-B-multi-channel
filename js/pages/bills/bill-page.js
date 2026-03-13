@@ -657,7 +657,7 @@ export function billPage() {
           bills = await splitByItems(this.orderId, [
             { orderItemIds: group1Ids, paymentMethod: this.paymentMethod },
             { orderItemIds: group2Ids, paymentMethod: this.paymentMethod },
-          ], userId, outletId);
+          ], userId, outletId, { discountAmount: this.discountAmount });
         } else {
           // Equal split
           if (this.splitEqualCount < 2) {
@@ -669,6 +669,7 @@ export function billPage() {
             this.paymentMethod,
             userId,
             outletId,
+            { discountAmount: this.discountAmount },
           );
         }
 

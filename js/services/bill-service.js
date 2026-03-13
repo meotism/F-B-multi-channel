@@ -164,6 +164,8 @@ export async function getBillByOrderId(orderId) {
     .from('bills')
     .select('*')
     .eq('order_id', orderId)
+    .order('created_at', { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (error) {

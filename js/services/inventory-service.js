@@ -201,20 +201,26 @@ export async function updateInventory(id, newQty) {
  * @throws {Error} With Vietnamese message on failure
  */
 export async function getLowStockItems(outletId) {
-  // The inventory table stores a `threshold` column used as the reorder level.
-  // We use the filter: qty_on_hand <= threshold  (via Supabase column comparison).
+  // Fetch all inventory items and filter client-side because PostgREST
+  // does not support column-to-column comparison via .filter().
+  // The previous `.filter('qty_on_hand', 'lte', 'threshold')` compared
+  // qty_on_hand to the literal string 'threshold', not the column value.
   const { data, error } = await cachedSupabase
     .from('inventory')
     .select('*, ingredients(name, unit)')
     .eq('outlet_id', outletId)
-    .filter('qty_on_hand', 'lte', 'threshold')
-    .order('qty_on_hand', { ascending: true });
+    .gt('threshold', 0);
 
   if (error) {
     throw new Error('Không thể tải danh sách tồn kho thấp: ' + error.message);
   }
 
-  return data || [];
+  // Filter: qty_on_hand <= threshold (client-side column comparison)
+  const lowStock = (data || [])
+    .filter(item => item.qty_on_hand <= item.threshold)
+    .sort((a, b) => a.qty_on_hand - b.qty_on_hand);
+
+  return lowStock;
 }
 
 // ---------------------------------------------------------------------------

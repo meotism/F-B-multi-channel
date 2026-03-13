@@ -110,6 +110,7 @@ export async function createOrder(tableId, outletId, userId, cartItems, options 
         outletId,
         userId,
         cartItems,
+        guestCount: options?.guestCount,
       });
       console.info('[order-service] Offline: createOrder enqueued');
       // Return a placeholder so the UI can continue

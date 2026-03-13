@@ -17,9 +17,13 @@ import { cachedSupabase } from './cached-query.js';
  * @param {Array<{orderItemIds: string[], paymentMethod: string}>} itemGroups - Groups of item IDs, each becoming a bill
  * @param {string} userId - UUID of the user performing the split
  * @param {string} outletId - UUID of the outlet
+ * @param {Object} [options] - Optional parameters
+ * @param {number} [options.discountAmount=0] - Total discount amount to distribute proportionally
  * @returns {Promise<Array>} Array of created bill objects
  */
-export async function splitByItems(orderId, itemGroups, userId, outletId) {
+export async function splitByItems(orderId, itemGroups, userId, outletId, options = {}) {
+  const totalDiscount = options.discountAmount || 0;
+
   // Fetch all order items to validate and calculate totals
   const { data: orderItems, error: itemsError } = await supabase
     .from('order_items')
@@ -50,13 +54,31 @@ export async function splitByItems(orderId, itemGroups, userId, outletId) {
     }
   }
 
+  // Calculate order subtotal for proportional discount distribution
+  const orderSubtotal = orderItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
   // Create bills for each group
   const bills = [];
-  for (const group of itemGroups) {
-    const groupTotal = group.orderItemIds.reduce((sum, id) => {
+  let discountDistributed = 0;
+  for (let gi = 0; gi < itemGroups.length; gi++) {
+    const group = itemGroups[gi];
+    const groupSubtotal = group.orderItemIds.reduce((sum, id) => {
       const item = itemMap.get(id);
       return sum + (item.price * item.qty);
     }, 0);
+
+    // Distribute discount proportionally; last group gets remainder
+    let groupDiscount = 0;
+    if (totalDiscount > 0 && orderSubtotal > 0) {
+      if (gi === itemGroups.length - 1) {
+        groupDiscount = totalDiscount - discountDistributed;
+      } else {
+        groupDiscount = Math.round(totalDiscount * groupSubtotal / orderSubtotal);
+        discountDistributed += groupDiscount;
+      }
+    }
+
+    const groupTotal = Math.max(0, groupSubtotal - groupDiscount);
 
     const { data: bill, error: billError } = await supabase
       .from('bills')
@@ -65,7 +87,7 @@ export async function splitByItems(orderId, itemGroups, userId, outletId) {
         outlet_id: outletId,
         total: groupTotal,
         tax: 0,
-        discount_amount: 0,
+        discount_amount: groupDiscount,
         payment_method: group.paymentMethod || 'cash',
         status: 'finalized',
         split_type: 'by_item',
@@ -80,11 +102,31 @@ export async function splitByItems(orderId, itemGroups, userId, outletId) {
     bills.push(bill);
   }
 
-  // Update order status to finalized
-  await supabase
+  // Update order status to finalized and get table_id for table reset
+  const { data: updatedOrder } = await supabase
     .from('orders')
     .update({ status: 'finalized', ended_at: new Date().toISOString() })
-    .eq('id', orderId);
+    .eq('id', orderId)
+    .select('table_id')
+    .single();
+
+  // Reset table status to 'empty' (same as finalize_bill stored procedure)
+  if (updatedOrder?.table_id) {
+    // Only reset if no other active/completed orders remain on this table
+    const { count } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('table_id', updatedOrder.table_id)
+      .neq('id', orderId)
+      .in('status', ['active', 'completed']);
+
+    if (count === 0) {
+      await supabase
+        .from('tables')
+        .update({ status: 'empty' })
+        .eq('id', updatedOrder.table_id);
+    }
+  }
 
   // Audit log
   await supabase
@@ -117,9 +159,11 @@ export async function splitByItems(orderId, itemGroups, userId, outletId) {
  * @param {string} paymentMethod - Payment method for all splits
  * @param {string} userId - UUID of the user performing the split
  * @param {string} outletId - UUID of the outlet
+ * @param {Object} [options] - Optional parameters
+ * @param {number} [options.discountAmount=0] - Total discount amount to distribute equally
  * @returns {Promise<Array>} Array of created bill objects
  */
-export async function splitEqual(orderId, numWays, paymentMethod, userId, outletId) {
+export async function splitEqual(orderId, numWays, paymentMethod, userId, outletId, options = {}) {
   if (numWays < 2) {
     throw new Error('Số lượng tách phải >= 2');
   }
@@ -134,15 +178,20 @@ export async function splitEqual(orderId, numWays, paymentMethod, userId, outlet
     throw new Error('Không thể tải danh sách món: ' + itemsError.message);
   }
 
-  const orderTotal = orderItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+  const totalDiscount = options.discountAmount || 0;
+  const orderSubtotal = orderItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+  const orderTotal = Math.max(0, orderSubtotal - totalDiscount);
   const perBill = Math.floor(orderTotal / numWays);
   const remainder = orderTotal - (perBill * numWays);
+  const perDiscount = totalDiscount > 0 ? Math.floor(totalDiscount / numWays) : 0;
+  const discountRemainder = totalDiscount - (perDiscount * numWays);
 
   // Create N bills
   const bills = [];
   for (let i = 0; i < numWays; i++) {
     // Add remainder to the first bill
     const billTotal = i === 0 ? perBill + remainder : perBill;
+    const billDiscount = i === 0 ? perDiscount + discountRemainder : perDiscount;
 
     const { data: bill, error: billError } = await supabase
       .from('bills')
@@ -151,7 +200,7 @@ export async function splitEqual(orderId, numWays, paymentMethod, userId, outlet
         outlet_id: outletId,
         total: billTotal,
         tax: 0,
-        discount_amount: 0,
+        discount_amount: billDiscount,
         payment_method: paymentMethod,
         status: 'finalized',
         split_type: 'equal',
@@ -166,11 +215,30 @@ export async function splitEqual(orderId, numWays, paymentMethod, userId, outlet
     bills.push(bill);
   }
 
-  // Update order status
-  await supabase
+  // Update order status and get table_id for table reset
+  const { data: updatedOrder } = await supabase
     .from('orders')
     .update({ status: 'finalized', ended_at: new Date().toISOString() })
-    .eq('id', orderId);
+    .eq('id', orderId)
+    .select('table_id')
+    .single();
+
+  // Reset table status to 'empty' (same as finalize_bill stored procedure)
+  if (updatedOrder?.table_id) {
+    const { count } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('table_id', updatedOrder.table_id)
+      .neq('id', orderId)
+      .in('status', ['active', 'completed']);
+
+    if (count === 0) {
+      await supabase
+        .from('tables')
+        .update({ status: 'empty' })
+        .eq('id', updatedOrder.table_id);
+    }
+  }
 
   // Audit log
   await supabase

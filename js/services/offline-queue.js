@@ -40,7 +40,11 @@ async function execute(op) {
   switch (op.type) {
     case 'create_order': {
       const { createOrder } = await import('./order-service.js');
-      await createOrder(op.tableId, op.outletId, op.userId, op.cartItems);
+      const options = {};
+      if (op.guestCount != null) {
+        options.guestCount = op.guestCount;
+      }
+      await createOrder(op.tableId, op.outletId, op.userId, op.cartItems, options);
       break;
     }
     case 'update_item_qty': {
@@ -49,8 +53,8 @@ async function execute(op) {
       break;
     }
     case 'add_item': {
-      const { addItemToOrder } = await import('./order-service.js');
-      await addItemToOrder(op.orderId, op.item);
+      const { addItem } = await import('./order-service.js');
+      await addItem(op.orderId, op.item);
       break;
     }
     default:
