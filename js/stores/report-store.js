@@ -92,6 +92,7 @@ export function reportStore() {
     topItemsByQty: [],          // Array of top items sorted by quantity
     topItemsByRevenue: [],      // Array of top items sorted by revenue
     breakdownData: [],          // Array of { period, revenue, bill_count, average_value }
+    hourlyRevenueSplit: null,    // { items_revenue, hourly_revenue, total_revenue, hourly_bill_count, total_bill_count }
 
     // --- UI state ---
     isLoading: false,
@@ -179,6 +180,9 @@ export function reportStore() {
         // Update breakdown data
         this.breakdownData = data.breakdown || [];
 
+        // Update hourly revenue split
+        this.hourlyRevenueSplit = data.hourly_revenue_split || null;
+
         // Build chart data from breakdown
         if (this.breakdownData.length > 0) {
           this.chartData = {
@@ -208,6 +212,7 @@ export function reportStore() {
         this.topItemsByQty = [];
         this.topItemsByRevenue = [];
         this.breakdownData = [];
+        this.hourlyRevenueSplit = null;
       } finally {
         this.isLoading = false;
       }

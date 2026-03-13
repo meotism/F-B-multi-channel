@@ -245,11 +245,11 @@ Deno.serve(async (req: Request) => {
     // 11. Execute 3 queries in parallel
     const outletId = callerProfile.outlet_id;
 
-    const [summaryResult, topItemsResult, breakdownResult] = await Promise.all([
+    const [summaryResult, topItemsResult, breakdownResult, revenueSourceResult] = await Promise.all([
       // 11a. Revenue summary: tổng doanh thu, số hóa đơn, trung bình, tổng thuế
       supabaseAdmin
         .from('bills')
-        .select('total, tax')
+        .select('total, tax, hourly_charge')
         .eq('outlet_id', outletId)
         .gte('finalized_at', fromUtc)
         .lt('finalized_at', toUtc)
@@ -271,6 +271,13 @@ Deno.serve(async (req: Request) => {
         p_to: toUtc,
         p_group_by: groupBy,
       }),
+
+      // 11d. Revenue by source: items vs hourly (RPC)
+      supabaseAdmin.rpc('get_revenue_by_source', {
+        p_outlet_id: outletId,
+        p_from: fromUtc,
+        p_to: toUtc,
+      }),
     ]);
 
     // 12. Handle query errors
@@ -286,6 +293,11 @@ Deno.serve(async (req: Request) => {
 
     if (breakdownResult.error) {
       console.error('aggregate-reports get_revenue_breakdown rpc error:', breakdownResult.error);
+      return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR');
+    }
+
+    if (revenueSourceResult.error) {
+      console.error('aggregate-reports get_revenue_by_source rpc error:', revenueSourceResult.error);
       return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR');
     }
 
@@ -307,7 +319,13 @@ Deno.serve(async (req: Request) => {
         (b.total_revenue || 0) - (a.total_revenue || 0)
       );
 
-    // 15. Return structured response
+    // 15. Build revenue source split from RPC result
+    const revenueSourceData = revenueSourceResult.data;
+    const hourlyRevenueSplit = Array.isArray(revenueSourceData) && revenueSourceData.length > 0
+      ? revenueSourceData[0]
+      : { items_revenue: 0, hourly_revenue: 0, total_revenue: 0, hourly_bill_count: 0, total_bill_count: 0 };
+
+    // 16. Return structured response
     return jsonResponse({
       summary: {
         total_revenue: totalRevenue,
@@ -318,6 +336,7 @@ Deno.serve(async (req: Request) => {
       top_items_by_qty: topItemsByQty,
       top_items_by_revenue: topItemsByRevenue,
       breakdown: breakdownResult.data || [],
+      hourly_revenue_split: hourlyRevenueSplit,
     });
   } catch (error) {
     // Handle known auth/role errors from shared helpers

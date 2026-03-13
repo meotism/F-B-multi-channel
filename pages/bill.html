@@ -112,6 +112,16 @@
         </div>
       </template>
 
+      <!-- Hourly charge line (billiard/pool tables) -->
+      <template x-if="hasHourlyCharge">
+        <div class="bill-totals__row">
+          <span class="bill-totals__label">
+            Phí giờ chơi<template x-if="durationDisplay"><span style="font-weight: 400; font-size: var(--font-size-xs);"> (<span x-text="durationDisplay"></span>)</span></template>:
+          </span>
+          <span class="bill-totals__value" x-text="formatVND(displayHourlyCharge) + 'đ'"></span>
+        </div>
+      </template>
+
       <template x-if="tax > 0">
         <div class="bill-totals__row">
           <span class="bill-totals__label">Thuế:</span>
@@ -256,6 +266,12 @@
       </button>
     </div>
 
+    <!-- Footer branding -->
+    <div x-show="isBillFinalized" x-cloak
+         style="text-align: center; padding: var(--space-3) 0; font-size: var(--font-size-xs); color: var(--color-text-secondary); opacity: 0.7;">
+      Made by Meotism💕
+    </div>
+
   </div>
 
   <!-- ================================================================
@@ -268,6 +284,9 @@
       <p>Bạn có chắc muốn xuất hóa đơn cho đơn hàng này?</p>
       <div style="margin-top: var(--space-3);">
         <p><strong>Tổng cộng:</strong> <span x-text="formatVND(grandTotal) + 'đ'"></span></p>
+        <template x-if="hasHourlyCharge">
+          <p><strong>Phí giờ chơi:</strong> <span x-text="formatVND(displayHourlyCharge) + 'đ'"></span></p>
+        </template>
         <p><strong>Phương thức:</strong> <span x-text="formatPaymentMethod(paymentMethod)"></span></p>
       </div>
       <p style="margin-top: var(--space-3); font-size: var(--font-size-xs); color: var(--color-text-secondary);">

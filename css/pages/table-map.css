@@ -189,6 +189,19 @@
   line-height: 1;
 }
 
+.table-node__rate {
+  font-size: 10px;
+  opacity: 0.75;
+  line-height: 1;
+  color: var(--color-warning, #f59e0b);
+  font-weight: 600;
+}
+
+.table-node__hourly-cost {
+  color: var(--color-warning, #f59e0b);
+  font-weight: 600;
+}
+
 /* Inline rename input (shown on double-click in edit mode) */
 .table-node__rename-input {
   width: 90%;

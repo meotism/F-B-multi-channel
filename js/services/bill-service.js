@@ -195,6 +195,42 @@ export async function getBillById(billId) {
 }
 
 /**
+ * Fetch all bills finalized today (UTC+7 timezone).
+ * Returns bills with joined order and table data for display.
+ *
+ * @returns {Promise<Object[]>} Array of bill records with order/table info
+ * @throws {Error} With Vietnamese message on unexpected failure
+ */
+export async function getTodayBills() {
+  // Calculate today's start and end in UTC+7
+  const now = new Date();
+  const utc7Offset = 7 * 60 * 60 * 1000;
+  const utc7Now = new Date(now.getTime() + utc7Offset);
+  const todayStart = new Date(Date.UTC(
+    utc7Now.getUTCFullYear(),
+    utc7Now.getUTCMonth(),
+    utc7Now.getUTCDate(),
+    0, 0, 0, 0
+  ));
+  // Convert back to UTC for query
+  const startUTC = new Date(todayStart.getTime() - utc7Offset).toISOString();
+  const endUTC = new Date(todayStart.getTime() - utc7Offset + 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await cachedSupabase
+    .from('bills')
+    .select('*, orders(id, table_id, started_at, tables(name))')
+    .gte('finalized_at', startUTC)
+    .lt('finalized_at', endUTC)
+    .order('finalized_at', { ascending: false });
+
+  if (error) {
+    throw new Error('Không thể tải danh sách hóa đơn: ' + error.message);
+  }
+
+  return data || [];
+}
+
+/**
  * Fetch all bills for a given order (supports split bill scenarios).
  *
  * @param {string} orderId - UUID of the order

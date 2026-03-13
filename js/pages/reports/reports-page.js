@@ -11,7 +11,7 @@
 // Requirements: 12 (Reports Dashboard)
 
 import { listCategories } from '../../services/menu-service.js';
-import { getRevenueByPaymentMethod, getRevenueByCategory, getPeakHours } from '../../services/report-service.js';
+import { getRevenueByPaymentMethod, getRevenueByCategory, getPeakHours, getRevenueBySource } from '../../services/report-service.js';
 import { formatVND } from '../../utils/formatters.js';
 
 /**
@@ -49,10 +49,11 @@ export function reportsPage() {
     topItemsTab: 'qty',       // 'qty' | 'revenue' — which top items tab is active
 
     // Task 13.1: Report type tabs
-    activeReportTab: 'overview', // 'overview' | 'by_payment' | 'by_category' | 'peak_hours'
+    activeReportTab: 'overview', // 'overview' | 'by_payment' | 'by_category' | 'peak_hours' | 'revenue_source'
     paymentMethodData: [],       // Revenue by payment method
     categoryRevenueData: [],     // Revenue by category
     peakHoursData: [],           // Peak hours heatmap data
+    revenueSourceData: null,     // Revenue by source (items vs hourly)
     isLoadingTab: false,         // Loading state for tab-specific data
 
     // Task 13.2: Peak hours heatmap state
@@ -162,6 +163,8 @@ export function reportsPage() {
           const rawData = await getPeakHours(outletId, fromUtc, toUtc);
           this.peakHoursData = rawData;
           this.buildPeakHoursGrid(rawData);
+        } else if (tab === 'revenue_source') {
+          this.revenueSourceData = await getRevenueBySource(outletId, fromUtc, toUtc);
         }
       } catch (err) {
         console.error(`[reportsPage] Failed to load ${tab} data:`, err);

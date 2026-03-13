@@ -63,6 +63,10 @@ export function billPage() {
     // --- Keyboard shortcut handler ref (Task 10.1) ---
     _keyHandler: null,
 
+    // --- Hourly charge timer state ---
+    _hourlyTimer: null,
+    _hourlyTick: 0,
+
     // --- Computed properties ---
 
     /**
@@ -82,11 +86,61 @@ export function billPage() {
     },
 
     /**
-     * Grand total = subtotal - discountAmount + tax.
+     * Hourly charge from finalized bill, or 0 if not applicable.
+     * @returns {number} Hourly charge in VND
+     */
+    get hourlyCharge() {
+      return this.bill?.hourly_charge || 0;
+    },
+
+    /**
+     * Estimated hourly charge before finalization (live running cost).
+     * Returns 0 if table has no hourly rate or bill is already finalized.
+     * @returns {number} Estimated charge in VND
+     */
+    get estimatedHourlyCharge() {
+      if (this.bill || !this.table?.hourly_rate || !this.order?.started_at) return 0;
+      // Reference _hourlyTick for Alpine reactivity (ticks every second)
+      void this._hourlyTick;
+      const elapsed = (Date.now() - new Date(this.order.started_at).getTime()) / 1000;
+      return Math.round((elapsed / 3600) * this.table.hourly_rate);
+    },
+
+    /**
+     * Display hourly charge: finalized value or live estimate.
+     * @returns {number} Hourly charge in VND
+     */
+    get displayHourlyCharge() {
+      return this.bill ? this.hourlyCharge : this.estimatedHourlyCharge;
+    },
+
+    /**
+     * Whether hourly charge should be displayed on the bill.
+     * @returns {boolean}
+     */
+    get hasHourlyCharge() {
+      return this.hourlyCharge > 0 || (this.table?.hourly_rate > 0 && !this.bill);
+    },
+
+    /**
+     * Format duration_seconds from bill for display.
+     * @returns {string} Formatted duration (e.g., "1h 30p") or empty string
+     */
+    get durationDisplay() {
+      const secs = this.bill?.duration_seconds;
+      if (!secs) return '';
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      return h > 0 ? `${h}h ${m}p` : `${m} phút`;
+    },
+
+    /**
+     * Grand total = subtotal - discountAmount + hourlyCharge + tax.
+     * Before finalization uses estimated hourly charge for preview.
      * @returns {number} Grand total in VND
      */
     get grandTotal() {
-      return this.subtotal - this.discountAmount + this.tax;
+      return this.subtotal - this.discountAmount + this.displayHourlyCharge + this.tax;
     },
 
     /**
@@ -180,6 +234,14 @@ export function billPage() {
 
       await this.loadOrderData();
 
+      // Start timer for live hourly charge estimate (billiard tables)
+      if (this.table?.hourly_rate > 0 && !this.bill) {
+        this._hourlyTimer = setInterval(() => {
+          // Force Alpine reactivity by touching a reactive property
+          this._hourlyTick = (this._hourlyTick || 0) + 1;
+        }, 1000);
+      }
+
       // Subscribe to bill changes for cross-device sync (Requirement 9 AC-4)
       this.subscribeToBillChanges();
 
@@ -247,6 +309,11 @@ export function billPage() {
       if (this._keyHandler) {
         document.removeEventListener('keydown', this._keyHandler);
         this._keyHandler = null;
+      }
+      // Clean up hourly charge timer
+      if (this._hourlyTimer) {
+        clearInterval(this._hourlyTimer);
+        this._hourlyTimer = null;
       }
     },
 
@@ -353,6 +420,12 @@ export function billPage() {
       try {
         const billData = await finalizeBill(this.orderId, this.paymentMethod);
         this.bill = billData;
+
+        // Stop hourly charge timer after finalization
+        if (this._hourlyTimer) {
+          clearInterval(this._hourlyTimer);
+          this._hourlyTimer = null;
+        }
 
         // Update local order status to reflect finalization
         if (this.order) {

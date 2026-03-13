@@ -159,6 +159,11 @@
                @click.stop>
         <span class="table-node__code" x-text="table.table_code"></span>
         <span class="table-node__seats" x-text="table.capacity + ' chỗ'"></span>
+        <!-- Hourly rate indicator (billiard tables) -->
+        <span class="table-node__rate"
+              x-show="table.hourly_rate > 0"
+              x-text="formatVND(table.hourly_rate) + '/h'"
+              x-cloak></span>
         <!-- Timer for serving tables -->
         <span class="table-node__timer"
               x-show="table.status === 'serving'"
@@ -174,6 +179,11 @@
                 x-text="table.guest_count + ' kh\u00E1ch'"></span>
           <span x-show="table.order_total > 0"
                 x-text="formatVND(table.order_total) + '\u0111'"></span>
+          <!-- Running hourly charge for billiard tables -->
+          <span x-show="table.hourly_rate > 0 && table.status === 'serving'"
+                class="table-node__hourly-cost"
+                x-text="'\u23F1 ' + formatVND(getRunningHourlyCharge(table)) + '\u0111'"
+                x-cloak></span>
         </div>
       </div>
     </template>
@@ -203,6 +213,12 @@
       <dd x-text="selectedTable?.capacity"></dd>
       <dt>Trạng thái</dt>
       <dd x-text="selectedTable?.status"></dd>
+      <template x-if="selectedTable?.hourly_rate > 0">
+        <div>
+          <dt>Giá/giờ</dt>
+          <dd x-text="formatVND(selectedTable.hourly_rate) + ' VND/h'"></dd>
+        </div>
+      </template>
       <dt>Vị trí</dt>
       <dd x-text="selectedTable ? ('X: ' + Math.round(selectedTable.x) + '% / Y: ' + Math.round(selectedTable.y) + '%') : ''"></dd>
     </dl>
@@ -306,6 +322,18 @@
             <option value="rectangle">Chữ nhật</option>
           </select>
         </div>
+
+        <!-- Hourly rate (optional, for billiard/pool tables) -->
+        <div class="form-group">
+          <label class="form-label" for="add-table-hourly-rate">Giá theo giờ (VND/h)</label>
+          <input id="add-table-hourly-rate"
+                 type="number"
+                 class="form-input"
+                 x-model.number="addForm.hourly_rate"
+                 min="0"
+                 step="1000"
+                 placeholder="0 = không tính giờ">
+        </div>
       </div>
 
       <!-- Footer: Action buttons -->
@@ -387,6 +415,18 @@
             <option value="round">Tròn</option>
             <option value="rectangle">Chữ nhật</option>
           </select>
+        </div>
+
+        <!-- Hourly rate (optional, for billiard/pool tables) -->
+        <div class="form-group">
+          <label class="form-label" for="edit-table-hourly-rate">Giá theo giờ (VND/h)</label>
+          <input id="edit-table-hourly-rate"
+                 type="number"
+                 class="form-input"
+                 x-model.number="editForm.hourly_rate"
+                 min="0"
+                 step="1000"
+                 placeholder="0 = không tính giờ">
         </div>
       </div>
 

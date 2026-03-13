@@ -1,0 +1,117 @@
+<!-- Bill List page template - loaded by router -->
+<section x-data="billListPage()" class="bill-list-page">
+
+  <!-- ================================================================
+       Header — Title + today's date + refresh button
+       ================================================================ -->
+  <div class="bill-list-header">
+    <div class="bill-list-header__info">
+      <h2 class="bill-list-header__title">Hóa đơn trong ngày</h2>
+      <span class="bill-list-header__date" x-text="getTodayDateString()"></span>
+    </div>
+    <button class="btn btn--outline btn--sm" @click="loadBills()" :disabled="isLoading">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           style="vertical-align: -2px; margin-right: 4px;">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+      </svg>
+      Làm mới
+    </button>
+  </div>
+
+  <!-- ================================================================
+       Summary Cards
+       ================================================================ -->
+  <div class="bill-list-summary">
+    <div class="bill-list-summary__card">
+      <span class="bill-list-summary__label">Tổng hóa đơn</span>
+      <span class="bill-list-summary__value" x-text="billCount"></span>
+    </div>
+    <div class="bill-list-summary__card bill-list-summary__card--revenue">
+      <span class="bill-list-summary__label">Tổng doanh thu</span>
+      <span class="bill-list-summary__value" x-text="formatVND(totalRevenue) + 'đ'"></span>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Filter Tabs
+       ================================================================ -->
+  <div class="bill-list-filters">
+    <button class="bill-list-filter"
+            :class="{ 'bill-list-filter--active': filterStatus === 'all' }"
+            @click="filterStatus = 'all'">
+      Tất cả
+    </button>
+    <button class="bill-list-filter"
+            :class="{ 'bill-list-filter--active': filterStatus === 'finalized' }"
+            @click="filterStatus = 'finalized'">
+      Đã xuất
+    </button>
+    <button class="bill-list-filter"
+            :class="{ 'bill-list-filter--active': filterStatus === 'printed' }"
+            @click="filterStatus = 'printed'">
+      Đã in
+    </button>
+    <button class="bill-list-filter"
+            :class="{ 'bill-list-filter--active': filterStatus === 'pending_print' }"
+            @click="filterStatus = 'pending_print'">
+      Chờ in
+    </button>
+  </div>
+
+  <!-- ================================================================
+       Loading State
+       ================================================================ -->
+  <div x-show="isLoading" x-cloak class="bill-list-loading">
+    <div class="spinner"></div>
+    <p>Đang tải danh sách hóa đơn...</p>
+  </div>
+
+  <!-- ================================================================
+       Empty State
+       ================================================================ -->
+  <div x-show="!isLoading && filteredBills.length === 0" x-cloak class="bill-list-empty">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+         style="color: var(--color-text-secondary); opacity: 0.5;">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+    </svg>
+    <p>Chưa có hóa đơn nào trong ngày</p>
+  </div>
+
+  <!-- ================================================================
+       Bills List
+       ================================================================ -->
+  <div x-show="!isLoading && filteredBills.length > 0" x-cloak class="bill-list-items">
+    <template x-for="bill in filteredBills" :key="bill.id">
+      <div class="bill-list-item" @click="viewBill(bill)">
+        <div class="bill-list-item__top">
+          <span class="bill-list-item__number" x-text="getBillNumber(bill)"></span>
+          <span class="badge" :class="getStatusBadge(bill.status).class"
+                x-text="getStatusBadge(bill.status).text"></span>
+        </div>
+        <div class="bill-list-item__details">
+          <div class="bill-list-item__info">
+            <span class="bill-list-item__table">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                   style="vertical-align: -2px; margin-right: 2px;">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+              </svg>
+              <span x-text="getTableName(bill)"></span>
+            </span>
+            <span class="bill-list-item__time" x-text="formatTime(bill.finalized_at)"></span>
+            <span class="bill-list-item__payment" x-text="formatPaymentMethod(bill.payment_method)"></span>
+          </div>
+          <span class="bill-list-item__total" x-text="formatVND((bill.total || 0) + (bill.hourly_charge || 0)) + 'đ'"></span>
+        </div>
+      </div>
+    </template>
+  </div>
+
+</section>

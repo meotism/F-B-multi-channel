@@ -20,6 +20,7 @@ const routes = [
   { pattern: '/orders/:tableId',  page: 'order',      title: 'Đặt món',             auth: true,  roles: ['owner', 'manager', 'staff', 'cashier'] },
   { pattern: '/order-list',       page: 'order-list', title: 'Danh sách đơn hàng',  auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/bills/:orderId',   page: 'bill',       title: 'Hóa đơn',             auth: true,  roles: ['owner', 'manager', 'cashier'] },
+  { pattern: '/bill-list',        page: 'bill-list',  title: 'Hóa đơn trong ngày',   auth: true,  roles: ['owner', 'manager', 'cashier'] },
   { pattern: '/menu/:id',         page: 'menu-edit',  title: 'Chỉnh sửa món ăn',    auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/menu',             page: 'menu-list',  title: 'Quản lý thực đơn',     auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/categories',       page: 'categories', title: 'Quản lý danh mục',     auth: true,  roles: ['owner', 'manager'] },

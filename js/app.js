@@ -29,6 +29,7 @@ import './pages/menu/menu-list-page.js';
 import './pages/menu/menu-edit-page.js';
 import './pages/orders/order-page.js';
 import './pages/bills/bill-page.js';
+import './pages/bills/bill-list-page.js';
 import './pages/reports/reports-page.js';
 import './pages/settings/settings-page.js';
 import './pages/discounts/discounts-page.js';

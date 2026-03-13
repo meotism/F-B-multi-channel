@@ -55,12 +55,12 @@ export function tableMapPage() {
 
     // Add Table Modal state
     showAddModal: false,
-    addForm: { name: '', table_code: '', capacity: 4, shape: 'square' },
+    addForm: { name: '', table_code: '', capacity: 4, shape: 'square', hourly_rate: 0 },
     addFormError: '',
 
     // Edit Table Modal state
     showEditModal: false,
-    editForm: { name: '', table_code: '', capacity: 4, shape: 'square' },
+    editForm: { name: '', table_code: '', capacity: 4, shape: 'square', hourly_rate: 0 },
     editFormError: '',
 
     // Inline rename state (double-click on table name)
@@ -466,7 +466,7 @@ export function tableMapPage() {
 
         const { data, error } = await supabase
           .from('table_summary')
-          .select('table_id, guest_count, order_total, active_order_id')
+          .select('table_id, guest_count, order_total, active_order_id, hourly_rate')
           .eq('outlet_id', outletId);
 
         if (error) throw error;
@@ -525,6 +525,23 @@ export function tableMapPage() {
       const seconds = totalSeconds % 60;
 
       return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    },
+
+    /**
+     * Calculate the running hourly charge for a serving billiard table.
+     * Uses timerTick for Alpine reactivity (re-computes every second).
+     *
+     * @param {Object} table - Table object with hourly_rate and activeOrderStartedAt
+     * @returns {number} Current hourly charge in VND (rounded)
+     */
+    getRunningHourlyCharge(table) {
+      // Reference timerTick to trigger re-render on each interval tick
+      void this.timerTick;
+
+      if (!table.hourly_rate || !table.activeOrderStartedAt) return 0;
+
+      const elapsed = (Date.now() - new Date(table.activeOrderStartedAt).getTime()) / 1000;
+      return Math.round((elapsed / 3600) * table.hourly_rate);
     },
 
     // --- Edit Mode ---
@@ -905,7 +922,7 @@ export function tableMapPage() {
       // Reset inactivity timer on add button click (user interaction)
       if (this.isEditMode) this.resetInactivityTimer();
 
-      this.addForm = { name: '', table_code: '', capacity: 4, shape: 'square' };
+      this.addForm = { name: '', table_code: '', capacity: 4, shape: 'square', hourly_rate: 0 };
       this.addFormError = '';
       this.showAddModal = true;
     },
@@ -955,6 +972,7 @@ export function tableMapPage() {
         table_code: table_code.trim(),
         capacity: Number(capacity),
         shape,
+        hourly_rate: Number(this.addForm.hourly_rate) || 0,
         x: 45,
         y: 40,
         status: 'empty',
@@ -992,6 +1010,7 @@ export function tableMapPage() {
         table_code: this.selectedTable.table_code || '',
         capacity: this.selectedTable.capacity || 4,
         shape: this.selectedTable.shape || 'square',
+        hourly_rate: this.selectedTable.hourly_rate || 0,
       };
       this.editFormError = '';
       this.showEditModal = true;
@@ -1044,6 +1063,7 @@ export function tableMapPage() {
         table_code: table_code.trim(),
         capacity: Number(capacity),
         shape,
+        hourly_rate: Number(this.editForm.hourly_rate) || 0,
         updated_at: new Date().toISOString(),
       };
 

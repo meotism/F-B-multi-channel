@@ -361,6 +361,15 @@ export function buildBillEscPos(bill, outlet, order, orderItems, table, staffNam
     }
   }
 
+  // Hourly charge line (billiard/pool tables)
+  if (bill.hourly_charge && bill.hourly_charge > 0) {
+    const durationSecs = bill.duration_seconds || 0;
+    const dh = Math.floor(durationSecs / 3600);
+    const dm = Math.floor((durationSecs % 3600) / 60);
+    const durStr = dh > 0 ? `${dh}h${dm}p` : `${dm}p`;
+    b.textLine(padRight(`Phi gio (${durStr}):`, formatVND(bill.hourly_charge), w));
+  }
+
   b.separator('-', w)
    // Totals section
    .textLine(padRight('Tam tinh:', formatVND(bill.total), w))
@@ -376,6 +385,8 @@ export function buildBillEscPos(bill, outlet, order, orderItems, table, staffNam
    // Footer
    .alignCenter()
    .textLine('Cam on quy khach!')
+   .textLine('')
+   .textLine('Made by Meotism\u{1F495}')
    .textLine('')
    .barcode(formatBillNumber(bill))
    .feedLines(3)

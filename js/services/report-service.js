@@ -175,3 +175,30 @@ export async function getPeakHours(outletId, from, to) {
 
   return data;
 }
+
+/**
+ * Get revenue split by source (items vs hourly) for a given outlet and date range.
+ * Calls the `get_revenue_by_source` stored procedure.
+ *
+ * @param {string} outletId - Outlet UUID
+ * @param {string} from - Start date (UTC ISO string)
+ * @param {string} to - End date (UTC ISO string)
+ * @returns {Promise<Object>} { items_revenue, hourly_revenue, total_revenue, hourly_bill_count, total_bill_count }
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function getRevenueBySource(outletId, from, to) {
+  const { data, error } = await _cachedRpc('get_revenue_by_source', {
+    p_outlet_id: outletId,
+    p_from: from,
+    p_to: to,
+  });
+
+  if (error) {
+    throw new Error('Không thể tải báo cáo: ' + error.message);
+  }
+
+  // RPC returns array with single row
+  return Array.isArray(data) && data.length > 0
+    ? data[0]
+    : { items_revenue: 0, hourly_revenue: 0, total_revenue: 0, hourly_bill_count: 0, total_bill_count: 0 };
+}
