@@ -7,6 +7,7 @@
 import { navigate } from '../../utils/navigate.js';
 import { supabase } from '../../services/supabase-client.js';
 import { cachedSupabase } from '../../services/cached-query.js';
+import { formatVND } from '../../utils/formatters.js';
 import {
   subscribeToMapLock,
   acquireLock,
@@ -48,6 +49,10 @@ export function tableMapPage() {
     _mapLockChannel: null,  // Supabase Presence channel for map edit lock
     _beforeUnloadHandler: null, // beforeunload handler reference for cleanup
 
+    // Context menu state (Task 8.1)
+    contextMenu: { show: false, x: 0, y: 0, table: null },
+    _longPressTimer: null,
+
     // Add Table Modal state
     showAddModal: false,
     addForm: { name: '', table_code: '', capacity: 4, shape: 'square' },
@@ -69,6 +74,13 @@ export function tableMapPage() {
     showResetPanel: false,
     resetTableTarget: null,
     isResetting: false,
+
+    // Transfer Table state (Task 18.1)
+    showTransferTableModal: false,
+    isTransferringTable: false,
+    transferSourceTable: null,
+    transferTargetTableId: null,
+    showTransferConfirm: false,
 
     // --- Computed ---
 
@@ -106,6 +118,9 @@ export function tableMapPage() {
         // This reconstructs timers after page reload (req 5.3 EC-1).
         await store.loadActiveOrderTimers();
 
+        // Load guest count and order total from table_summary view (Task 8.2)
+        await this.loadTableSummary();
+
         console.log('[TableMapPage] Tables loaded successfully');
       } catch (err) {
         console.error('[TableMapPage] Failed to load tables:', err);
@@ -121,6 +136,14 @@ export function tableMapPage() {
       this.timerInterval = setInterval(() => {
         this.timerTick++;
       }, 1000);
+
+      // Click-outside handler to close context menu (Task 8.1)
+      this._closeContextMenuHandler = () => {
+        if (this.contextMenu.show) {
+          this.closeContextMenu();
+        }
+      };
+      document.addEventListener('click', this._closeContextMenuHandler);
 
       // Initialize pinch-to-zoom on mobile (<768px)
       if (window.innerWidth < 768) {
@@ -239,6 +262,23 @@ export function tableMapPage() {
       } catch (err) {
         console.error('[TableMapPage] destroy: failed to clear remaining timers:', err);
       }
+
+      // Clean up context menu click-outside handler (Task 8.1)
+      try {
+        if (this._closeContextMenuHandler) {
+          document.removeEventListener('click', this._closeContextMenuHandler);
+          this._closeContextMenuHandler = null;
+        }
+      } catch (err) {
+        console.error('[TableMapPage] destroy: failed to remove context menu handler:', err);
+      }
+
+      // Cancel any pending long-press timer
+      try {
+        this.cancelLongPress();
+      } catch (err) {
+        console.error('[TableMapPage] destroy: failed to cancel long press:', err);
+      }
     },
 
     // --- Table Interaction ---
@@ -305,6 +345,161 @@ export function tableMapPage() {
           );
           break;
       }
+    },
+
+    // --- Context Menu (Task 8.1) ---
+
+    /**
+     * Show the context menu for a table. Triggered by @contextmenu on desktop
+     * and long-press (500ms) on mobile.
+     *
+     * In edit mode the context menu is suppressed so that drag-and-drop
+     * and selection behavior is not interrupted.
+     *
+     * @param {MouseEvent|TouchEvent} event - The triggering event
+     * @param {Object} table - The table object
+     */
+    showContextMenu(event, table) {
+      if (this.isEditMode) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      // Position: for touch events use the first touch point, otherwise mouse coords
+      const x = event.clientX ?? event.touches?.[0]?.clientX ?? 0;
+      const y = event.clientY ?? event.touches?.[0]?.clientY ?? 0;
+
+      this.contextMenu = { show: true, x, y, table };
+    },
+
+    /**
+     * Close the context menu.
+     */
+    closeContextMenu() {
+      this.contextMenu = { show: false, x: 0, y: 0, table: null };
+    },
+
+    /**
+     * Handle a context menu action.
+     * Closes the menu and performs the action based on the provided key.
+     *
+     * @param {string} action - Action key: 'create-order', 'view-order',
+     *   'transfer-table', 'merge-table', 'pay', 'cancel-payment', 'reset'
+     * @param {Object} table - The table object the action applies to
+     */
+    handleContextAction(action, table) {
+      this.closeContextMenu();
+
+      switch (action) {
+        case 'create-order':
+        case 'view-order':
+          navigate(`/orders/${table.id}`);
+          break;
+
+        case 'transfer-table':
+          this.openTransferTableModal(table);
+          break;
+
+        case 'merge-table':
+          // Navigate to order page which has full merge functionality
+          navigate(`/orders/${table.id}`);
+          break;
+
+        case 'pay':
+          navigate(`/orders/${table.id}`);
+          break;
+
+        case 'cancel-payment':
+          // Navigate to order page which has cancel payment functionality
+          navigate(`/orders/${table.id}`);
+          break;
+
+        case 'reset':
+          this.resetTableTarget = table;
+          this.showResetPanel = true;
+          break;
+
+        default:
+          console.warn(`[TableMapPage] Unknown context action: ${action}`);
+      }
+    },
+
+    /**
+     * Start a long-press timer for mobile context menu.
+     * Called on @touchstart on table nodes.
+     *
+     * @param {TouchEvent} event - The touchstart event
+     * @param {Object} table - The table object
+     */
+    startLongPress(event, table) {
+      if (this.isEditMode) return;
+
+      this._longPressTimer = setTimeout(() => {
+        this.showContextMenu(event, table);
+        this._longPressTimer = null;
+      }, 500);
+    },
+
+    /**
+     * Cancel the long-press timer. Called on @touchend and @touchmove
+     * to prevent the context menu from appearing if the user lifts
+     * their finger or moves before the 500ms threshold.
+     */
+    cancelLongPress() {
+      if (this._longPressTimer) {
+        clearTimeout(this._longPressTimer);
+        this._longPressTimer = null;
+      }
+    },
+
+    // --- Table Summary Data (Task 8.2) ---
+
+    /**
+     * Load guest_count and order_total from the table_summary view
+     * and merge onto the local tables array. Called after loadTables()
+     * so the base table data is already present.
+     */
+    async loadTableSummary() {
+      try {
+        const outletId = Alpine.store('auth').user?.outlet_id;
+        if (!outletId) return;
+
+        const { data, error } = await supabase
+          .from('table_summary')
+          .select('table_id, guest_count, order_total, active_order_id')
+          .eq('outlet_id', outletId);
+
+        if (error) throw error;
+
+        // Build a map for quick lookup
+        const summaryMap = {};
+        (data || []).forEach(s => {
+          summaryMap[s.table_id] = s;
+        });
+
+        // Merge onto existing table objects
+        const store = Alpine.store('tableMap');
+        store.tables.forEach(t => {
+          const summary = summaryMap[t.id];
+          t.guest_count = summary?.guest_count || 0;
+          t.order_total = summary?.order_total || 0;
+          t.active_order_id = summary?.active_order_id || null;
+        });
+      } catch (err) {
+        console.error('[TableMapPage] loadTableSummary failed:', err);
+        // Non-fatal: info overlay simply won't display
+      }
+    },
+
+    /**
+     * Format a VND amount for display in the template.
+     * Wrapper around the shared formatVND utility.
+     *
+     * @param {number} amount - Amount in VND
+     * @returns {string} Formatted string (e.g., "150.000")
+     */
+    formatVND(amount) {
+      return formatVND(amount);
     },
 
     /**
@@ -1136,6 +1331,117 @@ export function tableMapPage() {
         Alpine.store('ui').showToast(err.message || 'Không thể dọn dẹp bàn.', 'error');
       } finally {
         this.isResetting = false;
+      }
+    },
+
+    // --- Transfer Table via Mini Map (Task 18.1) ---
+
+    /**
+     * Open the transfer table modal with a mini grid of all tables.
+     * Source table is highlighted distinctly; only empty tables are clickable.
+     *
+     * @param {Object} sourceTable - The serving table to transfer from
+     */
+    openTransferTableModal(sourceTable) {
+      if (!sourceTable || sourceTable.status !== 'serving') {
+        Alpine.store('ui').showToast('Chỉ có thể chuyển bàn đang phục vụ.', 'warning');
+        return;
+      }
+
+      const allTables = Alpine.store('tableMap').tables || [];
+      const hasEmptyTables = allTables.some(t => t.status === 'empty');
+
+      if (!hasEmptyTables) {
+        Alpine.store('ui').showToast('Không có bàn trống nào để chuyển.', 'warning');
+        return;
+      }
+
+      this.transferSourceTable = sourceTable;
+      this.transferTargetTableId = null;
+      this.showTransferConfirm = false;
+      this.showTransferTableModal = true;
+    },
+
+    /**
+     * Select a target table for transfer. Only empty tables can be selected.
+     * Shows a confirmation prompt.
+     *
+     * @param {Object} table - The target table
+     */
+    selectTransferTarget(table) {
+      if (table.status !== 'empty') return;
+      if (table.id === this.transferSourceTable?.id) return;
+
+      this.transferTargetTableId = table.id;
+      this.showTransferConfirm = true;
+    },
+
+    /**
+     * Get the display name for a table by ID (for confirmation message).
+     * @param {string} tableId
+     * @returns {string}
+     */
+    getTableNameById(tableId) {
+      const t = Alpine.store('tableMap').getTableById(tableId);
+      return t?.name || '';
+    },
+
+    /**
+     * Confirm and execute the transfer via the transfer_order RPC.
+     * Finds the active order for the source table, then invokes the
+     * transfer-order Edge Function with the order and target table.
+     */
+    async confirmTransferTable() {
+      if (this.isTransferringTable || !this.transferSourceTable || !this.transferTargetTableId) return;
+      this.isTransferringTable = true;
+
+      try {
+        // Find active order for source table
+        const { data: order, error: orderErr } = await supabase
+          .from('orders')
+          .select('id, started_at')
+          .eq('table_id', this.transferSourceTable.id)
+          .eq('status', 'active')
+          .limit(1)
+          .single();
+
+        if (orderErr || !order) {
+          throw new Error('Không tìm thấy đơn hàng hoạt động cho bàn này.');
+        }
+
+        const { data, error } = await supabase.functions.invoke('transfer-order', {
+          body: { order_id: order.id, target_table_id: this.transferTargetTableId },
+        });
+
+        if (error) {
+          const msg = data?.message || error.message || 'Không thể chuyển bàn.';
+          throw new Error(msg);
+        }
+
+        // Update local table map: source -> empty, target -> serving
+        const tableMap = Alpine.store('tableMap');
+        const sourceTable = tableMap.getTableById(this.transferSourceTable.id);
+        if (sourceTable) {
+          sourceTable.status = 'empty';
+          sourceTable.activeOrderStartedAt = null;
+        }
+
+        const targetTable = tableMap.getTableById(this.transferTargetTableId);
+        if (targetTable) {
+          targetTable.status = 'serving';
+          targetTable.activeOrderStartedAt = order.started_at;
+        }
+
+        Alpine.store('ui').showToast('Đã chuyển bàn thành công', 'success');
+        this.showTransferTableModal = false;
+        this.transferSourceTable = null;
+        this.transferTargetTableId = null;
+        this.showTransferConfirm = false;
+      } catch (err) {
+        console.error('[TableMapPage] confirmTransferTable failed:', err);
+        Alpine.store('ui').showToast(err.message || 'Không thể chuyển bàn.', 'error');
+      } finally {
+        this.isTransferringTable = false;
       }
     },
   };

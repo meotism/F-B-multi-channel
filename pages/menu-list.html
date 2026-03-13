@@ -4,15 +4,42 @@
   <!-- Page header with title and add button -->
   <div class="menu-page__header">
     <h2>Quản lý thực đơn</h2>
-    <button class="btn btn--primary"
-            @click="goToCreate()">
-      <!-- Plus icon -->
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19"></line>
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-      </svg>
-      <span>Thêm món ăn</span>
+    <div style="display: flex; gap: var(--space-2); align-items: center;">
+      <!-- Task 11.1: Selection mode toggle -->
+      <button class="btn"
+              :class="selectionMode ? 'btn--secondary' : 'btn--outline'"
+              @click="toggleSelectionMode()">
+        <span x-text="selectionMode ? 'Hủy chọn' : 'Chọn nhiều'"></span>
+      </button>
+      <button class="btn btn--primary"
+              @click="goToCreate()">
+        <!-- Plus icon -->
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Thêm món ăn</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Task 11.1: Bulk action toolbar (shown in selection mode with items selected) -->
+  <div x-show="selectionMode && selectedItems.length > 0"
+       x-cloak
+       style="display: flex; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-3); background: var(--color-surface, #f9fafb); border-radius: var(--radius-md, 8px); margin-bottom: var(--space-3);">
+    <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+      Đã chọn <strong x-text="selectedItems.length"></strong> món
+    </span>
+    <button class="btn btn--success btn--sm"
+            @click="bulkActivate()"
+            :disabled="isSaving">
+      Bật tất cả
+    </button>
+    <button class="btn btn--outline btn--sm"
+            @click="bulkDeactivate()"
+            :disabled="isSaving">
+      Tắt tất cả
     </button>
   </div>
 
@@ -86,10 +113,24 @@
        class="menu-grid">
     <template x-for="item in filteredItems" :key="item.id">
       <div class="menu-card"
-           :class="{ 'menu-card--inactive': !item.is_active }">
+           :class="{ 'menu-card--inactive': !item.is_active }"
+           @click="selectionMode ? toggleItemSelection(item.id) : null">
         <div class="menu-card__body">
           <div class="menu-card__header">
+            <!-- Task 11.1: Selection checkbox -->
+            <input x-show="selectionMode"
+                   x-cloak
+                   type="checkbox"
+                   :checked="isSelected(item.id)"
+                   @click.stop="toggleItemSelection(item.id)"
+                   style="margin-right: var(--space-2); width: 18px; height: 18px;">
             <span class="menu-card__name" x-text="item.name"></span>
+            <!-- Task 11.2: Out-of-stock badge -->
+            <span class="badge badge--danger"
+                  x-show="item.is_available === false"
+                  x-cloak>
+              Hết hàng
+            </span>
             <span class="badge"
                   :class="item.is_active ? 'badge--success' : 'badge--muted'"
                   x-text="item.is_active ? 'Hoạt động' : 'Đã ẩn'"></span>

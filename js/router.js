@@ -15,8 +15,10 @@
  */
 const routes = [
   { pattern: '/login',            page: 'login',      title: 'Đăng nhập',           auth: false, roles: [] },
+  { pattern: '/dashboard',        page: 'dashboard',  title: 'Tổng quan',           auth: true,  roles: ['owner', 'manager', 'staff', 'cashier', 'warehouse'] },
   { pattern: '/tables',           page: 'table-map',  title: 'Sơ đồ bàn',           auth: true,  roles: ['owner', 'manager', 'staff', 'cashier'] },
   { pattern: '/orders/:tableId',  page: 'order',      title: 'Đặt món',             auth: true,  roles: ['owner', 'manager', 'staff', 'cashier'] },
+  { pattern: '/order-list',       page: 'order-list', title: 'Danh sách đơn hàng',  auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/bills/:orderId',   page: 'bill',       title: 'Hóa đơn',             auth: true,  roles: ['owner', 'manager', 'cashier'] },
   { pattern: '/menu/:id',         page: 'menu-edit',  title: 'Chỉnh sửa món ăn',    auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/menu',             page: 'menu-list',  title: 'Quản lý thực đơn',     auth: true,  roles: ['owner', 'manager'] },
@@ -25,6 +27,7 @@ const routes = [
   { pattern: '/ingredients',      page: 'ingredients', title: 'Quản lý nguyên liệu',  auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/reports',          page: 'reports',    title: 'Báo cáo doanh thu',    auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/users',            page: 'users',      title: 'Quản lý người dùng',   auth: true,  roles: ['owner'] },
+  { pattern: '/discounts',        page: 'discounts',  title: 'Quản lý khuyến mãi',  auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/settings',         page: 'settings',   title: 'Cài đặt',             auth: true,  roles: ['owner', 'manager', 'cashier'] },
 ];
 
@@ -64,6 +67,8 @@ const compiledRoutes = routes.map(route => ({
  */
 function getDefaultRoute(role) {
   if (!role) return '/login';
+  // Owner/manager → dashboard; others → first accessible route
+  if (role === 'owner' || role === 'manager') return '/dashboard';
   for (const route of routes) {
     // Skip login, skip routes with URL params (e.g., /orders/:tableId)
     if (!route.auth || route.pattern.includes(':')) continue;
@@ -71,7 +76,6 @@ function getDefaultRoute(role) {
       return route.pattern;
     }
   }
-  // Fallback -- should not be reached if route definitions are correct
   return '/tables';
 }
 
@@ -135,6 +139,11 @@ async function loadPage(pageName, params) {
     // Store route params on the container so page components can access them
     container.dataset.routeParams = JSON.stringify(params);
 
+    // Trigger page enter animation by re-adding the class
+    container.classList.remove('page-container');
+    void container.offsetWidth; // force reflow
+    container.classList.add('page-container');
+
     // Re-initialize Alpine directives on the newly injected content
     Alpine.initTree(container);
   } catch (error) {
@@ -181,31 +190,34 @@ function handleRoute() {
   const userRole = auth.user?.role;
   const defaultRoute = '#' + getDefaultRoute(userRole);
 
-  // --- Unsaved changes navigation guard ---
-  // If user is navigating away from the table map while in edit mode with
-  // unsaved changes, prompt for confirmation. On cancel, restore the
-  // previous hash to stay on the table map page.
+  // --- Generic unsaved changes navigation guard ---
+  // Check current page component for isDirty flag or tableMapStore.hasUnsavedChanges
+  let isDirty = false;
+  const pageContainer = document.getElementById('page-container');
+  if (pageContainer) {
+    const alpineRoot = pageContainer.querySelector('[x-data]');
+    if (alpineRoot && alpineRoot._x_dataStack) {
+      const pageData = alpineRoot._x_dataStack[0];
+      if (pageData && pageData.isDirty) isDirty = true;
+    }
+  }
+  // Also check tableMap store for backward compat
   const tableMapStore = Alpine.store('tableMap');
-  if (tableMapStore && tableMapStore.hasUnsavedChanges) {
+  if (tableMapStore && tableMapStore.hasUnsavedChanges) isDirty = true;
+
+  if (isDirty) {
     const previousPath = _previousHash.slice(1) || '/';
-    // Only guard if we are leaving a table map route (i.e., previous hash was /tables)
-    if (previousPath === '/tables' && hash !== '/tables') {
+    if (previousPath !== hash) {
       const confirmed = window.confirm(
         'Bạn có thay đổi chưa lưu. Bạn có muốn rời đi?',
       );
       if (!confirmed) {
-        // User cancelled: restore the previous hash without triggering another
-        // hashchange cycle by temporarily removing the listener
         window.removeEventListener('hashchange', handleRoute);
         window.location.hash = _previousHash;
         window.addEventListener('hashchange', handleRoute);
         return;
       }
-
-      // User confirmed discard: exit edit mode to release lock and revert changes.
-      // Find the tableMapPage component instance to call exitEditMode().
-      // The component attaches exitEditMode on the Alpine root element.
-      const pageContainer = document.getElementById('page-container');
+      // Try to call exitEditMode if available
       if (pageContainer) {
         const alpineRoot = pageContainer.querySelector('[x-data]');
         if (alpineRoot && alpineRoot._x_dataStack) {

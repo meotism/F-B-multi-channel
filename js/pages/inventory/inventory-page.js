@@ -9,7 +9,7 @@
 // Design reference: Section 3.1.10 inventory table, Section 3.2.9 RLS (inventory)
 // Realtime: Section 3.3.1 (inventory UPDATE events)
 
-import { listInventory, updateInventory } from '../../services/inventory-service.js';
+import { listInventory, updateInventory, getLowStockItems, recordStockIn, getStockMovements } from '../../services/inventory-service.js';
 import { formatDate } from '../../utils/formatters.js';
 import { supabase } from '../../services/supabase-client.js';
 import { withCacheInvalidation } from '../../services/cache-invalidation.js';
@@ -38,6 +38,22 @@ export function inventoryPage() {
     newQty: 0,
     updateError: '',
     isSaving: false,
+
+    // Task 12.1: Low stock alert state
+    lowStockItems: [],
+
+    // Task 12.1: Stock-in modal state
+    showStockInModal: false,
+    stockInItem: null,
+    stockInQty: 0,
+    stockInNote: '',
+    stockInError: '',
+    isStockingIn: false,
+
+    // Task 12.2: Stock movement history state (per-item expand)
+    expandedItemId: null,
+    stockMovements: [],
+    isLoadingMovements: false,
 
     // Realtime subscription channel reference
     _realtimeChannel: null,
@@ -112,6 +128,8 @@ export function inventoryPage() {
      */
     async init() {
       await this.loadInventory();
+      // Task 12.1: Load low stock items for the alert banner
+      await this.loadLowStockItems();
       this.subscribeRealtime();
     },
 
@@ -247,6 +265,131 @@ export function inventoryPage() {
       } finally {
         this.isSaving = false;
       }
+    },
+
+    // --- Task 12.1: Low Stock Alerts ---
+
+    /**
+     * Fetch low stock items for the current outlet.
+     */
+    async loadLowStockItems() {
+      try {
+        const outletId = Alpine.store('auth').user?.outlet_id;
+        if (!outletId) return;
+        this.lowStockItems = await getLowStockItems(outletId);
+      } catch (err) {
+        console.warn('[inventoryPage] Failed to load low stock items:', err);
+        this.lowStockItems = [];
+      }
+    },
+
+    // --- Task 12.1: Stock-In Modal ---
+
+    /**
+     * Open the stock-in modal for an inventory item.
+     * @param {Object} item - The inventory item
+     */
+    openStockInModal(item) {
+      this.stockInItem = item;
+      this.stockInQty = 0;
+      this.stockInNote = '';
+      this.stockInError = '';
+      this.showStockInModal = true;
+    },
+
+    /**
+     * Close the stock-in modal.
+     */
+    closeStockInModal() {
+      this.showStockInModal = false;
+      this.stockInItem = null;
+      this.stockInQty = 0;
+      this.stockInNote = '';
+      this.stockInError = '';
+    },
+
+    /**
+     * Submit the stock-in form.
+     */
+    async submitStockIn() {
+      this.stockInError = '';
+
+      if (!this.stockInQty || Number(this.stockInQty) <= 0) {
+        this.stockInError = 'Số lượng nhập phải lớn hơn 0';
+        return;
+      }
+
+      if (!this.stockInItem) return;
+
+      this.isStockingIn = true;
+
+      try {
+        const userId = Alpine.store('auth').user?.id;
+        const outletId = Alpine.store('auth').user?.outlet_id;
+
+        const updated = await recordStockIn(
+          this.stockInItem.id,
+          Number(this.stockInQty),
+          this.stockInNote,
+          userId,
+          outletId,
+        );
+
+        // Update local data
+        const index = this.inventoryItems.findIndex(i => i.id === this.stockInItem.id);
+        if (index !== -1) {
+          this.inventoryItems[index].qty_on_hand = updated.qty_on_hand;
+          this.inventoryItems[index].updated_at = updated.updated_at || new Date().toISOString();
+        }
+
+        Alpine.store('ui').showToast('Nhập kho thành công', 'success');
+        this.closeStockInModal();
+
+        // Refresh low stock items
+        await this.loadLowStockItems();
+      } catch (err) {
+        this.stockInError = err.message || 'Không thể nhập kho';
+      } finally {
+        this.isStockingIn = false;
+      }
+    },
+
+    // --- Task 12.2: Stock Movement History ---
+
+    /**
+     * Toggle the stock movement history for an inventory item.
+     * @param {Object} item - The inventory item
+     */
+    async toggleMovementHistory(item) {
+      if (this.expandedItemId === item.id) {
+        // Collapse
+        this.expandedItemId = null;
+        this.stockMovements = [];
+        return;
+      }
+
+      this.expandedItemId = item.id;
+      this.isLoadingMovements = true;
+      this.stockMovements = [];
+
+      try {
+        this.stockMovements = await getStockMovements(item.ingredient_id);
+      } catch (err) {
+        console.error('[inventoryPage] Failed to load stock movements:', err);
+        Alpine.store('ui').showToast('Không thể tải lịch sử xuất nhập kho', 'error');
+      } finally {
+        this.isLoadingMovements = false;
+      }
+    },
+
+    /**
+     * Format a stock movement type to Vietnamese.
+     * @param {string} type - 'in' | 'out' | 'adjustment'
+     * @returns {string}
+     */
+    formatMovementType(type) {
+      const map = { in: 'Nhập kho', out: 'Xuất kho', adjustment: 'Điều chỉnh' };
+      return map[type] || type;
     },
 
     // --- Realtime Subscription ---

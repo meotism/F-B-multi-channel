@@ -199,48 +199,31 @@ export function ingredientsPage() {
       }
     },
 
-    // ---- Delete Confirmation ----
+    // ---- Delete Confirmation (via centralized dialog) ----
 
     /**
-     * Open the delete confirmation modal for an ingredient.
+     * Open centralized confirmation dialog for ingredient deletion.
      * @param {Object} ingredient - The ingredient object to delete
      */
     confirmDelete(ingredient) {
-      this.deleteTarget = ingredient;
-      this.showDeleteModal = true;
-    },
-
-    /**
-     * Close the delete confirmation modal.
-     */
-    closeDeleteModal() {
-      this.showDeleteModal = false;
-      this.deleteTarget = null;
-    },
-
-    /**
-     * Execute the ingredient deletion after confirmation.
-     * Handles FK constraint errors gracefully.
-     */
-    async deleteIngredient() {
-      if (!this.deleteTarget) return;
-
-      this.isSaving = true;
-
-      try {
-        await deleteIngredient(this.deleteTarget.id);
-        Alpine.store('ui').showToast('Xóa nguyên liệu thành công', 'success');
-        this.closeDeleteModal();
-        await this.loadIngredients();
-      } catch (err) {
-        Alpine.store('ui').showToast(
-          err.message || 'Không thể xóa nguyên liệu',
-          'error',
-        );
-        this.closeDeleteModal();
-      } finally {
-        this.isSaving = false;
-      }
+      Alpine.store('ui').openConfirmDialog({
+        title: 'Xóa nguyên liệu',
+        message: `Bạn có chắc muốn xóa "${ingredient.name}"?`,
+        danger: true,
+        confirmLabel: 'Xóa',
+        onConfirm: async () => {
+          try {
+            await deleteIngredient(ingredient.id);
+            Alpine.store('ui').showToast('Xóa nguyên liệu thành công', 'success');
+            await this.loadIngredients();
+          } catch (err) {
+            Alpine.store('ui').showToast(
+              err.message || 'Không thể xóa nguyên liệu',
+              'error',
+            );
+          }
+        },
+      });
     },
   };
 }

@@ -30,6 +30,15 @@ const activeChannels = new Map();
 const reconnectCallbacks = [];
 
 /**
+ * Interval ID for the heartbeat timer. Stored so it can be cleared on cleanup.
+ * @type {number|null}
+ */
+let heartbeatIntervalId = null;
+
+/** Heartbeat check interval in milliseconds. */
+const HEARTBEAT_INTERVAL_MS = 30_000;
+
+/**
  * Reactive connection status object. Components can read `connectionStatus.state`
  * to display a connection indicator in the UI.
  *
@@ -177,6 +186,27 @@ export function subscribeToBills(outletId, callback) {
   return subscribeToTable('bills', outletId, ['INSERT', 'UPDATE'], callback);
 }
 
+/**
+ * Subscribe to users UPDATE events for a specific outlet.
+ * Used to detect role changes for the current user and force logout when
+ * the role is modified by an admin.
+ *
+ * @param {string} outletId - The outlet UUID
+ * @param {string} currentUserId - The authenticated user's UUID
+ * @param {string} currentRole - The user's role at login time
+ * @param {Function} onForceLogout - Called when the current user's role changes
+ * @returns {import('@supabase/supabase-js').RealtimeChannel}
+ */
+export function subscribeToUsers(outletId, currentUserId, currentRole, onForceLogout) {
+  return subscribeToTable('users', outletId, 'UPDATE', (payload) => {
+    const updated = payload.new;
+    if (updated && updated.id === currentUserId && updated.role !== currentRole) {
+      console.warn('[RealtimeService] Current user role changed, forcing logout');
+      onForceLogout();
+    }
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
@@ -208,6 +238,9 @@ export function initRealtimeSubscriptions(outletId) {
   subscribeToOrderItems(outletId, () => {});
   subscribeToBills(outletId, () => {});
 
+  // Start heartbeat to detect and recover from silent disconnections
+  startHeartbeat();
+
   console.info('[RealtimeService] Subscriptions initialized for outlet:', outletId);
 }
 
@@ -228,10 +261,12 @@ export function unsubscribeFromTable(tableName) {
 }
 
 /**
- * Remove all active Realtime subscriptions.
+ * Remove all active Realtime subscriptions and stop the heartbeat.
  * Called on logout to clean up all channels.
  */
 export function unsubscribeAll() {
+  stopHeartbeat();
+
   for (const [channelName, channel] of activeChannels) {
     supabase.removeChannel(channel);
   }
@@ -305,5 +340,60 @@ function triggerReconnectCallbacks() {
     } catch (err) {
       console.error('[RealtimeService] Reconnect callback error:', err);
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Heartbeat
+// ---------------------------------------------------------------------------
+
+/**
+ * Start a periodic heartbeat that checks whether the Realtime connection is
+ * still alive. If the connection is detected as disconnected, it updates
+ * `connectionStatus` and attempts to re-subscribe all active channels.
+ *
+ * Called automatically by `initRealtimeSubscriptions`.
+ */
+export function startHeartbeat() {
+  stopHeartbeat(); // Prevent duplicate intervals
+
+  heartbeatIntervalId = setInterval(() => {
+    // Check if any channel is still connected by inspecting the internal state
+    let hasConnectedChannel = false;
+    for (const [, channel] of activeChannels) {
+      // Supabase Realtime channel exposes a `state` property
+      if (channel.state === 'joined' || channel.state === 'joining') {
+        hasConnectedChannel = true;
+        break;
+      }
+    }
+
+    if (activeChannels.size > 0 && !hasConnectedChannel) {
+      // All channels are down — mark as disconnected and trigger reconnect
+      if (connectionStatus.state !== 'disconnected') {
+        console.warn('[RealtimeService] Heartbeat: connection lost, attempting reconnect');
+        connectionStatus.state = 'disconnected';
+      }
+
+      // Re-subscribe each channel to trigger Supabase's internal reconnect
+      for (const [, channel] of activeChannels) {
+        try {
+          channel.subscribe();
+        } catch (err) {
+          console.error('[RealtimeService] Heartbeat reconnect error:', err);
+        }
+      }
+    }
+  }, HEARTBEAT_INTERVAL_MS);
+}
+
+/**
+ * Stop the periodic heartbeat check.
+ * Called automatically by `unsubscribeAll`.
+ */
+export function stopHeartbeat() {
+  if (heartbeatIntervalId != null) {
+    clearInterval(heartbeatIntervalId);
+    heartbeatIntervalId = null;
   }
 }

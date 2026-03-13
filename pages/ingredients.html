@@ -168,43 +168,5 @@
     </div>
   </div>
 
-  <!-- ===============================================================
-       Delete Confirmation Modal
-       =============================================================== -->
-  <div class="modal-backdrop"
-       x-show="showDeleteModal"
-       x-transition.opacity
-       @click.self="closeDeleteModal()"
-       x-cloak>
-    <div class="modal-content" x-show="showDeleteModal" x-transition>
-      <div class="modal-content__header">
-        <h3>Xác nhận xóa</h3>
-        <button class="modal-content__close"
-                @click="closeDeleteModal()"
-                aria-label="Đóng">&times;</button>
-      </div>
-
-      <div class="modal-content__body">
-        <p>Bạn có chắc chắn muốn xóa nguyên liệu
-          <strong x-text="deleteTarget?.name"></strong>?
-        </p>
-        <p class="form-hint">Hành động này không thể hoàn tác. Nguyên liệu đang được sử dụng trong công thức sẽ không thể xóa.</p>
-      </div>
-
-      <div class="modal-content__footer">
-        <button type="button"
-                class="btn btn--outline"
-                @click="closeDeleteModal()">
-          Hủy
-        </button>
-        <button type="button"
-                class="btn btn--danger"
-                :disabled="isSaving"
-                @click="deleteIngredient()">
-          <span x-show="!isSaving">Xóa</span>
-          <span x-show="isSaving" class="spinner spinner--sm"></span>
-        </button>
-      </div>
-    </div>
-  </div>
+  <!-- Delete uses centralized $store.ui.confirmAction dialog -->
 </section>

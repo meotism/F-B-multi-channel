@@ -289,3 +289,18 @@
 .absolute         { position: absolute; }
 .fixed            { position: fixed; }
 .sticky           { position: sticky; }
+
+
+/* ==========================================================================
+ * Responsive Display
+ *
+ * .hide-mobile: hidden on screens <= 767px, visible on desktop/tablet
+ * .show-mobile-only: visible only on screens <= 767px
+ * ========================================================================== */
+
+.show-mobile-only { display: none; }
+
+@media (max-width: 767px) {
+  .hide-mobile        { display: none !important; }
+  .show-mobile-only   { display: block !important; }
+}

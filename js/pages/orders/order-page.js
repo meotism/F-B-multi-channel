@@ -18,6 +18,14 @@
 import { formatVND } from '../../utils/formatters.js';
 import { navigate } from '../../utils/navigate.js';
 import { supabase } from '../../services/supabase-client.js';
+import { updateOrderNote, setGuestCount } from '../../services/order-service.js';
+import { onSwipe } from '../../utils/swipe.js';
+import {
+  listActiveDiscounts,
+  applyToOrder,
+  removeFromOrder,
+  calculateDiscount,
+} from '../../services/discount-service.js';
 
 /**
  * Alpine component factory for the order page.
@@ -41,9 +49,23 @@ export function orderPage() {
     savingNote: null,     // orderItemId whose note is currently being saved
     isRequestingPayment: false, // loading state for request/cancel payment buttons
 
-    // --- Cancel order state (S3-11) ---
+    // --- Order-level fields (Task 9.1) ---
+    orderNote: '',        // Order-level note text
+    guestCount: 0,        // Number of guests at the table
+
+    // --- Cart highlight animation (Task 9.2) ---
+    justAdded: null,      // menuItemId that was just added to cart (cleared after 300ms)
+
+    // --- Swipe-to-remove cleanup (Task 9.3) ---
+    _swipeCleanups: [],   // Array of cleanup functions for swipe listeners
+
+    // --- Conflict detection (Task 9.4) ---
+    orderUpdatedAt: null,  // Tracks order.updated_at for conflict detection
+
+    // --- Cancel order state (S3-11 + Task 9.5) ---
     showCancelConfirm: false,
     isCancelling: false,
+    cancelReason: '',      // Cancellation reason text (manager/owner)
 
     // --- Transfer order state (S3-13) ---
     showTransferModal: false,
@@ -56,6 +78,13 @@ export function orderPage() {
     isMerging: false,
     mergeCandidates: [],    // [{ orderId, tableId, tableName, tableLabel }]
     selectedMergeSources: [],
+
+    // --- Discount state (Task 17.2) ---
+    showDiscountModal: false,
+    isLoadingDiscounts: false,
+    availableDiscounts: [],   // Active/valid discounts from discount-service
+    appliedDiscount: null,    // Currently applied discount object
+    discountAmount: 0,        // Calculated discount amount in VND
 
     /**
      * Initialize the component: read route params, load table info, load menu.
@@ -109,12 +138,39 @@ export function orderPage() {
           const order = await Alpine.store('orders').loadOrderByTable(this.tableId);
           if (order) {
             this.mode = 'detail';
+            // Task 9.1: Sync order-level fields from store
+            this.orderNote = Alpine.store('orders').orderNote;
+            this.guestCount = Alpine.store('orders').guestCount;
+            // Task 9.4: Track updated_at for conflict detection
+            this.orderUpdatedAt = order.updated_at || null;
+            // Task 17.2: Sync discount if already applied
+            if (order.discount_id) {
+              try {
+                const outletId = Alpine.store('auth').user?.outlet_id;
+                if (outletId) {
+                  const discounts = await listActiveDiscounts(outletId);
+                  this.appliedDiscount = discounts.find(d => d.id === order.discount_id) || null;
+                  this.recalcDiscount();
+                }
+              } catch (discErr) {
+                console.warn('[orderPage] Failed to load applied discount:', discErr);
+              }
+            }
           }
         } catch (err) {
           console.error('[orderPage] Failed to load existing order:', err);
           Alpine.store('ui').showToast('Không thể tải đơn hàng hiện tại.', 'error');
         }
       }
+    },
+
+    /**
+     * Clean up swipe listeners and other resources when component is destroyed.
+     * Task 9.3: Remove all swipe event listeners to prevent memory leaks.
+     */
+    destroy() {
+      this._swipeCleanups.forEach(cleanup => cleanup());
+      this._swipeCleanups = [];
     },
 
     /**
@@ -148,11 +204,23 @@ export function orderPage() {
     /**
      * Add a menu item to the cart. Delegates to the orders store.
      * Repeated calls for the same item increment its quantity.
+     * Task 9.2: Sets justAdded flag for highlight animation.
      *
      * @param {Object} menuItem - Menu item with { id, name, price }
      */
     addToCart(menuItem) {
+      // Task 11.2: Prevent adding unavailable items
+      if (menuItem.is_available === false) {
+        Alpine.store('ui').showToast('Món này hiện đã hết hàng', 'warning');
+        return;
+      }
       Alpine.store('orders').addToCart(menuItem);
+
+      // Task 9.2: Flash highlight on the cart item row
+      this.justAdded = menuItem.id;
+      setTimeout(() => {
+        this.justAdded = null;
+      }, 300);
     },
 
     /**
@@ -198,6 +266,11 @@ export function orderPage() {
       this.isSubmitting = true;
 
       try {
+        // Task 9.1: Pass guest count to store for order creation
+        if (this.guestCount > 0) {
+          ordersStore.guestCount = this.guestCount;
+        }
+
         await ordersStore.createOrder(this.tableId);
 
         // Show success toast with Vietnamese text
@@ -205,6 +278,11 @@ export function orderPage() {
 
         // Transition to order detail mode (don't navigate away)
         this.mode = 'detail';
+
+        // Task 9.4: Track updated_at for conflict detection
+        if (ordersStore.currentOrder?.updated_at) {
+          this.orderUpdatedAt = ordersStore.currentOrder.updated_at;
+        }
 
         // Close the cart bottom sheet if open (mobile/tablet)
         this.showCart = false;
@@ -267,6 +345,11 @@ export function orderPage() {
      */
     async addItemDirectly(menuItem) {
       if (!this.canModify) return;
+      // Task 11.2: Prevent adding unavailable items
+      if (menuItem.is_available === false) {
+        Alpine.store('ui').showToast('Món này hiện đã hết hàng', 'warning');
+        return;
+      }
 
       try {
         this.isSavingItem = 'adding';
@@ -403,16 +486,153 @@ export function orderPage() {
       }
     },
 
-    // --- Cancel Order (S3-11) ---
+    // --- Task 9.1: Order-level Note and Guest Count ---
+
+    /**
+     * Save the order-level note on blur.
+     * Persists via orderService.updateOrderNote().
+     */
+    async saveOrderNote() {
+      const orderId = Alpine.store('orders').currentOrder?.id;
+      if (!orderId) return;
+
+      try {
+        const updated = await updateOrderNote(orderId, this.orderNote);
+        Alpine.store('orders').orderNote = this.orderNote;
+        if (updated.updated_at) {
+          this.orderUpdatedAt = updated.updated_at;
+        }
+      } catch (err) {
+        console.error('[orderPage] saveOrderNote failed:', err);
+        Alpine.store('ui').showToast(err.message || 'Không thể lưu ghi chú đơn hàng.', 'error');
+      }
+    },
+
+    /**
+     * Save the guest count on blur.
+     * Persists via orderService.setGuestCount().
+     */
+    async saveGuestCount() {
+      const orderId = Alpine.store('orders').currentOrder?.id;
+      if (!orderId) return;
+
+      const count = parseInt(this.guestCount, 10) || 0;
+      if (count < 0) {
+        this.guestCount = 0;
+        return;
+      }
+
+      try {
+        const updated = await setGuestCount(orderId, count);
+        Alpine.store('orders').guestCount = count;
+        if (updated.updated_at) {
+          this.orderUpdatedAt = updated.updated_at;
+        }
+      } catch (err) {
+        console.error('[orderPage] saveGuestCount failed:', err);
+        Alpine.store('ui').showToast(err.message || 'Không thể cập nhật số khách.', 'error');
+      }
+    },
+
+    // --- Task 9.3: Swipe-to-remove on Cart Items ---
+
+    /**
+     * Attach swipe-left handlers to all cart item elements.
+     * Called after the cart renders (via x-effect or after DOM update).
+     * Cleans up previous listeners before reattaching.
+     */
+    attachCartSwipeHandlers() {
+      // Clean up previous listeners
+      this._swipeCleanups.forEach(cleanup => cleanup());
+      this._swipeCleanups = [];
+
+      // Find all cart item elements and attach swipe handlers
+      this.$nextTick(() => {
+        const cartItems = this.$el.querySelectorAll('.order-cart-item[data-cart-index]');
+        cartItems.forEach(el => {
+          const index = parseInt(el.dataset.cartIndex, 10);
+          if (isNaN(index)) return;
+
+          const cleanup = onSwipe(el, {
+            onLeft: () => {
+              // Slide-out animation then remove
+              el.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+              el.style.transform = 'translateX(-100%)';
+              el.style.opacity = '0';
+              setTimeout(() => {
+                Alpine.store('orders').removeFromCart(index);
+              }, 250);
+            },
+          });
+          this._swipeCleanups.push(cleanup);
+        });
+      });
+    },
+
+    // --- Task 9.4: Conflict Detection ---
+
+    /**
+     * Check if a realtime order update indicates a conflict.
+     * Called from the template via x-effect watching $store.orders.currentOrder.
+     * If updated_at differs from our tracked version, show a warning and reload.
+     */
+    checkForConflict() {
+      const order = Alpine.store('orders').currentOrder;
+      if (!order || !this.orderUpdatedAt) return;
+
+      if (order.updated_at && order.updated_at !== this.orderUpdatedAt) {
+        Alpine.store('ui').showToast(
+          'Đơn hàng đã được cập nhật bởi người khác. Đang tải lại...',
+          'warning',
+        );
+        this.orderUpdatedAt = order.updated_at;
+        // Sync local fields from refreshed order
+        this.orderNote = order.note || '';
+        this.guestCount = order.guest_count || 0;
+        // Reload the full order to get fresh items
+        Alpine.store('orders').loadOrder(order.id);
+      }
+    },
+
+    // --- Cancel Order (S3-11 + Task 9.5) ---
     // Design reference: Section 4.3.9
     // Requirements: 5.2 AC-10
 
     /**
+     * Check if the current user can cancel orders.
+     * Task 9.5: Only manager/owner/cashier roles with 'cancel_order' permission.
+     *
+     * @returns {boolean}
+     */
+    get canCancelOrder() {
+      return Alpine.store('auth').hasPermission('cancel_order');
+    },
+
+    /**
+     * Check if the current user is a manager or owner (can provide cancel reason).
+     * Task 9.5: Managers/owners see the reason textarea.
+     *
+     * @returns {boolean}
+     */
+    get isManagerOrOwner() {
+      const role = Alpine.store('auth').user?.role;
+      return role === 'manager' || role === 'owner';
+    },
+
+    /**
      * Cancel the current order via the cancel-order Edge Function.
+     * Task 9.5: Passes cancellation reason for manager/owner roles.
      * Restores inventory, resets table to empty, navigates back to table map.
      */
     async cancelOrder() {
       if (this.isCancelling) return;
+
+      // Task 9.5: Require reason from manager/owner
+      if (this.isManagerOrOwner && !this.cancelReason.trim()) {
+        Alpine.store('ui').showToast('Vui lòng nhập lý do hủy đơn hàng.', 'warning');
+        return;
+      }
+
       this.isCancelling = true;
 
       try {
@@ -423,8 +643,14 @@ export function orderPage() {
           throw new Error('Thiếu thông tin đơn hàng hoặc chi nhánh.');
         }
 
+        const body = { order_id: orderId, outlet_id: outletId };
+        // Task 9.5: Include cancellation reason if provided
+        if (this.cancelReason.trim()) {
+          body.reason = this.cancelReason.trim();
+        }
+
         const { data, error } = await supabase.functions.invoke('cancel-order', {
-          body: { order_id: orderId, outlet_id: outletId },
+          body,
         });
 
         if (error) {
@@ -452,6 +678,7 @@ export function orderPage() {
       } finally {
         this.isCancelling = false;
         this.showCancelConfirm = false;
+        this.cancelReason = '';
       }
     },
 
@@ -648,6 +875,125 @@ export function orderPage() {
       } finally {
         this.isMerging = false;
       }
+    },
+
+    // --- Discount Application (Task 17.2) ---
+    // Design reference: Section 3.10 (Discount System)
+
+    /**
+     * Open the discount picker modal. Loads active/valid discounts for the outlet.
+     * Also syncs the currently applied discount from the order if any.
+     */
+    async openDiscountModal() {
+      this.showDiscountModal = true;
+      this.isLoadingDiscounts = true;
+
+      try {
+        const outletId = Alpine.store('auth').user?.outlet_id;
+        if (!outletId) throw new Error('Thiếu thông tin cửa hàng');
+
+        this.availableDiscounts = await listActiveDiscounts(outletId);
+
+        // Sync applied discount from current order
+        const order = Alpine.store('orders').currentOrder;
+        if (order?.discount_id) {
+          this.appliedDiscount = this.availableDiscounts.find(
+            d => d.id === order.discount_id,
+          ) || null;
+          this.recalcDiscount();
+        }
+      } catch (err) {
+        console.error('[orderPage] openDiscountModal failed:', err);
+        Alpine.store('ui').showToast(
+          err.message || 'Không thể tải danh sách khuyến mãi.',
+          'error',
+        );
+      } finally {
+        this.isLoadingDiscounts = false;
+      }
+    },
+
+    /**
+     * Apply a discount to the current order.
+     * Updates the order's discount_id in the database, recalculates
+     * the discount amount, and stores the discount info locally.
+     *
+     * @param {Object} discount - Discount object from availableDiscounts
+     */
+    async selectDiscount(discount) {
+      const orderId = Alpine.store('orders').currentOrder?.id;
+      if (!orderId) return;
+
+      try {
+        await applyToOrder(orderId, discount.id);
+        this.appliedDiscount = discount;
+        Alpine.store('orders').currentOrder.discount_id = discount.id;
+        this.recalcDiscount();
+        this.showDiscountModal = false;
+        Alpine.store('ui').showToast('Đã áp dụng khuyến mãi: ' + discount.name, 'success');
+      } catch (err) {
+        console.error('[orderPage] selectDiscount failed:', err);
+        Alpine.store('ui').showToast(
+          err.message || 'Không thể áp dụng khuyến mãi.',
+          'error',
+        );
+      }
+    },
+
+    /**
+     * Remove the applied discount from the current order.
+     */
+    async clearDiscount() {
+      const orderId = Alpine.store('orders').currentOrder?.id;
+      if (!orderId) return;
+
+      try {
+        await removeFromOrder(orderId);
+        this.appliedDiscount = null;
+        this.discountAmount = 0;
+        Alpine.store('orders').currentOrder.discount_id = null;
+        Alpine.store('ui').showToast('Đã xóa khuyến mãi', 'success');
+      } catch (err) {
+        console.error('[orderPage] clearDiscount failed:', err);
+        Alpine.store('ui').showToast(
+          err.message || 'Không thể xóa khuyến mãi.',
+          'error',
+        );
+      }
+    },
+
+    /**
+     * Recalculate the discount amount based on the current order subtotal
+     * and the applied discount. Called after applying/removing a discount
+     * and when items change.
+     */
+    recalcDiscount() {
+      if (!this.appliedDiscount) {
+        this.discountAmount = 0;
+        return;
+      }
+      const subtotal = Alpine.store('orders').orderTotal;
+      this.discountAmount = calculateDiscount(subtotal, this.appliedDiscount);
+    },
+
+    /**
+     * Format a discount description for display.
+     * @param {Object} discount - Discount object with type and value
+     * @returns {string} e.g., "10%" or "50.000đ"
+     */
+    formatDiscountValue(discount) {
+      if (!discount) return '';
+      if (discount.type === 'percent') return discount.value + '%';
+      return formatVND(discount.value) + 'đ';
+    },
+
+    /**
+     * Get the final total after discount.
+     * @returns {number} Order total minus discount amount
+     */
+    get finalTotal() {
+      const subtotal = Alpine.store('orders').orderTotal;
+      return Math.max(0, subtotal - this.discountAmount);
     },
   };
 }

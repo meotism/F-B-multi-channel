@@ -12,6 +12,7 @@ import {
   updateMenuItem,
   deleteMenuItem,
   listCategories,
+  bulkUpdateActive,
 } from '../../services/menu-service.js';
 import { formatVND } from '../../utils/formatters.js';
 import { navigate } from '../../utils/navigate.js';
@@ -34,6 +35,10 @@ export function menuPage() {
 
     // Loading state
     isLoading: true,
+
+    // Task 11.1: Selection mode state
+    selectionMode: false,
+    selectedItems: [], // Array of selected item IDs (not Set, for Alpine reactivity)
 
     // Delete confirmation modal state
     showDeleteModal: false,
@@ -210,6 +215,92 @@ export function menuPage() {
      */
     selectCategory(categoryId) {
       this.selectedCategory = categoryId;
+    },
+
+    // --- Task 11.1: Selection Mode Methods ---
+
+    /**
+     * Toggle selection mode on/off.
+     */
+    toggleSelectionMode() {
+      this.selectionMode = !this.selectionMode;
+      if (!this.selectionMode) {
+        this.selectedItems = [];
+      }
+    },
+
+    /**
+     * Toggle an item in/out of the selection.
+     * @param {string} itemId - Menu item UUID
+     */
+    toggleItemSelection(itemId) {
+      const idx = this.selectedItems.indexOf(itemId);
+      if (idx >= 0) {
+        this.selectedItems.splice(idx, 1);
+      } else {
+        this.selectedItems.push(itemId);
+      }
+    },
+
+    /**
+     * Check if an item is selected.
+     * @param {string} itemId - Menu item UUID
+     * @returns {boolean}
+     */
+    isSelected(itemId) {
+      return this.selectedItems.includes(itemId);
+    },
+
+    /**
+     * Bulk activate all selected items.
+     */
+    async bulkActivate() {
+      if (this.selectedItems.length === 0) return;
+      this.isSaving = true;
+
+      try {
+        await bulkUpdateActive(this.selectedItems, true);
+        Alpine.store('ui').showToast(
+          `Đã kích hoạt ${this.selectedItems.length} món ăn`,
+          'success',
+        );
+        this.selectedItems = [];
+        this.selectionMode = false;
+        await this.loadData();
+      } catch (err) {
+        Alpine.store('ui').showToast(
+          err.message || 'Không thể cập nhật trạng thái',
+          'error',
+        );
+      } finally {
+        this.isSaving = false;
+      }
+    },
+
+    /**
+     * Bulk deactivate all selected items.
+     */
+    async bulkDeactivate() {
+      if (this.selectedItems.length === 0) return;
+      this.isSaving = true;
+
+      try {
+        await bulkUpdateActive(this.selectedItems, false);
+        Alpine.store('ui').showToast(
+          `Đã ẩn ${this.selectedItems.length} món ăn`,
+          'success',
+        );
+        this.selectedItems = [];
+        this.selectionMode = false;
+        await this.loadData();
+      } catch (err) {
+        Alpine.store('ui').showToast(
+          err.message || 'Không thể cập nhật trạng thái',
+          'error',
+        );
+      } finally {
+        this.isSaving = false;
+      }
     },
   };
 }

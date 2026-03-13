@@ -1,0 +1,122 @@
+<!-- Discounts management page -->
+<div x-data="discountsPage()" x-init="init()">
+
+  <!-- Header with create button -->
+  <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-4);">
+    <h2 style="font-size:var(--font-size-lg);font-weight:700;">Khuyến mãi</h2>
+    <button class="btn btn--primary btn--sm" @click="openCreateModal()">+ Tạo mới</button>
+  </div>
+
+  <!-- Loading skeleton -->
+  <template x-if="isLoading">
+    <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+      <div class="skeleton" style="height:60px;border-radius:var(--radius-md);"></div>
+      <div class="skeleton" style="height:60px;border-radius:var(--radius-md);"></div>
+      <div class="skeleton" style="height:60px;border-radius:var(--radius-md);"></div>
+    </div>
+  </template>
+
+  <!-- Empty state -->
+  <template x-if="!isLoading && discounts.length === 0">
+    <div style="text-align:center;padding:var(--space-8);color:var(--color-text-secondary);">
+      <p>Chưa có khuyến mãi nào.</p>
+    </div>
+  </template>
+
+  <!-- Discount list -->
+  <template x-if="!isLoading && discounts.length > 0">
+    <div class="data-table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Tên</th>
+            <th>Loại</th>
+            <th>Giá trị</th>
+            <th>Phạm vi</th>
+            <th>Trạng thái</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="d in discounts" :key="d.id">
+            <tr>
+              <td x-text="d.name"></td>
+              <td x-text="d.type === 'percent' ? 'Phần trăm' : 'Cố định'"></td>
+              <td x-text="d.type === 'percent' ? d.value + '%' : formatVND(d.value)"></td>
+              <td x-text="d.scope === 'order' ? 'Đơn hàng' : 'Món'"></td>
+              <td>
+                <span class="badge" :class="d.is_active ? 'badge--success' : 'badge--secondary'"
+                      x-text="d.is_active ? 'Đang hoạt động' : 'Tắt'"></span>
+              </td>
+              <td style="display:flex;gap:var(--space-2);">
+                <button class="btn btn--outline btn--sm" @click="openEditModal(d)">Sửa</button>
+                <button class="btn btn--outline btn--sm btn--danger" @click="confirmDelete(d)">Xóa</button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </template>
+
+  <!-- Create/Edit Modal -->
+  <template x-if="showModal">
+    <div class="modal-backdrop" x-transition.opacity @click.self="closeModal()">
+      <div class="modal-content" x-transition style="max-width:480px;">
+        <h3 class="modal-content__title" x-text="editingDiscount ? 'Sửa khuyến mãi' : 'Tạo khuyến mãi'"></h3>
+
+        <form @submit.prevent="saveDiscount()" style="display:flex;flex-direction:column;gap:var(--space-3);">
+          <div>
+            <label class="label">Tên</label>
+            <input type="text" class="input" x-model="form.name" required>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);">
+            <div>
+              <label class="label">Loại</label>
+              <select class="input" x-model="form.type">
+                <option value="percent">Phần trăm (%)</option>
+                <option value="fixed">Cố định (VND)</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Giá trị</label>
+              <input type="number" class="input" x-model.number="form.value" min="0" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="label">Phạm vi</label>
+            <select class="input" x-model="form.scope">
+              <option value="order">Đơn hàng</option>
+              <option value="item">Món</option>
+            </select>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);">
+            <div>
+              <label class="label">Từ ngày</label>
+              <input type="datetime-local" class="input" x-model="form.valid_from">
+            </div>
+            <div>
+              <label class="label">Đến ngày</label>
+              <input type="datetime-local" class="input" x-model="form.valid_to">
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:var(--space-2);">
+            <input type="checkbox" id="discount-active" x-model="form.is_active">
+            <label for="discount-active">Đang hoạt động</label>
+          </div>
+
+          <div class="modal-content__actions">
+            <button type="button" class="btn btn--outline" @click="closeModal()">Hủy</button>
+            <button type="submit" class="btn btn--primary" :disabled="isSaving">
+              <span x-text="isSaving ? 'Đang lưu...' : 'Lưu'"></span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </template>
+</div>

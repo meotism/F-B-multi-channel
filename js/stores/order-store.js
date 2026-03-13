@@ -41,6 +41,8 @@ export function orderStore() {
     selectedCategory: null,    // UUID of selected category filter (null = all)
     cart: [],                  // Pre-confirmation staging area
                                // [{ menuItemId, name, price, qty, note }]
+    orderNote: '',             // Order-level note text
+    guestCount: 0,             // Number of guests at the table
     isLoading: false,
     error: null,
 
@@ -224,7 +226,11 @@ export function orderStore() {
         throw new Error('Bàn này đã có đơn hàng. Vui lòng làm mới trang.');
       }
 
-      const result = await createOrderService(tableId, outletId, userId, this.cart);
+      const options = {};
+      if (this.guestCount > 0) {
+        options.guestCount = this.guestCount;
+      }
+      const result = await createOrderService(tableId, outletId, userId, this.cart, options);
 
       // Update store state with the created order
       this.currentOrder = result.order;
@@ -298,6 +304,8 @@ export function orderStore() {
       try {
         const data = await loadOrderService(orderId);
         this.currentOrder = data;
+        this.orderNote = data.note || '';
+        this.guestCount = data.guest_count || 0;
 
         // Flatten order_items: attach the menu item name for display
         this.orderItems = (data.order_items || []).map(item => ({
@@ -335,10 +343,14 @@ export function orderStore() {
         if (!data) {
           this.currentOrder = null;
           this.orderItems = [];
+          this.orderNote = '';
+          this.guestCount = 0;
           return null;
         }
 
         this.currentOrder = data;
+        this.orderNote = data.note || '';
+        this.guestCount = data.guest_count || 0;
 
         // Flatten order_items: attach the menu item name for display
         this.orderItems = (data.order_items || []).map(item => ({

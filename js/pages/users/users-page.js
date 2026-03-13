@@ -4,7 +4,7 @@
 // Manages user list display, create/edit/delete modals, form validation,
 // and CRUD operations via user-service.js.
 
-import { listUsers, createUser, updateUser, deleteUser } from '../../services/user-service.js';
+import { listUsers, createUser, updateUser, deleteUser, deactivateUser, reactivateUser, resetPassword } from '../../services/user-service.js';
 import { formatDate } from '../../utils/formatters.js';
 
 /** Roles that can be assigned to new users (owner is excluded) */
@@ -44,6 +44,12 @@ export function usersPage() {
     // Delete modal state
     showDeleteModal: false,
     deleteUserTarget: null,
+
+    // Task 14.1: Reset password modal state
+    showResetPasswordModal: false,
+    resetPasswordTarget: null,
+    resetNewPassword: '',
+    resetPasswordError: '',
 
     // Shared form state (used by both create and edit modals)
     formName: '',
@@ -306,6 +312,105 @@ export function usersPage() {
       } finally {
         this.isSaving = false;
       }
+    },
+
+    // --- Task 14.1: Toggle active/inactive ---
+
+    /**
+     * Toggle a user's active status.
+     * Uses optimistic update with rollback on failure.
+     * @param {Object} user - The user object to toggle
+     */
+    async toggleUserActive(user) {
+      const currentUserId = Alpine.store('auth').user?.id;
+      if (user.id === currentUserId) {
+        Alpine.store('ui').showToast('Bạn không thể vô hiệu hóa chính mình', 'error');
+        return;
+      }
+
+      const wasActive = user.is_active;
+      // Optimistic update
+      user.is_active = !wasActive;
+
+      try {
+        if (wasActive) {
+          await deactivateUser(user.id);
+          Alpine.store('ui').showToast('Đã vô hiệu hóa người dùng', 'success');
+        } else {
+          await reactivateUser(user.id);
+          Alpine.store('ui').showToast('Đã kích hoạt lại người dùng', 'success');
+        }
+      } catch (err) {
+        // Revert on failure
+        user.is_active = wasActive;
+        Alpine.store('ui').showToast(
+          err.message || 'Không thể cập nhật trạng thái người dùng',
+          'error',
+        );
+      }
+    },
+
+    // --- Task 14.1: Reset Password ---
+
+    /**
+     * Open the reset password modal for a user.
+     * @param {Object} user - The user object
+     */
+    openResetPasswordModal(user) {
+      this.resetPasswordTarget = user;
+      this.resetNewPassword = '';
+      this.resetPasswordError = '';
+      this.showResetPasswordModal = true;
+    },
+
+    /**
+     * Close the reset password modal.
+     */
+    closeResetPasswordModal() {
+      this.showResetPasswordModal = false;
+      this.resetPasswordTarget = null;
+      this.resetNewPassword = '';
+      this.resetPasswordError = '';
+    },
+
+    /**
+     * Submit the password reset.
+     */
+    async submitResetPassword() {
+      this.resetPasswordError = '';
+
+      if (!this.resetNewPassword) {
+        this.resetPasswordError = 'Mật khẩu không được để trống';
+        return;
+      }
+      if (this.resetNewPassword.length < 8) {
+        this.resetPasswordError = 'Mật khẩu phải có ít nhất 8 ký tự';
+        return;
+      }
+
+      if (!this.resetPasswordTarget) return;
+
+      this.isSaving = true;
+
+      try {
+        await resetPassword(this.resetPasswordTarget.id, this.resetNewPassword);
+        Alpine.store('ui').showToast('Đặt lại mật khẩu thành công', 'success');
+        this.closeResetPasswordModal();
+      } catch (err) {
+        this.resetPasswordError = err.message || 'Không thể đặt lại mật khẩu';
+      } finally {
+        this.isSaving = false;
+      }
+    },
+
+    /**
+     * Format the last login timestamp.
+     * @param {string|null} dateStr - ISO date string or null
+     * @returns {string}
+     */
+    formatLastLogin(dateStr) {
+      if (!dateStr) return 'Chưa đăng nhập';
+      return formatDate(dateStr, 'long');
     },
   };
 }

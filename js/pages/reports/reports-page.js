@@ -11,6 +11,7 @@
 // Requirements: 12 (Reports Dashboard)
 
 import { listCategories } from '../../services/menu-service.js';
+import { getRevenueByPaymentMethod, getRevenueByCategory, getPeakHours } from '../../services/report-service.js';
 import { formatVND } from '../../utils/formatters.js';
 
 /**
@@ -26,6 +27,17 @@ export function reportsPage() {
     revenueChart: null,       // Chart.js instance for revenue bar chart
     topItemsChart: null,      // Chart.js instance for top items chart
     topItemsTab: 'qty',       // 'qty' | 'revenue' — which top items tab is active
+
+    // Task 13.1: Report type tabs
+    activeReportTab: 'overview', // 'overview' | 'by_payment' | 'by_category' | 'peak_hours'
+    paymentMethodData: [],       // Revenue by payment method
+    categoryRevenueData: [],     // Revenue by category
+    peakHoursData: [],           // Peak hours heatmap data
+    isLoadingTab: false,         // Loading state for tab-specific data
+
+    // Task 13.2: Peak hours heatmap state
+    peakHoursGrid: [],           // 7x24 grid for heatmap
+    peakHoursMaxCount: 0,        // Max count for opacity calculation
 
     // --- Lifecycle ---
 
@@ -99,16 +111,132 @@ export function reportsPage() {
       this.$nextTick(() => this.renderTopItemsChart());
     },
 
-    // --- Chart Rendering ---
+    // --- Task 13.1: Report Tab Methods ---
+
+    /**
+     * Switch the active report tab and load data for the selected tab.
+     * @param {string} tab - 'overview' | 'by_payment' | 'by_category' | 'peak_hours'
+     */
+    async switchReportTab(tab) {
+      this.activeReportTab = tab;
+
+      if (tab === 'overview') return; // Overview data is already loaded via fetchReport
+
+      this.isLoadingTab = true;
+
+      try {
+        const outletId = Alpine.store('auth').user?.outlet_id;
+        const store = Alpine.store('reports');
+        const from = store.dateFrom;
+        const to = store.dateTo;
+
+        if (!outletId) {
+          throw new Error('Không tìm thấy thông tin cửa hàng');
+        }
+
+        if (tab === 'by_payment') {
+          this.paymentMethodData = await getRevenueByPaymentMethod(outletId, from, to);
+        } else if (tab === 'by_category') {
+          this.categoryRevenueData = await getRevenueByCategory(outletId, from, to);
+        } else if (tab === 'peak_hours') {
+          const rawData = await getPeakHours(outletId, from, to);
+          this.peakHoursData = rawData;
+          this.buildPeakHoursGrid(rawData);
+        }
+      } catch (err) {
+        console.error(`[reportsPage] Failed to load ${tab} data:`, err);
+        Alpine.store('ui').showToast(err.message || 'Không thể tải dữ liệu báo cáo', 'error');
+      } finally {
+        this.isLoadingTab = false;
+      }
+    },
+
+    /**
+     * Task 13.2: Build the 7x24 peak hours grid from raw data.
+     * Each cell: { dayOfWeek, hour, count, revenue, opacity }
+     * @param {Array} rawData - Peak hours data from the RPC
+     */
+    buildPeakHoursGrid(rawData) {
+      // Initialize 7 days x 24 hours grid
+      const grid = [];
+      let maxCount = 0;
+
+      for (let day = 0; day < 7; day++) {
+        const row = [];
+        for (let hour = 0; hour < 24; hour++) {
+          row.push({ dayOfWeek: day, hour, count: 0, revenue: 0, opacity: 0 });
+        }
+        grid.push(row);
+      }
+
+      // Fill in data from the raw results
+      (rawData || []).forEach(item => {
+        const day = Number(item.day_of_week || item.dow || 0);
+        const hour = Number(item.hour || 0);
+        const count = Number(item.order_count || item.bill_count || 0);
+        const revenue = Number(item.total_revenue || 0);
+
+        if (day >= 0 && day < 7 && hour >= 0 && hour < 24) {
+          grid[day][hour].count = count;
+          grid[day][hour].revenue = revenue;
+          if (count > maxCount) maxCount = count;
+        }
+      });
+
+      // Calculate opacity based on max count
+      if (maxCount > 0) {
+        for (let day = 0; day < 7; day++) {
+          for (let hour = 0; hour < 24; hour++) {
+            grid[day][hour].opacity = grid[day][hour].count / maxCount;
+          }
+        }
+      }
+
+      this.peakHoursGrid = grid;
+      this.peakHoursMaxCount = maxCount;
+    },
+
+    /**
+     * Get Vietnamese day name.
+     * @param {number} dayIndex - 0-6 (0 = Sunday)
+     * @returns {string}
+     */
+    getDayName(dayIndex) {
+      const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+      return days[dayIndex] || '';
+    },
+
+    /**
+     * Format Vietnamese payment method name for reports.
+     * @param {string} method - Payment method code
+     * @returns {string}
+     */
+    formatPaymentMethodReport(method) {
+      const map = { cash: 'Tiền mặt', card: 'Thẻ', transfer: 'Chuyển khoản' };
+      return map[method] || method;
+    },
+
+    // --- Chart Rendering (Task 23.1: Improved Chart.js rendering) ---
+
+    /**
+     * Extract a CSS variable value from the document root.
+     * @param {string} varName - CSS variable name (e.g., '--color-primary')
+     * @returns {string} The resolved value
+     */
+    getCSSVar(varName) {
+      return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    },
 
     /**
      * Render or update the revenue bar chart.
-     * Destroys the previous instance before creating a new one.
+     * Task 23.1: Uses CSS theme colors, Vietnamese axis labels,
+     * formatVND tooltips, responsive + no maintainAspectRatio,
+     * and destroys/recreates on data refresh.
      *
      * @param {Object|null} data - Chart data { labels, datasets }
      */
     renderRevenueChart(data) {
-      // Destroy existing chart
+      // Destroy existing chart to prevent canvas reuse errors
       if (this.revenueChart) {
         this.revenueChart.destroy();
         this.revenueChart = null;
@@ -124,6 +252,21 @@ export function reportsPage() {
 
       const canvas = this.$refs.revenueCanvas;
       if (!canvas) return;
+
+      // Task 23.1: Extract theme colors from CSS variables
+      const primaryColor = this.getCSSVar('--color-primary') || '#2563eb';
+      const textColor = this.getCSSVar('--color-text') || '#1e293b';
+      const textSecondaryColor = this.getCSSVar('--color-text-secondary') || '#64748b';
+      const borderColor = this.getCSSVar('--color-border') || '#e2e8f0';
+
+      // Apply theme color to dataset if not already set
+      if (data.datasets && data.datasets.length > 0) {
+        data.datasets.forEach(ds => {
+          if (!ds.backgroundColor) ds.backgroundColor = primaryColor + 'b3'; // 70% opacity
+          if (!ds.borderColor) ds.borderColor = primaryColor;
+          if (ds.borderWidth == null) ds.borderWidth = 1;
+        });
+      }
 
       this.revenueChart = new Chart(canvas, {
         type: 'bar',
@@ -142,12 +285,31 @@ export function reportsPage() {
           scales: {
             y: {
               beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Doanh thu (VND)',
+                color: textSecondaryColor,
+                font: { size: 12 },
+              },
               ticks: {
                 callback: (value) => formatVND(value),
+                color: textSecondaryColor,
+              },
+              grid: {
+                color: borderColor,
               },
             },
             x: {
+              title: {
+                display: true,
+                text: 'Thời gian',
+                color: textSecondaryColor,
+                font: { size: 12 },
+              },
               grid: { display: false },
+              ticks: {
+                color: textColor,
+              },
             },
           },
         },
@@ -156,10 +318,11 @@ export function reportsPage() {
 
     /**
      * Render or update the top items horizontal bar chart.
-     * Destroys the previous instance before creating a new one.
+     * Task 23.1: Uses CSS theme colors, Vietnamese labels,
+     * formatVND tooltips, and destroys/recreates on refresh.
      */
     renderTopItemsChart() {
-      // Destroy existing chart
+      // Destroy existing chart to prevent canvas reuse errors
       if (this.topItemsChart) {
         this.topItemsChart.destroy();
         this.topItemsChart = null;
@@ -185,19 +348,24 @@ export function reportsPage() {
       const labels = items.map(i => i.item_name || '');
       const values = items.map(i => isRevenue ? (i.total_revenue || 0) : (i.total_qty || 0));
 
+      // Task 23.1: Extract theme colors from CSS variables
+      const primaryColor = this.getCSSVar('--color-primary') || '#2563eb';
+      const successColor = this.getCSSVar('--color-success') || '#16a34a';
+      const textColor = this.getCSSVar('--color-text') || '#1e293b';
+      const textSecondaryColor = this.getCSSVar('--color-text-secondary') || '#64748b';
+      const borderColorCSS = this.getCSSVar('--color-border') || '#e2e8f0';
+
+      const barColor = isRevenue ? successColor : primaryColor;
+
       this.topItemsChart = new Chart(canvas, {
         type: 'bar',
         data: {
           labels: labels,
           datasets: [{
-            label: isRevenue ? 'Doanh thu' : 'So luong',
+            label: isRevenue ? 'Doanh thu' : 'Số lượng',
             data: values,
-            backgroundColor: isRevenue
-              ? 'rgba(22, 163, 74, 0.7)'
-              : 'rgba(37, 99, 235, 0.7)',
-            borderColor: isRevenue
-              ? 'rgba(22, 163, 74, 1)'
-              : 'rgba(37, 99, 235, 1)',
+            backgroundColor: barColor + 'b3',
+            borderColor: barColor,
             borderWidth: 1,
           }],
         },
@@ -211,19 +379,38 @@ export function reportsPage() {
               callbacks: {
                 label: (ctx) => isRevenue
                   ? formatVND(ctx.raw) + ' VND'
-                  : ctx.raw.toString(),
+                  : ctx.raw + ' phần',
               },
             },
           },
           scales: {
             x: {
               beginAtZero: true,
+              title: {
+                display: true,
+                text: isRevenue ? 'Doanh thu (VND)' : 'Số lượng bán',
+                color: textSecondaryColor,
+                font: { size: 12 },
+              },
               ticks: {
                 callback: (value) => isRevenue ? formatVND(value) : value,
+                color: textSecondaryColor,
+              },
+              grid: {
+                color: borderColorCSS,
               },
             },
             y: {
+              title: {
+                display: true,
+                text: 'Món ăn',
+                color: textSecondaryColor,
+                font: { size: 12 },
+              },
               grid: { display: false },
+              ticks: {
+                color: textColor,
+              },
             },
           },
         },

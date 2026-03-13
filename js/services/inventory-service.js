@@ -9,6 +9,7 @@
 
 import { supabase } from './supabase-client.js';
 import { cachedSupabase } from './cached-query.js';
+import { assertOutlet } from '../utils/outlet-guard.js';
 
 // ---------------------------------------------------------------------------
 // Ingredients CRUD
@@ -184,4 +185,129 @@ export async function updateInventory(id, newQty) {
 
   cachedSupabase.invalidate('inventory');
   return data;
+}
+
+// ---------------------------------------------------------------------------
+// Low Stock Alerts
+// ---------------------------------------------------------------------------
+
+/**
+ * Get inventory items where qty_on_hand is at or below the reorder threshold.
+ * Returns items joined with ingredient name and unit, ordered by qty_on_hand
+ * ascending so the most critical shortages appear first.
+ *
+ * @param {string} outletId - The outlet UUID
+ * @returns {Promise<Array>} Array of low-stock inventory objects with nested ingredients data
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function getLowStockItems(outletId) {
+  // The inventory table stores a `threshold` column used as the reorder level.
+  // We use the filter: qty_on_hand <= threshold  (via Supabase column comparison).
+  const { data, error } = await cachedSupabase
+    .from('inventory')
+    .select('*, ingredients(name, unit)')
+    .eq('outlet_id', outletId)
+    .filter('qty_on_hand', 'lte', 'threshold')
+    .order('qty_on_hand', { ascending: true });
+
+  if (error) {
+    throw new Error('Không thể tải danh sách tồn kho thấp: ' + error.message);
+  }
+
+  return data || [];
+}
+
+// ---------------------------------------------------------------------------
+// Stock In (Receiving)
+// ---------------------------------------------------------------------------
+
+/**
+ * Record an inbound stock receipt: increment the inventory qty_on_hand and
+ * insert a stock_movements record with type = 'in'.
+ *
+ * Both operations must succeed; if the movement insert fails the inventory
+ * update is NOT rolled back (Supabase JS client has no multi-table
+ * transaction), but the error is surfaced so the caller can handle it.
+ *
+ * @param {string} inventoryId - The inventory record UUID to update
+ * @param {number} qty - Positive quantity to add
+ * @param {string} supplierNote - Free-text note (e.g. supplier name / PO ref)
+ * @param {string} userId - The user UUID performing the action
+ * @param {string} outletId - The outlet UUID (used for outlet guard & movement record)
+ * @returns {Promise<Object>} The updated inventory record
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function recordStockIn(inventoryId, qty, supplierNote, userId, outletId) {
+  assertOutlet(outletId);
+
+  // 1. Fetch current inventory record to get qty_on_hand and ingredient_id
+  const { data: current, error: fetchError } = await supabase
+    .from('inventory')
+    .select('qty_on_hand, ingredient_id')
+    .eq('id', inventoryId)
+    .single();
+
+  if (fetchError) {
+    throw new Error('Không thể đọc bản ghi tồn kho: ' + fetchError.message);
+  }
+
+  // 2. Update qty_on_hand (increment)
+  const newQty = current.qty_on_hand + qty;
+  const { data: updated, error: updateError } = await supabase
+    .from('inventory')
+    .update({ qty_on_hand: newQty })
+    .eq('id', inventoryId)
+    .select()
+    .single();
+
+  if (updateError) {
+    throw new Error('Không thể cập nhật số lượng tồn kho: ' + updateError.message);
+  }
+
+  // 3. Insert stock_movements record
+  const { error: movementError } = await supabase
+    .from('stock_movements')
+    .insert({
+      outlet_id: outletId,
+      ingredient_id: current.ingredient_id,
+      qty,
+      type: 'in',
+      note: supplierNote,
+      user_id: userId,
+    });
+
+  if (movementError) {
+    throw new Error('Không thể ghi nhận phiếu nhập kho: ' + movementError.message);
+  }
+
+  cachedSupabase.invalidate('inventory');
+  return updated;
+}
+
+// ---------------------------------------------------------------------------
+// Stock Movement History
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch recent stock movements for a given ingredient, ordered by most recent
+ * first.
+ *
+ * @param {string} ingredientId - The ingredient UUID
+ * @param {number} [limit=20] - Maximum number of records to return
+ * @returns {Promise<Array>} Array of stock_movements records
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function getStockMovements(ingredientId, limit = 20) {
+  const { data, error } = await cachedSupabase
+    .from('stock_movements')
+    .select('*')
+    .eq('ingredient_id', ingredientId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error('Không thể tải lịch sử xuất nhập kho: ' + error.message);
+  }
+
+  return data || [];
 }

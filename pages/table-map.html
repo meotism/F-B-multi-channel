@@ -91,8 +91,17 @@
        class="map-container"
        :class="{ 'map-container--edit': isEditMode }">
 
+    <!-- Task 19.1: Skeleton loading grid shown while tables are loading -->
+    <div x-show="$store.tableMap.isLoading" x-cloak
+         style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: var(--space-3); padding: var(--space-6); width: 100%;">
+      <template x-for="i in 12" :key="i">
+        <div class="skeleton skeleton--rect"
+             style="height: 80px; border-radius: var(--radius-md);"></div>
+      </template>
+    </div>
+
     <!-- Empty state when no tables exist -->
-    <div x-show="tables.length === 0"
+    <div x-show="!$store.tableMap.isLoading && tables.length === 0"
          x-cloak
          class="map-empty-state">
       <!-- Grid/map icon -->
@@ -107,7 +116,9 @@
       <p>Chưa có bàn nào trên sơ đồ</p>
     </div>
 
-    <!-- Table nodes rendered from store data -->
+    <!-- Table nodes rendered from store data (hidden while loading) -->
+    <template x-if="!$store.tableMap.isLoading">
+    <div>
     <template x-for="table in tables" :key="table.id">
       <div class="table-node"
            :class="[
@@ -118,9 +129,19 @@
            :style="`left: ${table.x}%; top: ${table.y}%; transform: rotate(${table.rotation || 0}deg);`"
            :data-table-id="table.id"
            :data-capacity="table.capacity"
+           :data-status="table.status"
            @click="handleTableClick(table)"
+           @contextmenu="showContextMenu($event, table)"
+           @touchstart="startLongPress($event, table)"
+           @touchend="cancelLongPress()"
+           @touchmove="cancelLongPress()"
            @pointerdown="isEditMode && startDrag($event, table)"
            @dragstart.prevent>
+
+        <!-- Color-blind status icon (Task 8.3) -->
+        <span class="table-node__status-icon" aria-hidden="true"
+              x-text="{'empty':'\u2713','serving':'\u23F1','awaiting_payment':'\uD83D\uDD14','paid':'\uD83D\uDCB5'}[table.status] || ''"></span>
+
         <!-- Table name: double-click to inline rename in edit mode -->
         <span class="table-node__name"
               x-show="!(isEditMode && inlineRenameTableId === table.id)"
@@ -144,7 +165,19 @@
               x-text="getElapsedTime(table.activeOrderStartedAt)"
               x-cloak>
         </span>
+
+        <!-- Guest count + order total overlay (Task 8.2) -->
+        <div class="table-node__info"
+             x-show="table.status === 'serving' || table.status === 'awaiting_payment'"
+             x-cloak>
+          <span x-show="table.guest_count > 0"
+                x-text="table.guest_count + ' kh\u00E1ch'"></span>
+          <span x-show="table.order_total > 0"
+                x-text="formatVND(table.order_total) + '\u0111'"></span>
+        </div>
       </div>
+    </template>
+    </div>
     </template>
   </div>
 
@@ -393,6 +426,166 @@
       <div class="modal-content__footer">
         <button class="btn btn--outline" @click="closeDeleteModal()">Hủy</button>
         <button class="btn btn--danger" @click="submitDeleteTable()">Xóa bàn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Context Menu (Task 8.1)
+       Positioned absolutely at mouse/touch coordinates.
+       Menu items change based on table status.
+       ================================================================ -->
+  <div x-show="contextMenu.show"
+       x-cloak
+       class="context-menu"
+       :style="`left: ${contextMenu.x}px; top: ${contextMenu.y}px;`"
+       @click.stop>
+
+    <!-- empty status -->
+    <template x-if="contextMenu.table?.status === 'empty'">
+      <button class="context-menu__item"
+              @click="handleContextAction('create-order', contextMenu.table)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>T&#7841;o order</span>
+      </button>
+    </template>
+
+    <!-- serving status -->
+    <template x-if="contextMenu.table?.status === 'serving'">
+      <div>
+        <button class="context-menu__item"
+                @click="handleContextAction('view-order', contextMenu.table)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span>Xem order</span>
+        </button>
+        <div class="context-menu__divider"></div>
+        <button class="context-menu__item"
+                @click="handleContextAction('transfer-table', contextMenu.table)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <path d="M21 3l-7 7"></path>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <path d="M3 21l7-7"></path>
+          </svg>
+          <span>Chuy&#7875;n b&#224;n</span>
+        </button>
+        <button class="context-menu__item"
+                @click="handleContextAction('merge-table', contextMenu.table)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="8" y="14" width="8" height="7"></rect>
+          </svg>
+          <span>G&#7897;p b&#224;n</span>
+        </button>
+      </div>
+    </template>
+
+    <!-- awaiting_payment status -->
+    <template x-if="contextMenu.table?.status === 'awaiting_payment'">
+      <div>
+        <button class="context-menu__item"
+                @click="handleContextAction('pay', contextMenu.table)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23"></line>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
+          <span>Thanh to&#225;n</span>
+        </button>
+        <div class="context-menu__divider"></div>
+        <button class="context-menu__item context-menu__item--danger"
+                @click="handleContextAction('cancel-payment', contextMenu.table)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          <span>H&#7911;y y&#234;u c&#7847;u</span>
+        </button>
+      </div>
+    </template>
+
+    <!-- paid status -->
+    <template x-if="contextMenu.table?.status === 'paid'">
+      <button class="context-menu__item"
+              @click="handleContextAction('reset', contextMenu.table)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="1 4 1 10 7 10"></polyline>
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+        </svg>
+        <span>Reset b&#224;n</span>
+      </button>
+    </template>
+  </div>
+
+  <!-- ================================================================
+       Task 18.1: Transfer Table Modal with Mini Table Map
+       ================================================================ -->
+  <div class="modal-backdrop" x-show="showTransferTableModal" x-cloak
+       @click.self="showTransferTableModal = false; transferSourceTable = null;">
+    <div class="modal-content" style="max-width: 600px;">
+      <h3 class="modal-content__title">Chuyển bàn</h3>
+      <p style="margin-bottom: var(--space-3); font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+        Chọn bàn trống để chuyển đơn hàng từ
+        <strong x-text="transferSourceTable?.name || ''"></strong>:
+      </p>
+
+      <!-- Mini table grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: var(--space-2); max-height: 350px; overflow-y: auto; padding: var(--space-2);">
+        <template x-for="t in $store.tableMap.tables" :key="t.id">
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: var(--space-2); border-radius: var(--radius-md); text-align: center; min-height: 64px; font-size: var(--font-size-xs); transition: all 0.15s; position: relative;"
+               :style="t.id === transferSourceTable?.id
+                 ? 'background: var(--color-primary); color: white; border: 2px solid var(--color-primary); cursor: default; box-shadow: 0 0 0 3px rgba(37,99,235,0.3);'
+                 : t.status === 'empty'
+                   ? (transferTargetTableId === t.id
+                     ? 'background: #dcfce7; border: 2px solid #16a34a; cursor: pointer;'
+                     : 'background: var(--color-empty); color: white; border: 2px solid transparent; cursor: pointer;')
+                   : 'background: ' + ({'serving':'var(--color-serving)','awaiting_payment':'var(--color-awaiting-payment)','paid':'var(--color-paid)'}[t.status] || '#94a3b8') + '; color: white; border: 2px solid transparent; opacity: 0.5; cursor: not-allowed;'"
+               @click="t.status === 'empty' && t.id !== transferSourceTable?.id && selectTransferTarget(t)">
+            <span style="font-weight: 700; font-size: var(--font-size-sm);" x-text="t.name"></span>
+            <span style="opacity: 0.8;" x-text="t.table_code || ''"></span>
+            <span x-show="t.id === transferSourceTable?.id"
+                  style="font-size: 10px; opacity: 0.9;">
+              (nguồn)
+            </span>
+          </div>
+        </template>
+      </div>
+
+      <!-- Transfer confirmation -->
+      <div x-show="showTransferConfirm && transferTargetTableId" x-cloak
+           style="margin-top: var(--space-3); padding: var(--space-3); background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md);">
+        <p style="font-size: var(--font-size-sm); font-weight: 500;">
+          Chuyển từ <strong x-text="transferSourceTable?.name || ''"></strong>
+          sang <strong x-text="getTableNameById(transferTargetTableId)"></strong>?
+        </p>
+      </div>
+
+      <div class="modal-content__actions">
+        <button class="btn btn--secondary"
+                @click="showTransferTableModal = false; transferSourceTable = null;"
+                :disabled="isTransferringTable">
+          Hủy
+        </button>
+        <button class="btn btn--primary"
+                @click="confirmTransferTable()"
+                :disabled="isTransferringTable || !transferTargetTableId">
+          <span x-show="!isTransferringTable">Chuyển bàn</span>
+          <span x-show="isTransferringTable" x-cloak class="spinner spinner--sm"></span>
+        </button>
       </div>
     </div>
   </div>

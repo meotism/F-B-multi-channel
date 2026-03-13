@@ -11,7 +11,9 @@
 // Design reference: design.md Section 5 (Bill Page)
 // Requirements: 1 (Bill Finalization), 4 (Bill Page UI), 9 (End-to-End Print Flow)
 
-import { finalizeBill, getBillByOrderId, updateBillStatus } from '../../services/bill-service.js';
+import { finalizeBill, getBillByOrderId, getBillsByOrderId, updateBillStatus } from '../../services/bill-service.js';
+import { splitByItems, splitEqual } from '../../services/split-bill-service.js';
+import { calculateDiscount } from '../../services/discount-service.js';
 import { loadOrder } from '../../services/order-service.js';
 import { formatVND, formatDate } from '../../utils/formatters.js';
 import { navigate } from '../../utils/navigate.js';
@@ -46,6 +48,21 @@ export function billPage() {
     // --- Confirmation modal state ---
     showFinalizeConfirm: false, // Whether the finalize confirmation modal is visible
 
+    // --- Discount state (Task 10.3) ---
+    discount: null,           // Discount object if order has discount_id
+    discountAmount: 0,        // Calculated discount amount in VND
+
+    // --- Split bill state (Task 10.2) ---
+    showSplitModal: false,    // Whether the split bill modal is visible
+    splitMode: 'by_item',     // 'by_item' | 'equal'
+    splitItemChecked: [],     // Array of booleans parallel to orderItems for checkbox state
+    splitEqualCount: 2,       // Number of equal splits
+    isSplitting: false,       // Whether split action is in progress
+    splitBills: [],           // Generated bills after split
+
+    // --- Keyboard shortcut handler ref (Task 10.1) ---
+    _keyHandler: null,
+
     // --- Computed properties ---
 
     /**
@@ -65,11 +82,20 @@ export function billPage() {
     },
 
     /**
-     * Grand total = subtotal + tax.
+     * Grand total = subtotal - discountAmount + tax.
      * @returns {number} Grand total in VND
      */
     get grandTotal() {
-      return this.subtotal + this.tax;
+      return this.subtotal - this.discountAmount + this.tax;
+    },
+
+    /**
+     * Whether the split bill button should be shown.
+     * Only before finalization and when there are 2+ items.
+     * @returns {boolean}
+     */
+    get canSplit() {
+      return !this.bill && this.orderItems.length >= 2 && this.order?.status === 'completed';
     },
 
     /**
@@ -146,6 +172,26 @@ export function billPage() {
 
       // Subscribe to bill changes for cross-device sync (Requirement 9 AC-4)
       this.subscribeToBillChanges();
+
+      // Task 10.1: Register keyboard shortcuts
+      this._keyHandler = (e) => {
+        // Guard against modal open state
+        if (this.showFinalizeConfirm || this.showSplitModal) return;
+
+        if (e.ctrlKey && e.key === 'Enter') {
+          e.preventDefault();
+          if (this.canFinalize && !this.isFinalizing) {
+            this.showFinalizeConfirm = true;
+          }
+        }
+        if (e.ctrlKey && (e.key === 'p' || e.key === 'P')) {
+          e.preventDefault();
+          if (this.canPrint && !this.isPrinting) {
+            this.printBill();
+          }
+        }
+      };
+      document.addEventListener('keydown', this._keyHandler);
     },
 
     /**
@@ -187,6 +233,11 @@ export function billPage() {
         this.connectionManager.disconnect();
         this.connectionManager = null;
       }
+      // Task 10.1: Remove keyboard shortcut handler
+      if (this._keyHandler) {
+        document.removeEventListener('keydown', this._keyHandler);
+        this._keyHandler = null;
+      }
     },
 
     /**
@@ -223,6 +274,34 @@ export function billPage() {
           if (existingBill.payment_method) {
             this.paymentMethod = existingBill.payment_method;
           }
+        }
+
+        // 5. Task 10.3: Load discount details if order has discount_id
+        if (order.discount_id) {
+          try {
+            const { data: discountData, error: discountErr } = await supabase
+              .from('discounts')
+              .select('*')
+              .eq('id', order.discount_id)
+              .maybeSingle();
+
+            if (!discountErr && discountData) {
+              this.discount = discountData;
+              this.discountAmount = calculateDiscount(this.subtotal, discountData);
+            }
+          } catch (discErr) {
+            console.warn('[billPage] Failed to load discount:', discErr);
+          }
+        }
+
+        // 6. Task 10.2: Load split bills if any
+        try {
+          const allBills = await getBillsByOrderId(this.orderId);
+          if (allBills && allBills.length > 1) {
+            this.splitBills = allBills;
+          }
+        } catch (splitErr) {
+          console.warn('[billPage] Failed to load split bills:', splitErr);
         }
       } catch (err) {
         console.error('[billPage] loadOrderData failed:', err);
@@ -428,6 +507,101 @@ export function billPage() {
      */
     async retryPrint() {
       await this.printBill();
+    },
+
+    // --- Split Bill Methods (Task 10.2) ---
+
+    /**
+     * Open the split bill modal and initialize checkbox state.
+     */
+    openSplitModal() {
+      this.splitItemChecked = this.orderItems.map(() => false);
+      this.splitEqualCount = 2;
+      this.splitMode = 'by_item';
+      this.showSplitModal = true;
+    },
+
+    /**
+     * Close the split bill modal.
+     */
+    closeSplitModal() {
+      this.showSplitModal = false;
+    },
+
+    /**
+     * Execute the split bill action based on the selected mode.
+     */
+    async submitSplit() {
+      if (this.isSplitting) return;
+      this.isSplitting = true;
+
+      try {
+        const userId = Alpine.store('auth').user?.id;
+        const outletId = Alpine.store('auth').user?.outlet_id;
+
+        if (!userId || !outletId) {
+          throw new Error('Thiếu thông tin người dùng hoặc cửa hàng');
+        }
+
+        let bills;
+
+        if (this.splitMode === 'by_item') {
+          // Group 1: checked items, Group 2: unchecked items
+          const group1Ids = [];
+          const group2Ids = [];
+          this.orderItems.forEach((item, idx) => {
+            if (this.splitItemChecked[idx]) {
+              group1Ids.push(item.id);
+            } else {
+              group2Ids.push(item.id);
+            }
+          });
+
+          if (group1Ids.length === 0 || group2Ids.length === 0) {
+            throw new Error('Mỗi nhóm phải có ít nhất 1 món');
+          }
+
+          bills = await splitByItems(this.orderId, [
+            { orderItemIds: group1Ids, paymentMethod: this.paymentMethod },
+            { orderItemIds: group2Ids, paymentMethod: this.paymentMethod },
+          ], userId, outletId);
+        } else {
+          // Equal split
+          if (this.splitEqualCount < 2) {
+            throw new Error('Số lượng tách phải >= 2');
+          }
+          bills = await splitEqual(
+            this.orderId,
+            this.splitEqualCount,
+            this.paymentMethod,
+            userId,
+            outletId,
+          );
+        }
+
+        this.splitBills = bills;
+        this.bill = bills[0]; // Set first bill as active
+        if (this.order) {
+          this.order.status = 'finalized';
+        }
+
+        Alpine.store('ui').showToast('Tách hóa đơn thành công', 'success');
+        this.closeSplitModal();
+      } catch (err) {
+        console.error('[billPage] splitBill failed:', err);
+        Alpine.store('ui').showToast(err.message || 'Không thể tách hóa đơn', 'error');
+      } finally {
+        this.isSplitting = false;
+      }
+    },
+
+    /**
+     * Format discount type to Vietnamese display text.
+     * @param {string} type - 'percent' or 'fixed'
+     * @returns {string}
+     */
+    formatDiscountType(type) {
+      return type === 'percent' ? 'Phần trăm' : 'Cố định';
     },
 
     // --- Formatting helpers ---

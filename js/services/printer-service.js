@@ -10,6 +10,115 @@
 // Design reference: Section 12 (Printer Service)
 
 import { supabase } from './supabase-client.js';
+import { printWithRetry } from './bluetooth-service.js';
+
+// ---------------------------------------------------------------------------
+// Print Queue (Task 4.10)
+// ---------------------------------------------------------------------------
+
+const MAX_RETRIES = 3;
+
+/**
+ * In-memory print queue. Each entry contains the bill ID, ESC/POS data,
+ * and the current retry count.
+ * @type {Array<{ billId: string, escposData: Uint8Array, retries: number }>}
+ */
+const printQueue = [];
+
+/** Whether the queue processor is currently running. */
+let isProcessing = false;
+
+/**
+ * Add a print job to the queue and trigger processing.
+ *
+ * @param {string} billId - UUID of the bill being printed
+ * @param {Uint8Array} escposData - Pre-built ESC/POS byte data
+ */
+export function enqueuePrint(billId, escposData) {
+  printQueue.push({ billId, escposData, retries: 0 });
+  processPrintQueue();
+}
+
+/**
+ * Process the print queue sequentially. For each item, attempts to send
+ * data via the connected Bluetooth printer. On failure, increments the retry
+ * counter; removes the item on success or after MAX_RETRIES failures.
+ */
+export async function processPrintQueue() {
+  if (isProcessing) return;
+  isProcessing = true;
+
+  try {
+    while (printQueue.length > 0) {
+      const job = printQueue[0];
+
+      // Obtain the write characteristic from the printer store
+      const writeChar = _getWriteCharacteristic();
+      if (!writeChar) {
+        // No connected printer — show toast and stop processing
+        _showToast('Không có máy in được kết nối. Vui lòng kết nối máy in.', 'error');
+        break;
+      }
+
+      const result = await printWithRetry(writeChar, job.escposData);
+
+      if (result.success) {
+        printQueue.shift(); // Remove completed job
+      } else {
+        job.retries++;
+        if (job.retries >= MAX_RETRIES) {
+          printQueue.shift(); // Remove after max retries
+          _showToast('In thất bại sau 3 lần thử', 'error');
+          console.error(`[PrinterService] Print failed for bill ${job.billId} after ${MAX_RETRIES} retries`);
+        }
+        // On failure but below max retries, the job stays at the front for next attempt
+      }
+    }
+  } finally {
+    isProcessing = false;
+  }
+}
+
+/**
+ * Get the current number of jobs in the print queue.
+ * @returns {number}
+ */
+export function getPrintQueueLength() {
+  return printQueue.length;
+}
+
+/**
+ * Retrieve the active Bluetooth write characteristic from the Alpine printer store.
+ * Returns null if no printer is connected.
+ *
+ * @returns {BluetoothRemoteGATTCharacteristic|null}
+ * @private
+ */
+function _getWriteCharacteristic() {
+  if (typeof Alpine !== 'undefined' && Alpine.store('printer')) {
+    const store = Alpine.store('printer');
+    // The connection manager exposes writeChar when connected
+    if (store.isConnected && store._connectionManager?.writeChar) {
+      return store._connectionManager.writeChar;
+    }
+  }
+  return null;
+}
+
+/**
+ * Show a toast notification via Alpine UI store if available, otherwise log.
+ *
+ * @param {string} message - Vietnamese message to display
+ * @param {string} type - Toast type ('error', 'warning', 'success')
+ * @private
+ */
+function _showToast(message, type) {
+  if (typeof Alpine !== 'undefined' && Alpine.store('ui')) {
+    Alpine.store('ui').showToast(message, type);
+  } else {
+    console.warn(`[PrinterService] ${type}: ${message}`);
+  }
+}
 
 /**
  * Save or update printer information in the database.

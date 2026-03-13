@@ -89,6 +89,31 @@
   </div>
 
   <!-- ================================================================
+       Task 19.1: Full-page skeleton shown during initial load
+       ================================================================ -->
+  <div x-show="$store.reports.isLoading && !$store.reports.hasGeneratedReport" x-cloak>
+    <!-- Skeleton summary cards -->
+    <div class="reports-summary">
+      <template x-for="i in 3" :key="i">
+        <div class="reports-card">
+          <div class="skeleton skeleton--text" style="width: 60%; height: 14px; margin-bottom: var(--space-3);"></div>
+          <div class="skeleton skeleton--text" style="width: 80%; height: 28px;"></div>
+        </div>
+      </template>
+    </div>
+    <!-- Skeleton chart -->
+    <div class="reports-chart-section">
+      <div class="skeleton skeleton--text" style="width: 30%; height: 20px; margin-bottom: var(--space-4);"></div>
+      <div class="skeleton skeleton--rect" style="height: 300px;"></div>
+    </div>
+    <!-- Skeleton table -->
+    <div class="reports-table-section">
+      <div class="skeleton skeleton--text" style="width: 25%; height: 20px; margin-bottom: var(--space-4);"></div>
+      <div class="skeleton skeleton--rect" style="height: 200px;"></div>
+    </div>
+  </div>
+
+  <!-- ================================================================
        Initial Empty State (shown before first fetch)
        ================================================================ -->
   <div x-show="!$store.reports.hasGeneratedReport && !$store.reports.isLoading"
@@ -132,6 +157,161 @@
        Report Content (shown when data is available)
        ================================================================ -->
   <div x-show="$store.reports.hasGeneratedReport && (!$store.reports.noData || $store.reports.isLoading)">
+
+    <!-- ==============================================================
+         Task 13.1: Report Type Tabs
+         ============================================================== -->
+    <div class="reports-tabs" style="display: flex; gap: var(--space-2); margin-bottom: var(--space-4); border-bottom: 2px solid var(--color-border, #e5e7eb); padding-bottom: var(--space-2); flex-wrap: wrap;">
+      <button class="reports-filter-btn"
+              :class="{ 'reports-filter-btn--active': activeReportTab === 'overview' }"
+              @click="switchReportTab('overview')">
+        Tong quan
+      </button>
+      <button class="reports-filter-btn"
+              :class="{ 'reports-filter-btn--active': activeReportTab === 'by_payment' }"
+              @click="switchReportTab('by_payment')">
+        Theo phuong thuc thanh toan
+      </button>
+      <button class="reports-filter-btn"
+              :class="{ 'reports-filter-btn--active': activeReportTab === 'by_category' }"
+              @click="switchReportTab('by_category')">
+        Theo danh muc
+      </button>
+      <button class="reports-filter-btn"
+              :class="{ 'reports-filter-btn--active': activeReportTab === 'peak_hours' }"
+              @click="switchReportTab('peak_hours')">
+        Gio cao diem
+      </button>
+    </div>
+
+    <!-- ==============================================================
+         Tab: By Payment Method (Task 13.1)
+         ============================================================== -->
+    <div x-show="activeReportTab === 'by_payment'" x-cloak>
+      <div x-show="isLoadingTab" style="text-align: center; padding: var(--space-4);">
+        <span class="spinner"></span>
+      </div>
+      <div x-show="!isLoadingTab && paymentMethodData.length > 0" x-cloak>
+        <h3 class="reports-section-title">Doanh thu theo phuong thuc thanh toan</h3>
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Phuong thuc</th>
+                <th>So hoa don</th>
+                <th>Doanh thu (VND)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="row in paymentMethodData" :key="row.payment_method">
+                <tr>
+                  <td x-text="formatPaymentMethodReport(row.payment_method)"></td>
+                  <td x-text="row.bill_count || 0"></td>
+                  <td x-text="formatVND(row.total_revenue || 0)"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div x-show="!isLoadingTab && paymentMethodData.length === 0" x-cloak style="text-align: center; padding: var(--space-4); color: var(--color-text-secondary);">
+        Khong co du lieu
+      </div>
+    </div>
+
+    <!-- ==============================================================
+         Tab: By Category (Task 13.1)
+         ============================================================== -->
+    <div x-show="activeReportTab === 'by_category'" x-cloak>
+      <div x-show="isLoadingTab" style="text-align: center; padding: var(--space-4);">
+        <span class="spinner"></span>
+      </div>
+      <div x-show="!isLoadingTab && categoryRevenueData.length > 0" x-cloak>
+        <h3 class="reports-section-title">Doanh thu theo danh muc</h3>
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Danh muc</th>
+                <th>So luong ban</th>
+                <th>Doanh thu (VND)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="row in categoryRevenueData" :key="row.category_name || row.category_id">
+                <tr>
+                  <td x-text="row.category_name || 'Chua phan loai'"></td>
+                  <td x-text="row.total_qty || 0"></td>
+                  <td x-text="formatVND(row.total_revenue || 0)"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div x-show="!isLoadingTab && categoryRevenueData.length === 0" x-cloak style="text-align: center; padding: var(--space-4); color: var(--color-text-secondary);">
+        Khong co du lieu
+      </div>
+    </div>
+
+    <!-- ==============================================================
+         Tab: Peak Hours Heatmap (Task 13.2)
+         ============================================================== -->
+    <div x-show="activeReportTab === 'peak_hours'" x-cloak>
+      <div x-show="isLoadingTab" style="text-align: center; padding: var(--space-4);">
+        <span class="spinner"></span>
+      </div>
+      <div x-show="!isLoadingTab && peakHoursGrid.length > 0" x-cloak>
+        <h3 class="reports-section-title">Gio cao diem</h3>
+        <div class="heatmap-grid" style="overflow-x: auto;">
+          <table style="border-collapse: collapse; width: 100%; min-width: 700px;">
+            <thead>
+              <tr>
+                <th style="padding: 4px 8px; font-size: var(--font-size-xs); text-align: left;"></th>
+                <template x-for="h in 24" :key="h">
+                  <th style="padding: 4px 2px; font-size: var(--font-size-xs); text-align: center; min-width: 24px;"
+                      x-text="(h - 1) + 'h'"></th>
+                </template>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="(row, dayIdx) in peakHoursGrid" :key="dayIdx">
+                <tr>
+                  <td style="padding: 4px 8px; font-size: var(--font-size-xs); font-weight: 600; white-space: nowrap;"
+                      x-text="getDayName(dayIdx)"></td>
+                  <template x-for="(cell, hourIdx) in row" :key="hourIdx">
+                    <td style="padding: 2px;"
+                        x-data="{ showTip: false }"
+                        @mouseenter="showTip = true"
+                        @mouseleave="showTip = false"
+                        class="peak-cell">
+                      <div style="width: 22px; height: 22px; border-radius: 3px; position: relative; cursor: pointer;"
+                           :style="'background-color: rgba(37, 99, 235, ' + (cell.opacity * 0.9 + 0.1) + '); opacity: ' + (cell.count > 0 ? 1 : 0.2) + ';'">
+                        <!-- Tooltip -->
+                        <div x-show="showTip" x-cloak
+                             style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--color-surface-elevated, #1f2937); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; z-index: 10; pointer-events: none;">
+                          <span x-text="getDayName(dayIdx) + ' ' + hourIdx + ':00'"></span><br>
+                          <span x-text="cell.count + ' don'"></span><br>
+                          <span x-text="formatVND(cell.revenue) + ' VND'"></span>
+                        </div>
+                      </div>
+                    </td>
+                  </template>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div x-show="!isLoadingTab && peakHoursGrid.length === 0" x-cloak style="text-align: center; padding: var(--space-4); color: var(--color-text-secondary);">
+        Khong co du lieu
+      </div>
+    </div>
+
+    <!-- ==============================================================
+         Overview Tab Content (existing content, now wrapped in tab show)
+         ============================================================== -->
+    <div x-show="activeReportTab === 'overview'">
 
     <!-- ==============================================================
          Revenue Summary Cards (Task 13.2)
@@ -252,6 +432,9 @@
     <div x-show="$store.reports.isLoading" x-cloak class="reports-table-section">
       <div class="skeleton skeleton--rect" style="height: 200px;"></div>
     </div>
+
+    </div>
+    <!-- END Overview Tab -->
 
   </div>
 </section>

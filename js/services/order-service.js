@@ -10,6 +10,7 @@
 
 import { supabase } from './supabase-client.js';
 import { cachedSupabase } from './cached-query.js';
+import { assertOutlet } from '../utils/outlet-guard.js';
 
 // ============================================================
 // Order CRUD
@@ -27,62 +28,107 @@ import { cachedSupabase } from './cached-query.js';
  * @param {string} outletId - UUID of the outlet
  * @param {string} userId - UUID of the user creating the order
  * @param {Array<{menuItemId: string, name: string, price: number, qty: number, note: string}>} cartItems - Items from the cart with price snapshots
+ * @param {Object} [options] - Optional parameters
+ * @param {number} [options.guestCount] - Number of guests at the table
  * @returns {Promise<{order: Object, items: Array}>} The created order and its items
  * @throws {Error} With Vietnamese message on failure
  */
-export async function createOrder(tableId, outletId, userId, cartItems) {
+export async function createOrder(tableId, outletId, userId, cartItems, options = {}) {
+  assertOutlet(outletId);
+
   // 1. Insert the order row
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert({
-      table_id: tableId,
-      outlet_id: outletId,
-      user_id: userId,
-      status: 'active',
-      started_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  if (orderError) {
-    throw new Error('Không thể tạo đơn hàng: ' + orderError.message);
+  const insertData = {
+    table_id: tableId,
+    outlet_id: outletId,
+    user_id: userId,
+    status: 'active',
+    started_at: new Date().toISOString(),
+  };
+  if (options.guestCount != null) {
+    insertData.guest_count = options.guestCount;
   }
 
-  // 2. Insert order_items with price snapshot (EC-5)
-  const itemRows = cartItems.map(item => ({
-    order_id: order.id,
-    menu_item_id: item.menuItemId,
-    qty: item.qty,
-    price: item.price,       // Snapshot: captures price at order time
-    note: item.note || null,
-  }));
+  let order, items;
 
-  const { data: items, error: itemsError } = await supabase
-    .from('order_items')
-    .insert(itemRows)
-    .select('*, menu_items(name)');
+  try {
+    const { data: orderData, error: orderError } = await supabase
+      .from('orders')
+      .insert(insertData)
+      .select()
+      .single();
 
-  if (itemsError) {
-    throw new Error('Không thể thêm món vào đơn hàng: ' + itemsError.message);
+    if (orderError) {
+      throw new Error('Không thể tạo đơn hàng: ' + orderError.message);
+    }
+
+    order = orderData;
+
+    // 2. Insert order_items with price snapshot (EC-5)
+    const itemRows = cartItems.map(item => ({
+      order_id: order.id,
+      menu_item_id: item.menuItemId,
+      qty: item.qty,
+      price: item.price,       // Snapshot: captures price at order time
+      note: item.note || null,
+    }));
+
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('order_items')
+      .insert(itemRows)
+      .select('*, menu_items(name)');
+
+    if (itemsError) {
+      throw new Error('Không thể thêm món vào đơn hàng: ' + itemsError.message);
+    }
+
+    items = itemsData;
+
+    // 3. Update table status to 'serving' (design 4.3.6: empty -> serving)
+    // S3-26: Guard with .eq('status', 'empty') to prevent race conditions
+    const { data: updatedTable, error: tableError } = await supabase
+      .from('tables')
+      .update({ status: 'serving' })
+      .eq('id', tableId)
+      .eq('status', 'empty')
+      .select('id')
+      .single();
+
+    if (tableError || !updatedTable) {
+      // Table was no longer empty — another user may have claimed it
+      console.warn('[order-service] Table status guard: table not empty or update failed');
+    }
+
+    cachedSupabase.invalidate('orders');
+    cachedSupabase.invalidate('order_items');
+  } catch (err) {
+    // Task 24.1: If offline, enqueue the operation for later
+    if (!navigator.onLine) {
+      const { offlineQueue } = await import('./offline-queue.js');
+      offlineQueue.enqueue({
+        type: 'create_order',
+        tableId,
+        outletId,
+        userId,
+        cartItems,
+      });
+      console.info('[order-service] Offline: createOrder enqueued');
+      // Return a placeholder so the UI can continue
+      return {
+        order: { id: 'offline-' + Date.now(), table_id: tableId, status: 'active', started_at: new Date().toISOString() },
+        items: cartItems.map(item => ({
+          id: 'offline-item-' + Date.now() + '-' + item.menuItemId,
+          order_id: 'offline',
+          menu_item_id: item.menuItemId,
+          qty: item.qty,
+          price: item.price,
+          note: item.note || null,
+          menu_items: { name: item.name },
+        })),
+      };
+    }
+    throw err;
   }
 
-  // 3. Update table status to 'serving' (design 4.3.6: empty -> serving)
-  // S3-26: Guard with .eq('status', 'empty') to prevent race conditions
-  const { data: updatedTable, error: tableError } = await supabase
-    .from('tables')
-    .update({ status: 'serving' })
-    .eq('id', tableId)
-    .eq('status', 'empty')
-    .select('id')
-    .single();
-
-  if (tableError || !updatedTable) {
-    // Table was no longer empty — another user may have claimed it
-    console.warn('[order-service] Table status guard: table not empty or update failed');
-  }
-
-  cachedSupabase.invalidate('orders');
-  cachedSupabase.invalidate('order_items');
   return { order, items: items || [] };
 }
 
@@ -191,19 +237,34 @@ export async function updateItemQty(orderItemId, newQty) {
     return null;
   }
 
-  const { data, error } = await supabase
-    .from('order_items')
-    .update({ qty: newQty })
-    .eq('id', orderItemId)
-    .select('*, menu_items(name)')
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('order_items')
+      .update({ qty: newQty })
+      .eq('id', orderItemId)
+      .select('*, menu_items(name)')
+      .single();
 
-  if (error) {
-    throw new Error('Không thể cập nhật số lượng: ' + error.message);
+    if (error) {
+      throw new Error('Không thể cập nhật số lượng: ' + error.message);
+    }
+
+    cachedSupabase.invalidate('order_items');
+    return data;
+  } catch (err) {
+    // Task 24.1: If offline, enqueue the operation for later
+    if (!navigator.onLine) {
+      const { offlineQueue } = await import('./offline-queue.js');
+      offlineQueue.enqueue({
+        type: 'update_item_qty',
+        itemId: orderItemId,
+        qty: newQty,
+      });
+      console.info('[order-service] Offline: updateItemQty enqueued');
+      return { id: orderItemId, qty: newQty };
+    }
+    throw err;
   }
-
-  cachedSupabase.invalidate('order_items');
-  return data;
 }
 
 /**
@@ -324,6 +385,155 @@ export async function cancelPaymentRequest(orderId) {
 
   cachedSupabase.invalidate('orders');
   return order;
+}
+
+// ============================================================
+// Order-level Fields
+// ============================================================
+
+/**
+ * Update the order note.
+ *
+ * @param {string} orderId - UUID of the order
+ * @param {string} note - Note text (empty string to clear)
+ * @returns {Promise<Object>} Updated order
+ */
+export async function updateOrderNote(orderId, note) {
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ note: note || '' })
+    .eq('id', orderId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error('Không thể cập nhật ghi chú đơn hàng: ' + error.message);
+  }
+
+  cachedSupabase.invalidate('orders');
+  return data;
+}
+
+/**
+ * Set the guest count for an order.
+ *
+ * @param {string} orderId - UUID of the order
+ * @param {number} guestCount - Number of guests
+ * @returns {Promise<Object>} Updated order
+ */
+export async function setGuestCount(orderId, guestCount) {
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ guest_count: guestCount })
+    .eq('id', orderId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error('Không thể cập nhật số khách: ' + error.message);
+  }
+
+  cachedSupabase.invalidate('orders');
+  return data;
+}
+
+// ============================================================
+// Order Listing with Filters
+// ============================================================
+
+/**
+ * List orders for an outlet with optional filters.
+ *
+ * @param {string} outletId - UUID of the outlet
+ * @param {Object} [filters] - Optional filters
+ * @param {string} [filters.status] - Filter by order status
+ * @param {string} [filters.dateFrom] - ISO date string — orders started on or after
+ * @param {string} [filters.dateTo] - ISO date string — orders started on or before
+ * @param {string} [filters.tableId] - Filter by table UUID
+ * @returns {Promise<Array>} Array of order objects with joined table name
+ */
+export async function listOrders(outletId, filters = {}) {
+  let query = cachedSupabase
+    .from('orders')
+    .select('*, tables(name), order_items(price, qty)')
+    .eq('outlet_id', outletId)
+    .order('started_at', { ascending: false });
+
+  if (filters.status) {
+    query = query.eq('status', filters.status);
+  }
+  if (filters.dateFrom) {
+    query = query.gte('started_at', filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    query = query.lte('started_at', filters.dateTo);
+  }
+  if (filters.tableId) {
+    query = query.eq('table_id', filters.tableId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error('Không thể tải danh sách đơn hàng: ' + error.message);
+  }
+
+  return data || [];
+}
+
+// ============================================================
+// Conflict Detection
+// ============================================================
+
+/**
+ * Load an order including updated_at for conflict detection.
+ * Returns updated_at alongside all order data.
+ *
+ * @param {string} orderId - UUID of the order
+ * @returns {Promise<Object>} Order with updated_at field
+ */
+export async function loadOrderWithVersion(orderId) {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, updated_at, order_items(*, menu_items(name))')
+    .eq('id', orderId)
+    .single();
+
+  if (error) {
+    throw new Error('Không thể tải đơn hàng: ' + error.message);
+  }
+
+  return data;
+}
+
+/**
+ * Update an order with conflict detection.
+ * Checks that updated_at hasn't changed since the order was loaded.
+ *
+ * @param {string} orderId - UUID of the order
+ * @param {Object} updates - Fields to update
+ * @param {string} expectedUpdatedAt - The updated_at value from when the order was loaded
+ * @returns {Promise<Object>} Updated order
+ * @throws {Error} 'ORDER_CONFLICT' if the order was modified by another user
+ */
+export async function updateOrderSafe(orderId, updates, expectedUpdatedAt) {
+  const { data, error } = await supabase
+    .from('orders')
+    .update(updates)
+    .eq('id', orderId)
+    .eq('updated_at', expectedUpdatedAt)
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error('ORDER_CONFLICT');
+    }
+    throw new Error('Không thể cập nhật đơn hàng: ' + error.message);
+  }
+
+  cachedSupabase.invalidate('orders');
+  return data;
 }
 
 // ============================================================

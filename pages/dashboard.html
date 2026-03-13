@@ -1,0 +1,305 @@
+<!-- Dashboard page template - loaded by router -->
+<section class="dashboard-page" x-data="dashboardPage()">
+
+  <!-- ================================================================
+       Greeting
+       ================================================================ -->
+  <div>
+    <h2 class="dashboard-page__greeting" x-text="'Xin chào, ' + userName"></h2>
+    <p class="dashboard-page__subtitle">Tổng quan hoạt động hôm nay</p>
+  </div>
+
+  <!-- ================================================================
+       Loading State
+       ================================================================ -->
+  <div x-show="isLoading" x-cloak style="text-align: center; padding: var(--space-6);">
+    <div class="spinner"></div>
+    <p style="margin-top: var(--space-3); color: var(--color-text-secondary);">Đang tải dữ liệu...</p>
+  </div>
+
+  <!-- ================================================================
+       Owner / Manager View
+       ================================================================ -->
+  <template x-if="!isLoading && isOwnerOrManager">
+    <div>
+      <!-- Summary Cards -->
+      <div class="dashboard-summary">
+        <!-- Revenue today -->
+        <div class="dashboard-card dashboard-card--clickable" @click="goToReports()">
+          <span class="dashboard-card__label">Doanh thu hôm nay</span>
+          <span class="dashboard-card__value dashboard-card__value--primary"
+                x-text="formatVND(revenueToday) + 'đ'"></span>
+          <span class="dashboard-card__footer">Nhấn để xem báo cáo</span>
+        </div>
+
+        <!-- Active orders -->
+        <div class="dashboard-card dashboard-card--clickable" @click="goToOrders()">
+          <span class="dashboard-card__label">Đơn đang phục vụ</span>
+          <span class="dashboard-card__value" x-text="activeOrdersCount"></span>
+          <span class="dashboard-card__footer">Nhấn để xem danh sách</span>
+        </div>
+
+        <!-- Low stock alerts -->
+        <div class="dashboard-card dashboard-card--clickable" @click="goToInventory()">
+          <span class="dashboard-card__label">Nguyên liệu sắp hết</span>
+          <span class="dashboard-card__value"
+                :class="lowStockCount > 0 ? 'dashboard-card__value--danger' : 'dashboard-card__value--success'"
+                x-text="lowStockCount"></span>
+          <span class="dashboard-card__footer">Nhấn để xem tồn kho</span>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div style="margin-top: var(--space-4);">
+        <h3 style="font-size: var(--font-size-sm); font-weight: 600; margin-bottom: var(--space-3); color: var(--color-text-secondary);">Thao tác nhanh</h3>
+        <div class="dashboard-actions">
+          <a class="dashboard-action-btn" href="#/tables">
+            <span class="dashboard-action-btn__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+              </svg>
+            </span>
+            <span>Sơ đồ bàn</span>
+          </a>
+          <a class="dashboard-action-btn" href="#/menu">
+            <span class="dashboard-action-btn__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18M3 12h18M3 18h18"></path>
+              </svg>
+            </span>
+            <span>Thực đơn</span>
+          </a>
+          <a class="dashboard-action-btn" href="#/inventory">
+            <span class="dashboard-action-btn__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+            </span>
+            <span>Tồn kho</span>
+          </a>
+          <a class="dashboard-action-btn" href="#/reports">
+            <span class="dashboard-action-btn__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+              </svg>
+            </span>
+            <span>Báo cáo</span>
+          </a>
+          <a class="dashboard-action-btn" href="#/settings">
+            <span class="dashboard-action-btn__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </span>
+            <span>Cài đặt</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Low Stock Alerts (if any) -->
+      <div x-show="lowStockCount > 0" x-cloak style="margin-top: var(--space-4);">
+        <div class="dashboard-list">
+          <div class="dashboard-list__title">Cảnh báo nguyên liệu sắp hết</div>
+          <template x-for="item in lowStockItems.slice(0, 5)" :key="item.id">
+            <div class="dashboard-list__item">
+              <span class="dashboard-list__item-label" x-text="item.ingredients?.name || ''"></span>
+              <span class="dashboard-list__item-value" style="color: var(--color-danger);"
+                    x-text="item.qty_on_hand + ' ' + (item.ingredients?.unit || '')"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ================================================================
+       Staff View
+       ================================================================ -->
+  <template x-if="!isLoading && isStaffRole">
+    <div>
+      <div class="dashboard-summary">
+        <!-- Table summary -->
+        <div class="dashboard-card dashboard-card--clickable" @click="goToTables()">
+          <span class="dashboard-card__label">Tổng số bàn</span>
+          <span class="dashboard-card__value" x-text="totalTables"></span>
+          <span class="dashboard-card__footer">Nhấn để xem sơ đồ bàn</span>
+        </div>
+
+        <div class="dashboard-card">
+          <span class="dashboard-card__label">Bàn đang phục vụ</span>
+          <span class="dashboard-card__value dashboard-card__value--primary" x-text="servingTables"></span>
+        </div>
+
+        <div class="dashboard-card">
+          <span class="dashboard-card__label">Bàn trống</span>
+          <span class="dashboard-card__value dashboard-card__value--success" x-text="emptyTables"></span>
+        </div>
+
+        <!-- Pending orders -->
+        <div class="dashboard-card dashboard-card--clickable" @click="goToTables()">
+          <span class="dashboard-card__label">Đơn đang hoạt động</span>
+          <span class="dashboard-card__value" x-text="pendingOrdersCount"></span>
+          <span class="dashboard-card__footer">Nhấn để xem sơ đồ bàn</span>
+        </div>
+      </div>
+
+      <!-- Quick action: go to table map -->
+      <div style="margin-top: var(--space-4);">
+        <div class="dashboard-actions">
+          <a class="dashboard-action-btn" href="#/tables">
+            <span class="dashboard-action-btn__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+              </svg>
+            </span>
+            <span>Mở sơ đồ bàn</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ================================================================
+       Cashier View
+       ================================================================ -->
+  <template x-if="!isLoading && isCashierRole">
+    <div>
+      <div class="dashboard-summary">
+        <!-- Pending bills -->
+        <div class="dashboard-card dashboard-card--clickable" @click="goToTables()">
+          <span class="dashboard-card__label">Đơn chờ thanh toán</span>
+          <span class="dashboard-card__value"
+                :class="pendingBillsCount > 0 ? 'dashboard-card__value--danger' : ''"
+                x-text="pendingBillsCount"></span>
+          <span class="dashboard-card__footer">Nhấn để xem sơ đồ bàn</span>
+        </div>
+      </div>
+
+      <!-- Recent finalized bills -->
+      <div style="margin-top: var(--space-4);">
+        <div class="dashboard-list">
+          <div class="dashboard-list__title">Hóa đơn gần đây</div>
+          <template x-if="recentBills.length === 0">
+            <div class="dashboard-list__empty">Chưa có hóa đơn nào hôm nay</div>
+          </template>
+          <template x-for="bill in recentBills" :key="bill.id">
+            <div class="dashboard-list__item">
+              <span class="dashboard-list__item-label">
+                <span x-text="truncateId(bill.id)"></span>
+                <span class="badge badge--muted" style="margin-left: var(--space-2);"
+                      x-text="bill.status === 'printed' ? 'Đã in' : bill.status === 'finalized' ? 'Đã xuất' : bill.status"></span>
+              </span>
+              <span class="dashboard-list__item-value" x-text="formatVND(bill.total) + 'đ'"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div style="margin-top: var(--space-4);">
+        <div class="dashboard-actions">
+          <a class="dashboard-action-btn" href="#/tables">
+            <span class="dashboard-action-btn__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+              </svg>
+            </span>
+            <span>Sơ đồ bàn</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ================================================================
+       Warehouse View
+       ================================================================ -->
+  <template x-if="!isLoading && isWarehouseRole">
+    <div>
+      <div class="dashboard-summary">
+        <!-- Low stock count -->
+        <div class="dashboard-card dashboard-card--clickable" @click="goToInventory()">
+          <span class="dashboard-card__label">Nguyên liệu sắp hết</span>
+          <span class="dashboard-card__value"
+                :class="lowStockCount > 0 ? 'dashboard-card__value--danger' : 'dashboard-card__value--success'"
+                x-text="lowStockCount"></span>
+          <span class="dashboard-card__footer">Nhấn để xem tồn kho</span>
+        </div>
+      </div>
+
+      <!-- Low stock items list -->
+      <div x-show="lowStockItems.length > 0" x-cloak style="margin-top: var(--space-4);">
+        <div class="dashboard-list">
+          <div class="dashboard-list__title">Nguyên liệu cần nhập thêm</div>
+          <template x-for="item in lowStockItems" :key="item.id">
+            <div class="dashboard-list__item">
+              <span class="dashboard-list__item-label" x-text="item.ingredients?.name || ''"></span>
+              <span class="dashboard-list__item-value" style="color: var(--color-danger);"
+                    x-text="item.qty_on_hand + ' / ' + item.threshold + ' ' + (item.ingredients?.unit || '')"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Empty state for low stock -->
+      <div x-show="lowStockItems.length === 0 && !isLoading" x-cloak style="margin-top: var(--space-4);">
+        <div class="dashboard-list">
+          <div class="dashboard-list__title">Nguyên liệu cần nhập thêm</div>
+          <div class="dashboard-list__empty">Tất cả nguyên liệu đủ tồn kho</div>
+        </div>
+      </div>
+
+      <!-- Recent stock movements -->
+      <div style="margin-top: var(--space-4);">
+        <div class="dashboard-list">
+          <div class="dashboard-list__title">Xuất nhập kho gần đây</div>
+          <template x-if="recentMovements.length === 0">
+            <div class="dashboard-list__empty">Chưa có biến động kho nào</div>
+          </template>
+          <template x-for="mov in recentMovements" :key="mov.id">
+            <div class="dashboard-list__item">
+              <span class="dashboard-list__item-label">
+                <span x-text="mov.ingredients?.name || ''"></span>
+                <span class="badge" style="margin-left: var(--space-2);"
+                      :class="mov.type === 'in' ? 'badge--success' : 'badge--warning'"
+                      x-text="mov.type === 'in' ? 'Nhập' : 'Xuất'"></span>
+              </span>
+              <span class="dashboard-list__item-value" x-text="(mov.type === 'in' ? '+' : '-') + mov.qty"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div style="margin-top: var(--space-4);">
+        <div class="dashboard-actions">
+          <a class="dashboard-action-btn" href="#/inventory">
+            <span class="dashboard-action-btn__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+            </span>
+            <span>Quản lý tồn kho</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </template>
+
+</section>

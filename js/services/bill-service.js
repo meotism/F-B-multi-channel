@@ -9,6 +9,7 @@
 
 import { supabase } from './supabase-client.js';
 import { cachedSupabase } from './cached-query.js';
+import { assertOutlet } from '../utils/outlet-guard.js';
 
 // ============================================================
 // Bill Status State Machine
@@ -50,12 +51,18 @@ export function canTransition(currentStatus, nextStatus) {
  *
  * @param {string} orderId - UUID of the completed order
  * @param {string} paymentMethod - 'cash' | 'card' | 'transfer'
+ * @param {number} [discountAmount] - Optional discount amount to apply
  * @returns {Promise<Object>} Created bill record with id, total, status, etc.
  * @throws {Error} With Vietnamese message on failure (403, 404, 409, 500)
  */
-export async function finalizeBill(orderId, paymentMethod) {
+export async function finalizeBill(orderId, paymentMethod, discountAmount) {
+  const body = { order_id: orderId, payment_method: paymentMethod };
+  if (discountAmount != null) {
+    body.discount_amount = discountAmount;
+  }
+
   const { data, error } = await supabase.functions.invoke('finalize-bill', {
-    body: { order_id: orderId, payment_method: paymentMethod },
+    body,
   });
 
   if (error) {
@@ -96,20 +103,23 @@ export async function updateBillStatus(billId, newStatus, userId) {
     throw new Error('Không tìm thấy hóa đơn');
   }
 
-  // 2. Validate state machine transition
+  // 2. Enforce outlet isolation
+  assertOutlet(currentBill.outlet_id);
+
+  // 3. Validate state machine transition
   if (!canTransition(currentBill.status, newStatus)) {
     throw new Error(
       `Không thể chuyển trạng thái từ "${currentBill.status}" sang "${newStatus}"`
     );
   }
 
-  // 3. Build update payload
+  // 4. Build update payload
   const updateData = { status: newStatus, updated_at: new Date().toISOString() };
   if (newStatus === 'printed') {
     updateData.printed_at = new Date().toISOString();
   }
 
-  // 4. Perform update
+  // 5. Perform update
   const { data, error } = await supabase
     .from('bills')
     .update(updateData)
@@ -123,7 +133,7 @@ export async function updateBillStatus(billId, newStatus, userId) {
 
   cachedSupabase.invalidate('bills');
 
-  // 5. Create audit log entry
+  // 6. Create audit log entry
   const action = newStatus === 'printed' ? 'print' : 'print_failed';
   await supabase.from('audit_logs').insert({
     entity: 'bill',
@@ -179,6 +189,27 @@ export async function getBillById(billId) {
 
   if (error) {
     throw new Error('Không thể tải hóa đơn: ' + error.message);
+  }
+
+  return data;
+}
+
+/**
+ * Fetch all bills for a given order (supports split bill scenarios).
+ *
+ * @param {string} orderId - UUID of the order
+ * @returns {Promise<Object[]>} Array of bill records (may be empty)
+ * @throws {Error} With Vietnamese message on unexpected failure
+ */
+export async function getBillsByOrderId(orderId) {
+  const { data, error } = await cachedSupabase
+    .from('bills')
+    .select('*')
+    .eq('order_id', orderId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw new Error('Không thể tải danh sách hóa đơn: ' + error.message);
   }
 
   return data;

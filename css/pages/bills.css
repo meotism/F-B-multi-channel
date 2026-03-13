@@ -441,3 +441,110 @@
     min-height: 44px;
   }
 }
+
+/* ------------------------------------------------------------------
+ * Keyboard Shortcut Hints
+ * ------------------------------------------------------------------ */
+.kbd-hint {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-left: var(--space-2);
+  vertical-align: middle;
+  line-height: 1.4;
+}
+
+@media (max-width: 767px) {
+  .kbd-hint {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Split Bill Modal
+ * ------------------------------------------------------------------ */
+.split-bill-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-2);
+}
+.split-bill-tab {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.split-bill-tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.split-bill-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 300px;
+  overflow-y: auto;
+}
+.split-bill-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.split-bill-item__checkbox {
+  accent-color: var(--color-primary);
+  width: 18px;
+  height: 18px;
+}
+.split-bill-item__name {
+  flex: 1;
+  font-size: var(--font-size-sm);
+}
+.split-bill-item__price {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.split-bill-equal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.split-bill-equal__label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+.split-bill-equal__input {
+  width: 80px;
+}
+.split-bill-equal__result {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* ------------------------------------------------------------------
+ * Discount Display Line
+ * ------------------------------------------------------------------ */
+.bill-totals__row--discount .bill-totals__label {
+  color: var(--color-success);
+}
+.bill-totals__row--discount .bill-totals__value {
+  color: var(--color-success);
+}

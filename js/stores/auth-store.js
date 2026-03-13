@@ -23,21 +23,26 @@ const ROLE_PERMISSIONS = {
     'view_reports', 'manage_users', 'manage_settings',
     'view_orders', 'view_bills', 'view_menu', 'view_inventory',
     'transfer_order', 'merge_orders',
+    'manage_discounts', 'view_order_list', 'view_dashboard',
   ],
   manager: [
     'view_table_map', 'edit_table_map', 'create_order', 'finalize_bill',
     'cancel_order', 'manage_menu', 'manage_categories', 'manage_inventory', 'view_reports',
     'manage_settings', 'view_orders', 'view_bills', 'transfer_order', 'merge_orders',
+    'manage_discounts', 'view_order_list', 'view_dashboard',
   ],
   cashier: [
     'view_table_map', 'create_order', 'finalize_bill', 'print_bill',
     'cancel_order', 'manage_settings', 'view_orders', 'view_bills', 'transfer_order',
+    'view_dashboard',
   ],
   staff: [
     'view_table_map', 'create_order', 'view_orders', 'transfer_order',
+    'view_dashboard',
   ],
   warehouse: [
     'view_table_map', 'manage_inventory', 'view_inventory',
+    'view_dashboard',
   ],
 };
 
@@ -111,10 +116,16 @@ export function authStore() {
       // Set up auth state change listener for session lifecycle events
       setupAuthListener({
         onSignedOut: () => {
+          // Save current route for post-login redirect
+          const currentHash = window.location.hash;
+          if (currentHash && currentHash !== '#/login') {
+            sessionStorage.setItem('returnUrl', currentHash);
+          }
           // Clear all state and redirect to login
           this.user = null;
           this.session = null;
           this.isAuthenticated = false;
+          Alpine.store('ui').showToast('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.', 'warning');
           navigate('/login');
         },
         onTokenRefreshed: (session) => {
@@ -170,8 +181,20 @@ export function authStore() {
         initRealtimeSubscriptions(outletId);
       }
 
-      // Navigate to table map
-      navigate('/tables');
+      // Navigate to return URL if exists, otherwise default route
+      const returnUrl = sessionStorage.getItem('returnUrl');
+      if (returnUrl) {
+        sessionStorage.removeItem('returnUrl');
+        window.location.hash = returnUrl;
+      } else {
+        // Owner/manager → dashboard, others → table map
+        const role = this.user?.role;
+        if (role === 'owner' || role === 'manager') {
+          navigate('/dashboard');
+        } else {
+          navigate('/tables');
+        }
+      }
     },
 
     /**

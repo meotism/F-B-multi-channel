@@ -83,3 +83,95 @@ export function getTopItems(items, sortBy = 'total_qty', limit = 10) {
     .sort((a, b) => (b[sortBy] || 0) - (a[sortBy] || 0))
     .slice(0, limit);
 }
+
+// ---------------------------------------------------------------------------
+// Stored-procedure report helpers (RPC)
+// ---------------------------------------------------------------------------
+
+/**
+ * Helper to call a Supabase RPC function with caching support.
+ * Uses cachedSupabase.rpc() when available, otherwise falls back to supabase.rpc().
+ *
+ * @param {string} fnName - Stored procedure name
+ * @param {Object} params - RPC parameters
+ * @returns {Promise<{data: *, error: *}>}
+ * @private
+ */
+async function _cachedRpc(fnName, params) {
+  if (typeof cachedSupabase.rpc === 'function') {
+    return cachedSupabase.rpc(fnName, params);
+  }
+  return supabase.rpc(fnName, params);
+}
+
+/**
+ * Get revenue breakdown by payment method for a given outlet and date range.
+ * Calls the `get_revenue_by_payment_method` stored procedure.
+ *
+ * @param {string} outletId - Outlet UUID
+ * @param {string} from - Start date in YYYY-MM-DD format
+ * @param {string} to - End date in YYYY-MM-DD format
+ * @returns {Promise<Array<Object>>} Revenue rows grouped by payment method
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function getRevenueByPaymentMethod(outletId, from, to) {
+  const { data, error } = await _cachedRpc('get_revenue_by_payment_method', {
+    p_outlet_id: outletId,
+    p_from: from,
+    p_to: to,
+  });
+
+  if (error) {
+    throw new Error('Không thể tải báo cáo: ' + error.message);
+  }
+
+  return data;
+}
+
+/**
+ * Get revenue breakdown by category for a given outlet and date range.
+ * Calls the `get_revenue_by_category` stored procedure.
+ *
+ * @param {string} outletId - Outlet UUID
+ * @param {string} from - Start date in YYYY-MM-DD format
+ * @param {string} to - End date in YYYY-MM-DD format
+ * @returns {Promise<Array<Object>>} Revenue rows grouped by category
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function getRevenueByCategory(outletId, from, to) {
+  const { data, error } = await _cachedRpc('get_revenue_by_category', {
+    p_outlet_id: outletId,
+    p_from: from,
+    p_to: to,
+  });
+
+  if (error) {
+    throw new Error('Không thể tải báo cáo: ' + error.message);
+  }
+
+  return data;
+}
+
+/**
+ * Get peak hours analysis for a given outlet and date range.
+ * Calls the `get_peak_hours` stored procedure.
+ *
+ * @param {string} outletId - Outlet UUID
+ * @param {string} from - Start date in YYYY-MM-DD format
+ * @param {string} to - End date in YYYY-MM-DD format
+ * @returns {Promise<Array<Object>>} Peak hour aggregation rows
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function getPeakHours(outletId, from, to) {
+  const { data, error } = await _cachedRpc('get_peak_hours', {
+    p_outlet_id: outletId,
+    p_from: from,
+    p_to: to,
+  });
+
+  if (error) {
+    throw new Error('Không thể tải báo cáo: ' + error.message);
+  }
+
+  return data;
+}

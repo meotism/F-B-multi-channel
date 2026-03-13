@@ -6,6 +6,9 @@
 import { supabase } from './supabase-client.js';
 import { navigate } from '../utils/navigate.js';
 
+// Key used to persist the return URL across auth redirects
+const RETURN_URL_KEY = 'returnUrl';
+
 /**
  * Sign in with email and password via Supabase Auth.
  * After successful authentication, fetches the user profile from the `users` table
@@ -40,17 +43,22 @@ export async function signIn(email, password) {
     throw new Error('Không thể tải thông tin người dùng. Vui lòng thử lại.');
   }
 
-  // Return combined user object with session
-  return {
-    user: {
-      id: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: profile.role,
-      outlet_id: profile.outlet_id,
-    },
-    session,
+  const user = {
+    id: profile.id,
+    name: profile.name,
+    email: profile.email,
+    role: profile.role,
+    outlet_id: profile.outlet_id,
   };
+
+  // Restore the URL the user was on before their session expired
+  const returnUrl = sessionStorage.getItem(RETURN_URL_KEY);
+  if (returnUrl) {
+    sessionStorage.removeItem(RETURN_URL_KEY);
+    navigate(returnUrl);
+  }
+
+  return { user, session };
 }
 
 /**
@@ -61,15 +69,41 @@ export async function signIn(email, password) {
  */
 function categorizeAuthError(error) {
   const message = error.message || '';
+  const status = error.status || 0;
 
   // Invalid credentials (wrong email or password)
   if (message.includes('Invalid login credentials')) {
     return new Error('Email hoặc mật khẩu không đúng');
   }
 
+  // Email not confirmed
+  if (message.includes('Email not confirmed')) {
+    return new Error('Email chưa được xác nhận. Vui lòng kiểm tra hộp thư.');
+  }
+
+  // Too many requests / rate limited
+  if (message.includes('rate limit') || status === 429) {
+    return new Error('Đăng nhập quá nhiều lần. Vui lòng thử lại sau vài phút.');
+  }
+
+  // User banned / disabled
+  if (message.includes('User banned') || message.includes('user is banned')) {
+    return new Error('Tài khoản đã bị vô hiệu hóa. Liên hệ quản trị viên.');
+  }
+
+  // Session expired / refresh token invalid
+  if (message.includes('Refresh Token') || message.includes('session_not_found') || message.includes('JWT expired')) {
+    return new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+  }
+
   // Network / connectivity errors
   if (message.includes('fetch') || message.includes('network') || message.includes('Failed to fetch')) {
     return new Error('Không thể kết nối. Vui lòng kiểm tra mạng.');
+  }
+
+  // Server errors
+  if (status >= 500) {
+    return new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
   }
 
   // Generic fallback
@@ -146,9 +180,25 @@ export async function restoreSession() {
 export function setupAuthListener(callbacks) {
   return supabase.auth.onAuthStateChange((event, session) => {
     switch (event) {
-      case 'SIGNED_OUT':
+      case 'SIGNED_OUT': {
+        // Preserve the current route so the user returns here after re-login
+        const currentHash = window.location.hash.slice(1);
+        if (currentHash && currentHash !== '/login') {
+          sessionStorage.setItem(RETURN_URL_KEY, currentHash);
+        }
+
+        // Show session-expired toast if Alpine UI store is available
+        if (typeof Alpine !== 'undefined' && Alpine.store('ui')) {
+          Alpine.store('ui').showToast(
+            'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+            'warning',
+          );
+        }
+
         callbacks.onSignedOut?.();
+        navigate('/login');
         break;
+      }
       case 'TOKEN_REFRESHED':
         callbacks.onTokenRefreshed?.(session);
         break;

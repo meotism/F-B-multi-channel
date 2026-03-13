@@ -16,6 +16,15 @@ export function uiStore() {
     globalLoading: false,
     loadingMessage: '',
 
+    // Confirmation dialog state
+    confirmAction: null, // { title, message, confirmLabel, danger, onConfirm } or null
+
+    // Connectivity
+    isOffline: !navigator.onLine,
+
+    // SW update banner
+    showUpdateBanner: false,
+
     // Sidebar (desktop/tablet)
     sidebarOpen: true,
 
@@ -71,6 +80,37 @@ export function uiStore() {
     stopLoading() {
       this.globalLoading = false;
       this.loadingMessage = '';
+    },
+
+    /**
+     * Open a centralized confirmation dialog.
+     * @param {Object} options
+     * @param {string} options.title - Dialog title
+     * @param {string} options.message - Dialog message
+     * @param {string} [options.confirmLabel='Xác nhận'] - Confirm button text
+     * @param {boolean} [options.danger=false] - Use danger styling
+     * @param {Function} options.onConfirm - Callback on confirm
+     */
+    openConfirmDialog({ title, message, confirmLabel = 'Xác nhận', danger = false, onConfirm }) {
+      this.confirmAction = { title, message, confirmLabel, danger, onConfirm };
+    },
+
+    /** Close the confirmation dialog without executing. */
+    closeConfirmDialog() {
+      this.confirmAction = null;
+    },
+
+    /** Execute the confirmation callback and close. */
+    async executeConfirm() {
+      if (this.confirmAction?.onConfirm) {
+        await this.confirmAction.onConfirm();
+      }
+      this.confirmAction = null;
+    },
+
+    /** Reload the page to apply a SW update. */
+    applyUpdate() {
+      window.location.reload();
     },
   };
 }

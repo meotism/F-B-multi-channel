@@ -637,6 +637,107 @@
     width: 36px;
     height: 36px;
   }
+
+  /* Mobile: larger cart qty controls for 44px touch target */
+  .order-cart-item__qty-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .order-cart-item__remove {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Menu/Cart Visual Separation (desktop two-column)
+ * ------------------------------------------------------------------ */
+@media (min-width: 1025px) {
+  .order-body__cart {
+    border-left: 2px solid var(--color-border);
+    padding-left: var(--space-4);
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Menu Item Placeholder Icon (when no image)
+ * ------------------------------------------------------------------ */
+.order-menu-item__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-bottom: var(--space-2);
+}
+
+/* ------------------------------------------------------------------
+ * Out-of-Stock Menu Item
+ * ------------------------------------------------------------------ */
+.order-menu-item--unavailable {
+  opacity: 0.5;
+  pointer-events: none;
+  position: relative;
+}
+
+.order-menu-item__out-of-stock {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------
+ * Swipe Affordance (cart items on mobile)
+ * ------------------------------------------------------------------ */
+.order-cart-item--swipeable {
+  position: relative;
+  overflow: hidden;
+}
+.order-cart-item--swipeable::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to left, var(--color-danger), transparent);
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------
+ * Order Note (order-level note textarea)
+ * ------------------------------------------------------------------ */
+.order-note {
+  width: 100%;
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  resize: vertical;
+  min-height: 48px;
+  max-height: 120px;
+  font-family: inherit;
+}
+.order-note:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
 /* ------------------------------------------------------------------
@@ -1028,4 +1129,163 @@
     width: 36px;
     height: 36px;
   }
+}
+
+/* ------------------------------------------------------------------
+ * Task 9.1: Guest Count Input (shared between create & detail mode)
+ * ------------------------------------------------------------------ */
+.order-cart__guest-count {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.order-cart__guest-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.order-cart__guest-input {
+  width: 60px;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  text-align: center;
+  font-family: inherit;
+}
+
+.order-cart__guest-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+/* Task 9.1: Detail mode note section */
+.order-detail__note-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.order-detail__note-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* Task 9.1: Detail mode guest count section */
+.order-detail__guest-section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.order-detail__guest-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.order-detail__guest-input {
+  width: 70px;
+  padding: var(--space-2);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  text-align: center;
+  font-family: inherit;
+}
+
+.order-detail__guest-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.order-detail__guest-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------
+ * Task 9.2: Cart Item Highlight Animation
+ *
+ * Brief flash when an item is added to the cart.
+ * ------------------------------------------------------------------ */
+.cart-item--added {
+  animation: cart-item-flash 0.3s ease;
+}
+
+@keyframes cart-item-flash {
+  0% {
+    background-color: rgba(37, 99, 235, 0.15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Task 9.3: Swipe-to-remove transition on cart items
+ *
+ * Cart items get position:relative for swipe slide-out animation.
+ * The actual transform is applied inline by the JS swipe handler.
+ * ------------------------------------------------------------------ */
+.order-cart-item[data-cart-index] {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------
+ * Task 9.5: Cancel Reason Modal Styles
+ * ------------------------------------------------------------------ */
+.modal-cancel-reason {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.modal-cancel-reason__label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.modal-cancel-reason__required {
+  color: var(--color-danger);
+}
+
+.modal-cancel-reason__input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  resize: vertical;
+  min-height: 72px;
+  max-height: 160px;
+  font-family: inherit;
+}
+
+.modal-cancel-reason__input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.modal-cancel-reason__input::placeholder {
+  color: var(--color-text-secondary);
 }

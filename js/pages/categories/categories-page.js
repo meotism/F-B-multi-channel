@@ -33,8 +33,7 @@ export function categoriesPage() {
     formError: '',
     isSaving: false,
 
-    // Delete confirmation modal state
-    showDeleteModal: false,
+    // Delete target (used by centralized confirm dialog)
     deleteTarget: null,
 
     /**
@@ -195,45 +194,28 @@ export function categoriesPage() {
     },
 
     /**
-     * Open the delete confirmation modal for a category.
+     * Open centralized confirmation dialog for category deletion.
      * @param {Object} cat - The category object to delete
      */
     confirmDelete(cat) {
-      this.deleteTarget = cat;
-      this.showDeleteModal = true;
-    },
-
-    /**
-     * Close the delete confirmation modal.
-     */
-    closeDeleteModal() {
-      this.showDeleteModal = false;
-      this.deleteTarget = null;
-    },
-
-    /**
-     * Execute the category deletion after confirmation.
-     * Handles FK constraint errors with a user-friendly message.
-     */
-    async submitDelete() {
-      if (!this.deleteTarget) return;
-
-      this.isSaving = true;
-
-      try {
-        await deleteCategory(this.deleteTarget.id);
-        Alpine.store('ui').showToast('Xóa danh mục thành công', 'success');
-        this.closeDeleteModal();
-        await this.loadCategories();
-      } catch (err) {
-        Alpine.store('ui').showToast(
-          err.message || 'Không thể xóa danh mục',
-          'error',
-        );
-        this.closeDeleteModal();
-      } finally {
-        this.isSaving = false;
-      }
+      Alpine.store('ui').openConfirmDialog({
+        title: 'Xóa danh mục',
+        message: `Bạn có chắc muốn xóa danh mục "${cat.name}"?`,
+        danger: true,
+        confirmLabel: 'Xóa',
+        onConfirm: async () => {
+          try {
+            await deleteCategory(cat.id);
+            Alpine.store('ui').showToast('Xóa danh mục thành công', 'success');
+            await this.loadCategories();
+          } catch (err) {
+            Alpine.store('ui').showToast(
+              err.message || 'Không thể xóa danh mục',
+              'error',
+            );
+          }
+        },
+      });
     },
   };
 }

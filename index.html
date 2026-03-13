@@ -43,6 +43,7 @@
   <link rel="stylesheet" href="css/pages/bills.css">
   <link rel="stylesheet" href="css/pages/settings.css">
   <link rel="stylesheet" href="css/pages/reports.css">
+  <link rel="stylesheet" href="css/pages/dashboard.css">
 
   <!-- App bootstrap (module) - imports Alpine.js from esm.sh and starts manually -->
   <script type="module" src="js/app.js"></script>
@@ -100,7 +101,7 @@
     </div>
 
     <!-- Navigation items (role-filtered via hasPermission) -->
-    <nav class="sidebar__nav">
+    <nav class="sidebar__nav" role="navigation" aria-label="Menu chính">
       <a href="#/tables"
          class="sidebar__link"
          :class="{ 'sidebar__link--active': $store.ui.currentHash === '#/tables' }"
@@ -161,6 +162,18 @@
           <path d="M2 12l10 5 10-5"></path>
         </svg>
         <span>Nguyên liệu</span>
+      </a>
+
+      <a href="#/discounts"
+         class="sidebar__link"
+         :class="{ 'sidebar__link--active': $store.ui.currentHash === '#/discounts' }"
+         x-show="$store.auth.hasPermission('manage_discounts')">
+        <!-- Discount/tag icon -->
+        <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+          <line x1="7" y1="7" x2="7.01" y2="7"></line>
+        </svg>
+        <span>Khuyến mãi</span>
       </a>
 
       <a href="#/reports"
@@ -238,14 +251,15 @@
       <div class="header__user">
         <span class="header__user-name" x-text="$store.auth.user?.name"></span>
         <button class="btn btn--outline btn--sm"
-                @click="$store.auth.logout()">
+                @click="$store.auth.logout()"
+                aria-label="Đăng xuất">
           Đăng xuất
         </button>
       </div>
     </header>
 
     <!-- Page content container (swapped by router) -->
-    <main id="page-container" class="content">
+    <main id="page-container" class="content" role="main">
       <!-- Dynamic page content injected here by the router -->
     </main>
   </div>
@@ -254,6 +268,8 @@
        Bottom navigation bar (mobile only)
        =================================================================== -->
   <nav class="bottom-nav"
+       role="navigation"
+       aria-label="Điều hướng nhanh"
        x-show="$store.auth.isAuthenticated"
        x-cloak>
     <a href="#/tables"
@@ -266,7 +282,7 @@
         <rect x="3" y="14" width="7" height="7"></rect>
         <rect x="14" y="14" width="7" height="7"></rect>
       </svg>
-      <span>Bàn</span>
+      <span class="nav-label">Bàn</span>
     </a>
 
     <a href="#/menu"
@@ -276,7 +292,7 @@
       <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 6h18M3 12h18M3 18h18"></path>
       </svg>
-      <span>Thực đơn</span>
+      <span class="nav-label">Thực đơn</span>
     </a>
 
     <a href="#/inventory"
@@ -288,7 +304,7 @@
         <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
         <line x1="12" y1="22.08" x2="12" y2="12"></line>
       </svg>
-      <span>Tồn kho</span>
+      <span class="nav-label">Tồn kho</span>
     </a>
 
     <a href="#/reports"
@@ -300,7 +316,7 @@
         <line x1="12" y1="20" x2="12" y2="4"></line>
         <line x1="6" y1="20" x2="6" y2="14"></line>
       </svg>
-      <span>Báo cáo</span>
+      <span class="nav-label">Báo cáo</span>
     </a>
 
     <a href="#/settings"
@@ -311,14 +327,66 @@
         <circle cx="12" cy="12" r="3"></circle>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
       </svg>
-      <span>Cài đặt</span>
+      <span class="nav-label">Cài đặt</span>
     </a>
   </nav>
 
   <!-- ===================================================================
+       Screen reader announcements (sr-only live region)
+       =================================================================== -->
+  <div id="status-announcer" aria-live="polite" class="sr-only"></div>
+
+  <!-- ===================================================================
+       Offline banner
+       =================================================================== -->
+  <div class="offline-banner"
+       role="alert"
+       x-data
+       x-show="$store.ui.isOffline"
+       x-transition
+       x-cloak>
+    Mất kết nối — dữ liệu có thể chưa cập nhật
+  </div>
+
+  <!-- ===================================================================
+       SW update banner
+       =================================================================== -->
+  <div class="update-banner"
+       x-data
+       x-show="$store.ui.showUpdateBanner"
+       x-transition
+       x-cloak>
+    <span>Phiên bản mới có sẵn</span>
+    <button class="btn btn--sm btn--primary" @click="$store.ui.applyUpdate()">Cập nhật</button>
+  </div>
+
+  <!-- ===================================================================
+       Centralized confirmation dialog
+       =================================================================== -->
+  <div class="modal-backdrop"
+       x-data
+       x-show="$store.ui.confirmAction"
+       x-transition.opacity
+       @click.self="$store.ui.closeConfirmDialog()"
+       x-cloak>
+    <div class="modal-content" x-show="$store.ui.confirmAction" x-transition>
+      <h3 class="modal-content__title" x-text="$store.ui.confirmAction?.title"></h3>
+      <p class="modal-content__body" x-text="$store.ui.confirmAction?.message"></p>
+      <div class="modal-content__actions">
+        <button class="btn btn--outline" @click="$store.ui.closeConfirmDialog()">Hủy</button>
+        <button class="btn"
+                :class="$store.ui.confirmAction?.danger ? 'btn--danger' : 'btn--primary'"
+                @click="$store.ui.executeConfirm()"
+                x-text="$store.ui.confirmAction?.confirmLabel || 'Xác nhận'">
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
        Toast notification container
        =================================================================== -->
-  <div class="toast-container" x-data>
+  <div class="toast-container" x-data aria-live="polite">
     <template x-for="toast in $store.ui.toasts" :key="toast.id">
       <div class="toast"
            :class="'toast--' + toast.type"
@@ -394,7 +462,23 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then((reg) => console.log('SW registered:', reg.scope))
+          .then((reg) => {
+            console.log('SW registered:', reg.scope);
+            // Detect new SW update
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New version available
+                    if (window.Alpine && Alpine.store('ui')) {
+                      Alpine.store('ui').showUpdateBanner = true;
+                    }
+                  }
+                });
+              }
+            });
+          })
           .catch((err) => console.warn('SW registration failed:', err));
       });
     }

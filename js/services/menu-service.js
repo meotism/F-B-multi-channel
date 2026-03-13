@@ -7,6 +7,7 @@
 
 import { supabase } from './supabase-client.js';
 import { cachedSupabase } from './cached-query.js';
+import { assertOutlet } from '../utils/outlet-guard.js';
 
 // ============================================================
 // Categories
@@ -219,6 +220,152 @@ export async function deleteMenuItem(id) {
 
   if (error) {
     throw new Error('Không thể xóa món ăn: ' + error.message);
+  }
+
+  cachedSupabase.invalidate('menu_items');
+  return data;
+}
+
+
+/**
+ * Update the availability flag of a menu item (e.g. temporarily out of stock).
+ *
+ * @param {string} id - The menu item UUID
+ * @param {boolean} isAvailable - Whether the item is currently available
+ * @returns {Promise<Object>} The updated menu item object
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function updateMenuItemAvailability(id, isAvailable) {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .update({ is_available: isAvailable })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error('Không thể cập nhật trạng thái món ăn: ' + error.message);
+  }
+
+  cachedSupabase.invalidate('menu_items');
+  return data;
+}
+
+/**
+ * Batch update is_active flag for multiple menu items at once.
+ *
+ * @param {string[]} itemIds - Array of menu item UUIDs
+ * @param {boolean} isActive - The is_active value to set
+ * @returns {Promise<Array>} Array of updated menu item objects
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function bulkUpdateActive(itemIds, isActive) {
+  if (!itemIds || itemIds.length === 0) {
+    return [];
+  }
+
+  const results = [];
+
+  for (const id of itemIds) {
+    const { data, error } = await supabase
+      .from('menu_items')
+      .update({ is_active: isActive })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error('Không thể cập nhật trạng thái hoạt động món ăn: ' + error.message);
+    }
+
+    results.push(data);
+  }
+
+  cachedSupabase.invalidate('menu_items');
+  return results;
+}
+
+/**
+ * Bulk adjust prices for all menu items in a category.
+ *
+ * @param {string} categoryId - The category UUID whose items will be updated
+ * @param {string} outletId - The outlet UUID (used for outlet guard and filtering)
+ * @param {{ type: 'percent'|'fixed', value: number }} adjustment - Price adjustment descriptor.
+ *   For 'percent': value is a percentage (e.g. 10 means +10%, -5 means -5%).
+ *   For 'fixed': value is added directly to the current price.
+ * @returns {Promise<Array>} Array of updated menu item objects
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function bulkUpdatePrice(categoryId, outletId, adjustment) {
+  assertOutlet(outletId);
+
+  // 1. Fetch current items in the category
+  const { data: items, error: fetchError } = await cachedSupabase
+    .from('menu_items')
+    .select('id, price')
+    .eq('category_id', categoryId)
+    .eq('outlet_id', outletId);
+
+  if (fetchError) {
+    throw new Error('Không thể tải danh sách món ăn theo danh mục: ' + fetchError.message);
+  }
+
+  if (!items || items.length === 0) {
+    return [];
+  }
+
+  // 2. Calculate new prices and update each item
+  const results = [];
+
+  for (const item of items) {
+    let newPrice;
+
+    if (adjustment.type === 'percent') {
+      newPrice = item.price * (1 + adjustment.value / 100);
+    } else {
+      // fixed
+      newPrice = item.price + adjustment.value;
+    }
+
+    // Ensure price is non-negative and rounded to avoid floating point issues
+    newPrice = Math.max(0, Math.round(newPrice));
+
+    const { data, error } = await supabase
+      .from('menu_items')
+      .update({ price: newPrice })
+      .eq('id', item.id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error('Không thể cập nhật giá món ăn: ' + error.message);
+    }
+
+    results.push(data);
+  }
+
+  cachedSupabase.invalidate('menu_items');
+  return results;
+}
+
+/**
+ * Update the sort order of a menu item.
+ *
+ * @param {string} itemId - The menu item UUID
+ * @param {number} sortOrder - The new sort_order value
+ * @returns {Promise<Object>} The updated menu item object
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function updateSortOrder(itemId, sortOrder) {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .update({ sort_order: sortOrder })
+    .eq('id', itemId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error('Không thể cập nhật thứ tự món ăn: ' + error.message);
   }
 
   cachedSupabase.invalidate('menu_items');

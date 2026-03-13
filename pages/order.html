@@ -102,11 +102,21 @@
            x-cloak
            class="order-menu-grid">
         <template x-for="item in $store.orders.filteredMenuItems" :key="item.id">
-          <div class="order-menu-item" @click="addToCart(item)">
+          <div class="order-menu-item"
+               :class="{ 'order-menu-item--unavailable': item.is_available === false }"
+               @click="item.is_available !== false && addToCart(item)">
             <span class="order-menu-item__name" x-text="item.name"></span>
+            <!-- Task 11.2: Out-of-stock badge -->
+            <span class="badge badge--danger"
+                  x-show="item.is_available === false"
+                  x-cloak
+                  style="font-size: var(--font-size-xs);">
+              Hết hàng
+            </span>
             <span class="order-menu-item__price" x-text="formatVND(item.price) + 'đ'"></span>
             <button class="order-menu-item__add"
-                    @click.stop="addToCart(item)"
+                    @click.stop="item.is_available !== false && addToCart(item)"
+                    :disabled="item.is_available === false"
                     aria-label="Thêm vào đơn">
               +
             </button>
@@ -140,7 +150,9 @@
         </div>
 
         <!-- Cart items list -->
-        <div class="order-cart__items">
+        <!-- Task 9.3: Re-attach swipe handlers when cart changes -->
+        <div class="order-cart__items"
+             x-effect="$store.orders.cart.length; attachCartSwipeHandlers()">
           <!-- Empty cart -->
           <div x-show="$store.orders.cart.length === 0"
                class="order-cart__empty">
@@ -149,7 +161,10 @@
 
           <!-- Cart item rows -->
           <template x-for="(item, index) in $store.orders.cart" :key="item.menuItemId">
-            <div class="order-cart-item" x-data="{ showNote: false }">
+            <div class="order-cart-item"
+                 :class="{ 'cart-item--added': item.menuItemId === justAdded }"
+                 :data-cart-index="index"
+                 x-data="{ showNote: false }">
               <!-- Main row: name, qty controls, line total, actions -->
               <div class="order-cart-item__row">
                 <span class="order-cart-item__name" x-text="item.name"></span>
@@ -199,6 +214,20 @@
                         @click.stop></textarea>
             </div>
           </template>
+        </div>
+
+        <!-- Task 9.1: Guest count input (create mode) -->
+        <div class="order-cart__guest-count">
+          <label class="order-cart__guest-label" for="guest-count-create">
+            Số khách:
+          </label>
+          <input id="guest-count-create"
+                 type="number"
+                 class="order-cart__guest-input"
+                 x-model.number="guestCount"
+                 min="0"
+                 max="99"
+                 placeholder="0">
         </div>
 
         <!-- Cart total + confirm button -->
@@ -259,7 +288,8 @@
        Requirements: 5.2 AC-4, 5.2 AC-6
        ================================================================ -->
   <template x-if="mode === 'detail'">
-  <div class="order-detail">
+  <div class="order-detail"
+       x-effect="checkForConflict()">
 
     <!-- Loading state -->
     <div x-show="$store.orders.isLoading" x-cloak class="order-detail__loading">
@@ -381,11 +411,61 @@
         </template>
       </div>
 
+      <!-- Task 9.1: Order-level note (detail mode, above total) -->
+      <div class="order-detail__note-section">
+        <label class="order-detail__note-label" for="order-note">Ghi chú đơn hàng:</label>
+        <textarea id="order-note"
+                  class="order-note"
+                  x-model="orderNote"
+                  placeholder="Ghi chú cho đơn hàng..."
+                  maxlength="2000"
+                  :disabled="!canModify"
+                  @blur="saveOrderNote()"></textarea>
+      </div>
+
+      <!-- Task 9.1: Guest count (detail mode) -->
+      <div class="order-detail__guest-section">
+        <label class="order-detail__guest-label" for="guest-count-detail">Số khách:</label>
+        <input id="guest-count-detail"
+               type="number"
+               class="order-detail__guest-input"
+               x-model.number="guestCount"
+               min="0"
+               max="99"
+               :disabled="!canModify"
+               @blur="saveGuestCount()">
+      </div>
+
+      <!-- Task 17.2: Applied discount badge -->
+      <div x-show="appliedDiscount" x-cloak
+           style="display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: #dcfce7; border: 1px solid #bbf7d0; border-radius: var(--radius-md);">
+        <span class="badge badge--success" style="font-size: var(--font-size-xs);">KM</span>
+        <span style="font-size: var(--font-size-sm); font-weight: 500;"
+              x-text="appliedDiscount?.name || ''"></span>
+        <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);"
+              x-text="'(-' + formatDiscountValue(appliedDiscount) + ')'"></span>
+        <span style="font-size: var(--font-size-sm); font-weight: 600; color: #166534;"
+              x-text="'-' + formatVND(discountAmount) + 'đ'"></span>
+        <button class="btn btn--outline btn--sm"
+                x-show="canModify"
+                @click="clearDiscount()"
+                style="margin-left: auto; font-size: var(--font-size-xs); padding: 2px 8px; min-height: 28px;">
+          Xóa
+        </button>
+      </div>
+
       <!-- Order total -->
       <div class="order-detail__total">
         <span class="order-detail__total-label">Tổng cộng:</span>
         <span class="order-detail__total-amount"
+              x-show="!appliedDiscount"
               x-text="formatVND($store.orders.orderTotal) + 'đ'"></span>
+        <span x-show="appliedDiscount" x-cloak style="display: flex; flex-direction: column; align-items: flex-end;">
+          <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: line-through;"
+                x-text="formatVND($store.orders.orderTotal) + 'đ'"></span>
+          <span class="order-detail__total-amount"
+                x-text="formatVND(finalTotal) + 'đ'"></span>
+        </span>
       </div>
 
       <!-- Action buttons section (visible when order is active / canModify) -->
@@ -437,6 +517,12 @@
                 x-show="$store.auth.hasPermission('merge_orders')"
                 @click="openMergeModal()">
           Gộp đơn
+        </button>
+
+        <!-- Task 17.2: Discount button -->
+        <button class="btn btn--secondary"
+                @click="openDiscountModal()">
+          Khuyến mãi
         </button>
       </div>
 
@@ -516,12 +602,20 @@
                class="order-menu-grid">
             <template x-for="menuItem in $store.orders.filteredMenuItems" :key="menuItem.id">
               <div class="order-menu-item"
-                   :class="{ 'order-menu-item--adding': isSavingItem === 'adding' }"
-                   @click="addItemDirectly(menuItem)">
+                   :class="{ 'order-menu-item--adding': isSavingItem === 'adding', 'order-menu-item--unavailable': menuItem.is_available === false }"
+                   @click="menuItem.is_available !== false && addItemDirectly(menuItem)">
                 <span class="order-menu-item__name" x-text="menuItem.name"></span>
+                <!-- Task 11.2: Out-of-stock badge -->
+                <span class="badge badge--danger"
+                      x-show="menuItem.is_available === false"
+                      x-cloak
+                      style="font-size: var(--font-size-xs);">
+                  Hết hàng
+                </span>
                 <span class="order-menu-item__price" x-text="formatVND(menuItem.price) + 'đ'"></span>
                 <button class="order-menu-item__add"
-                        @click.stop="addItemDirectly(menuItem)"
+                        @click.stop="menuItem.is_available !== false && addItemDirectly(menuItem)"
+                        :disabled="menuItem.is_available === false"
                         aria-label="Thêm vào đơn">
                   +
                 </button>
@@ -547,21 +641,37 @@
        MODALS — Cancel, Transfer, Merge confirmation dialogs
        ================================================================ -->
 
-  <!-- S3-11: Cancel Order Confirmation Modal -->
+  <!-- S3-11 + Task 9.5: Cancel Order Confirmation Modal with reason -->
   <div class="modal-backdrop" x-show="showCancelConfirm" x-cloak
        @click.self="showCancelConfirm = false">
     <div class="modal-content">
       <h3 class="modal-content__title">Hủy đơn hàng</h3>
       <p>Bạn có chắc muốn hủy đơn hàng này? Tồn kho sẽ được hoàn trả.</p>
+
+      <!-- Task 9.5: Cancellation reason (manager/owner only) -->
+      <template x-if="isManagerOrOwner">
+        <div class="modal-cancel-reason">
+          <label class="modal-cancel-reason__label" for="cancel-reason">
+            Lý do hủy <span class="modal-cancel-reason__required">*</span>
+          </label>
+          <textarea id="cancel-reason"
+                    class="modal-cancel-reason__input"
+                    x-model="cancelReason"
+                    placeholder="Nhập lý do hủy đơn hàng..."
+                    maxlength="500"
+                    rows="3"></textarea>
+        </div>
+      </template>
+
       <div class="modal-content__actions">
         <button class="btn btn--secondary"
-                @click="showCancelConfirm = false"
+                @click="showCancelConfirm = false; cancelReason = ''"
                 :disabled="isCancelling">
           Không
         </button>
         <button class="btn btn--danger"
                 @click="cancelOrder()"
-                :disabled="isCancelling">
+                :disabled="isCancelling || (isManagerOrOwner && !cancelReason.trim())">
           <span x-show="!isCancelling">Xác nhận hủy</span>
           <span x-show="isCancelling" x-cloak class="spinner spinner--sm"></span>
         </button>
@@ -605,6 +715,57 @@
                 :disabled="isTransferring || !selectedTransferTarget">
           <span x-show="!isTransferring">Chuyển bàn</span>
           <span x-show="isTransferring" x-cloak class="spinner spinner--sm"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Task 17.2: Discount Picker Modal -->
+  <div class="modal-backdrop" x-show="showDiscountModal" x-cloak
+       @click.self="showDiscountModal = false">
+    <div class="modal-content">
+      <h3 class="modal-content__title">Chọn khuyến mãi</h3>
+
+      <!-- Loading state -->
+      <div x-show="isLoadingDiscounts" x-cloak style="padding: var(--space-4); text-align: center;">
+        <div class="spinner"></div>
+        <p style="margin-top: var(--space-2); font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+          Đang tải khuyến mãi...
+        </p>
+      </div>
+
+      <!-- Empty state -->
+      <div x-show="!isLoadingDiscounts && availableDiscounts.length === 0" x-cloak
+           style="padding: var(--space-4); text-align: center; color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+        <p>Không có khuyến mãi nào đang hoạt động.</p>
+      </div>
+
+      <!-- Discount list -->
+      <div x-show="!isLoadingDiscounts && availableDiscounts.length > 0" x-cloak
+           style="max-height: 400px; overflow-y: auto;">
+        <template x-for="disc in availableDiscounts" :key="disc.id">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); cursor: pointer; transition: background 0.15s;"
+               :style="appliedDiscount?.id === disc.id ? 'background: rgba(22,163,74,0.08);' : ''"
+               @click="selectDiscount(disc)">
+            <div>
+              <div style="font-weight: 600; font-size: var(--font-size-sm);" x-text="disc.name"></div>
+              <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">
+                <span x-text="disc.type === 'percent' ? ('Giảm ' + disc.value + '%') : ('Giảm ' + formatVND(disc.value) + 'đ')"></span>
+                <span x-text="disc.scope === 'order' ? ' (toàn đơn)' : ' (theo món)'"></span>
+              </div>
+            </div>
+            <span x-show="appliedDiscount?.id === disc.id" x-cloak
+                  style="color: var(--color-success); font-weight: 700; font-size: var(--font-size-sm);">
+              &#10003; Đang áp dụng
+            </span>
+          </div>
+        </template>
+      </div>
+
+      <div class="modal-content__actions">
+        <button class="btn btn--secondary"
+                @click="showDiscountModal = false">
+          Đóng
         </button>
       </div>
     </div>

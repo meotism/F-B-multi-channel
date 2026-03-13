@@ -61,26 +61,48 @@
           <th>Tên</th>
           <th>Email</th>
           <th>Vai trò</th>
+          <th>Trạng thái</th>
+          <th>Đăng nhập lần cuối</th>
           <th>Ngày tạo</th>
           <th>Hành động</th>
         </tr>
       </thead>
       <tbody>
         <template x-for="user in users" :key="user.id">
-          <tr>
-            <td x-text="user.name"></td>
+          <tr :style="user.is_active === false ? 'opacity: 0.6;' : ''">
+            <td>
+              <span x-text="user.name"></span>
+              <span x-show="user.is_active === false" x-cloak
+                    class="badge badge--danger"
+                    style="margin-left: var(--space-1); font-size: var(--font-size-xs);">Đã vô hiệu</span>
+            </td>
             <td x-text="user.email"></td>
             <td>
               <span class="badge"
                     :class="getRoleBadgeClass(user.role)"
                     x-text="getRoleLabel(user.role)"></span>
             </td>
+            <!-- Task 14.1: Active/inactive toggle -->
+            <td>
+              <button class="btn btn--sm"
+                      :class="user.is_active !== false ? 'btn--success' : 'btn--outline'"
+                      @click="toggleUserActive(user)"
+                      x-text="user.is_active !== false ? 'Hoạt động' : 'Vô hiệu'">
+              </button>
+            </td>
+            <!-- Task 14.1: Last login column -->
+            <td style="font-size: var(--font-size-xs);" x-text="formatLastLogin(user.last_login_at)"></td>
             <td x-text="formatDate(user.created_at)"></td>
             <td>
-              <div class="users-table__actions">
+              <div class="users-table__actions" style="display: flex; gap: var(--space-1); flex-wrap: wrap;">
                 <button class="btn btn--outline btn--sm"
                         @click="openEditModal(user)">
                   Sửa
+                </button>
+                <!-- Task 14.1: Reset password button -->
+                <button class="btn btn--outline btn--sm"
+                        @click="openResetPasswordModal(user)">
+                  Đặt lại mật khẩu
                 </button>
                 <button class="btn btn--danger btn--sm"
                         @click="confirmDelete(user)">
@@ -99,24 +121,44 @@
        x-cloak
        class="users-cards">
     <template x-for="user in users" :key="'card-' + user.id">
-      <div class="users-card">
+      <div class="users-card" :style="user.is_active === false ? 'opacity: 0.6;' : ''">
         <div class="users-card__header">
           <span class="users-card__name" x-text="user.name"></span>
+          <span x-show="user.is_active === false" x-cloak
+                class="badge badge--danger"
+                style="font-size: var(--font-size-xs);">Đã vô hiệu</span>
           <span class="badge"
                 :class="getRoleBadgeClass(user.role)"
                 x-text="getRoleLabel(user.role)"></span>
+          <!-- Task 14.1: Active/inactive toggle -->
+          <button class="btn btn--sm"
+                  style="margin-left: auto;"
+                  :class="user.is_active !== false ? 'btn--success' : 'btn--outline'"
+                  @click="toggleUserActive(user)"
+                  x-text="user.is_active !== false ? 'Hoạt động' : 'Vô hiệu'">
+          </button>
         </div>
         <div class="users-card__email" x-text="user.email"></div>
+        <!-- Task 14.1: Last login display -->
+        <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-bottom: var(--space-1);">
+          <span>Đăng nhập lần cuối: </span>
+          <span x-text="formatLastLogin(user.last_login_at)"></span>
+        </div>
         <div class="users-card__date">
           <span style="color: var(--color-text-secondary); font-size: var(--font-size-xs);">
             Ngày tạo:
           </span>
           <span style="font-size: var(--font-size-xs);" x-text="formatDate(user.created_at)"></span>
         </div>
-        <div class="users-card__actions">
+        <div class="users-card__actions" style="display: flex; gap: var(--space-1); flex-wrap: wrap;">
           <button class="btn btn--outline btn--sm"
                   @click="openEditModal(user)">
             Sửa
+          </button>
+          <!-- Task 14.1: Reset password button (mobile) -->
+          <button class="btn btn--outline btn--sm"
+                  @click="openResetPasswordModal(user)">
+            Đặt lại mật khẩu
           </button>
           <button class="btn btn--danger btn--sm"
                   @click="confirmDelete(user)">
@@ -367,6 +409,76 @@
                 :disabled="isSaving">
           <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
           <span x-text="isSaving ? 'Đang xóa...' : 'Xóa'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Task 14.1: Reset Password Modal
+       ================================================================ -->
+  <div class="modal-backdrop"
+       x-show="showResetPasswordModal"
+       x-transition.opacity
+       @click.self="closeResetPasswordModal()"
+       x-cloak>
+    <div class="modal-content" x-show="showResetPasswordModal" x-transition>
+      <!-- Header -->
+      <div class="modal-content__header">
+        <h3>Đặt lại mật khẩu</h3>
+        <button class="modal-content__close"
+                @click="closeResetPasswordModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-content__body">
+        <!-- Error message -->
+        <div class="users-form__error"
+             x-show="resetPasswordError"
+             x-cloak>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          <span x-text="resetPasswordError"></span>
+        </div>
+
+        <p style="margin-bottom: var(--space-3);">
+          Đặt lại mật khẩu cho <strong x-text="resetPasswordTarget?.name"></strong>
+          (<span x-text="resetPasswordTarget?.email"></span>)
+        </p>
+
+        <form @submit.prevent="submitResetPassword()">
+          <div class="form-group">
+            <label class="form-label" for="reset-password">Mật khẩu mới <span class="users-form__required">*</span></label>
+            <input id="reset-password"
+                   type="password"
+                   class="form-input"
+                   x-model="resetNewPassword"
+                   placeholder="Tối thiểu 8 ký tự"
+                   minlength="8"
+                   required
+                   :disabled="isSaving">
+          </div>
+          <button type="submit" style="display: none;"></button>
+        </form>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-content__footer">
+        <button class="btn btn--outline"
+                @click="closeResetPasswordModal()"
+                :disabled="isSaving">
+          Hủy
+        </button>
+        <button class="btn btn--primary"
+                @click="submitResetPassword()"
+                :disabled="isSaving">
+          <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
+          <span x-text="isSaving ? 'Đang lưu...' : 'Đặt lại mật khẩu'"></span>
         </button>
       </div>
     </div>

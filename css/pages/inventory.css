@@ -387,3 +387,100 @@
   color: var(--color-primary);
   margin: 0;
 }
+
+
+/* ==========================================================================
+ * 14. LOW-STOCK ALERT BANNER
+ * ========================================================================== */
+
+.inventory-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: #fef2f2;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  margin-bottom: var(--space-4);
+}
+.inventory-alert-banner__icon {
+  font-size: var(--font-size-lg);
+  flex-shrink: 0;
+}
+.inventory-alert-banner__text {
+  flex: 1;
+}
+
+
+/* ==========================================================================
+ * 15. STOCK-IN MODAL
+ * ========================================================================== */
+
+.stock-in-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.stock-in-form__supplier-note {
+  min-height: 60px;
+  resize: vertical;
+}
+
+
+/* ==========================================================================
+ * 16. STOCK MOVEMENT HISTORY
+ * ========================================================================== */
+
+.stock-history {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+.stock-history__title {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  margin-bottom: var(--space-2);
+}
+.stock-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 200px;
+  overflow-y: auto;
+}
+.stock-history__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+.stock-history__item-type {
+  font-weight: 600;
+  min-width: 48px;
+}
+.stock-history__item-type--in {
+  color: var(--color-success);
+}
+.stock-history__item-type--out {
+  color: var(--color-danger);
+}
+.stock-history__item-qty {
+  font-weight: 600;
+  min-width: 60px;
+  text-align: right;
+}
+.stock-history__item-note {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stock-history__item-date {
+  flex-shrink: 0;
+}

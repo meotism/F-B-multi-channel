@@ -5,6 +5,7 @@
 // Update and delete use direct PostgREST via the Supabase client.
 
 import { supabase } from './supabase-client.js';
+import { cachedSupabase } from './cached-query.js';
 
 /**
  * List all users belonging to a specific outlet.
@@ -15,9 +16,9 @@ import { supabase } from './supabase-client.js';
  * @throws {Error} With Vietnamese message on failure
  */
 export async function listUsers(outletId) {
-  const { data, error } = await supabase
+  const { data, error } = await cachedSupabase
     .from('users')
-    .select('*')
+    .select('id, name, email, role, outlet_id, is_active, last_login_at, created_at')
     .eq('outlet_id', outletId)
     .order('created_at', { ascending: true });
 
@@ -50,6 +51,7 @@ export async function createUser(userData) {
     throw new Error(data.error.message || data.error || 'Không thể tạo người dùng');
   }
 
+  cachedSupabase.invalidate('users');
   return data;
 }
 
@@ -74,6 +76,7 @@ export async function updateUser(id, updates) {
     throw new Error('Không thể cập nhật người dùng: ' + error.message);
   }
 
+  cachedSupabase.invalidate('users');
   return data;
 }
 
@@ -95,4 +98,93 @@ export async function deleteUser(id) {
   if (error) {
     throw new Error('Không thể xóa người dùng: ' + error.message);
   }
+
+  cachedSupabase.invalidate('users');
+}
+
+/**
+ * Deactivate a user by setting is_active = false.
+ *
+ * @param {string} userId - The user UUID to deactivate
+ * @returns {Promise<Object>} The updated user object
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function deactivateUser(userId) {
+  const { data, error } = await supabase
+    .from('users')
+    .update({ is_active: false })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error('Không thể vô hiệu hóa người dùng: ' + error.message);
+  }
+
+  cachedSupabase.invalidate('users');
+  return data;
+}
+
+/**
+ * Reactivate a user by setting is_active = true.
+ *
+ * @param {string} userId - The user UUID to reactivate
+ * @returns {Promise<Object>} The updated user object
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function reactivateUser(userId) {
+  const { data, error } = await supabase
+    .from('users')
+    .update({ is_active: true })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error('Không thể kích hoạt lại người dùng: ' + error.message);
+  }
+
+  cachedSupabase.invalidate('users');
+  return data;
+}
+
+/**
+ * Reset a user's password via Supabase Auth admin API.
+ * Requires service_role access (runs through the Supabase client with admin privileges).
+ *
+ * @param {string} userId - The auth user UUID
+ * @param {string} newPassword - The new password to set
+ * @returns {Promise<Object>} The updated auth user
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function resetPassword(userId, newPassword) {
+  const { data, error } = await supabase.auth.admin.updateUserById(userId, {
+    password: newPassword,
+  });
+
+  if (error) {
+    throw new Error('Không thể đặt lại mật khẩu: ' + error.message);
+  }
+
+  return data;
+}
+
+/**
+ * Update the last_login_at timestamp for a user.
+ *
+ * @param {string} userId - The user UUID
+ * @returns {Promise<void>}
+ * @throws {Error} With Vietnamese message on failure
+ */
+export async function updateLastLogin(userId) {
+  const { error } = await supabase
+    .from('users')
+    .update({ last_login_at: new Date().toISOString() })
+    .eq('id', userId);
+
+  if (error) {
+    throw new Error('Không thể cập nhật thời gian đăng nhập: ' + error.message);
+  }
+
+  cachedSupabase.invalidate('users');
 }

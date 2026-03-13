@@ -98,6 +98,20 @@
         <span class="bill-totals__label">Tạm tính:</span>
         <span class="bill-totals__value" x-text="formatVND(subtotal) + 'đ'"></span>
       </div>
+
+      <!-- Task 10.3: Discount line -->
+      <template x-if="discount && discountAmount > 0">
+        <div class="bill-totals__row bill-totals__row--discount">
+          <span class="bill-totals__label">
+            Giảm giá (<span x-text="discount.name"></span>
+            - <span x-text="discount.type === 'percent' ? discount.value + '%' : formatVND(discount.value) + 'đ'"></span>):
+          </span>
+          <span class="bill-totals__value" style="color: var(--color-danger, #dc2626);">
+            -<span x-text="formatVND(discountAmount) + 'đ'"></span>
+          </span>
+        </div>
+      </template>
+
       <template x-if="tax > 0">
         <div class="bill-totals__row">
           <span class="bill-totals__label">Thuế:</span>
@@ -146,14 +160,39 @@
     <!-- ============================================================
          Action Buttons
          ============================================================ -->
+    <!-- Task 10.2: Split bills display -->
+    <template x-if="splitBills.length > 1">
+      <div class="bill-split-list" style="margin-bottom: var(--space-4);">
+        <h3 style="font-size: var(--font-size-sm); font-weight: 600; margin-bottom: var(--space-2);">
+          Hóa đơn đã tách (<span x-text="splitBills.length"></span>)
+        </h3>
+        <template x-for="(sb, idx) in splitBills" :key="sb.id">
+          <div class="bill-split-list__item" style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-2); border: 1px solid var(--color-border, #e5e7eb); border-radius: var(--radius-md, 8px); margin-bottom: var(--space-1);">
+            <span>
+              Hóa đơn #<span x-text="idx + 1"></span>
+              <span class="badge badge--muted" x-text="sb.split_type === 'equal' ? 'Chia đều' : 'Theo món'" style="margin-left: var(--space-1);"></span>
+            </span>
+            <span style="font-weight: 600;" x-text="formatVND(sb.total) + 'đ'"></span>
+          </div>
+        </template>
+      </div>
+    </template>
+
     <div class="bill-actions">
+
+      <!-- Task 10.2: Split bill button — shown before finalization, when 2+ items -->
+      <button class="btn btn--outline btn--block"
+              x-show="canSplit"
+              @click="openSplitModal()">
+        Tách hóa đơn
+      </button>
 
       <!-- Finalize button — shown when order is completed and no bill exists -->
       <button class="btn btn--primary btn--lg btn--block"
               x-show="canFinalize"
               :disabled="isFinalizing"
               @click="showFinalizeConfirm = true">
-        <span x-show="!isFinalizing">Xuất hóa đơn</span>
+        <span x-show="!isFinalizing">Xuất hóa đơn <span class="kbd-hint" style="font-size: var(--font-size-xs); opacity: 0.7; margin-left: var(--space-1);">Ctrl+Enter</span></span>
         <span x-show="isFinalizing" x-cloak class="spinner spinner--sm"></span>
       </button>
 
@@ -185,7 +224,7 @@
             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
             <rect x="6" y="14" width="12" height="8"></rect>
           </svg>
-          In hóa đơn
+          In hóa đơn <span class="kbd-hint" style="font-size: var(--font-size-xs); opacity: 0.7; margin-left: var(--space-1);">Ctrl+P</span>
         </span>
         <span x-show="isPrinting" x-cloak class="spinner spinner--sm"></span>
       </button>
@@ -245,6 +284,85 @@
                 :disabled="isFinalizing">
           <span x-show="!isFinalizing">Xác nhận</span>
           <span x-show="isFinalizing" x-cloak class="spinner spinner--sm"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Task 10.2: Split Bill Modal
+       ================================================================ -->
+  <div class="modal-backdrop" x-show="showSplitModal" x-cloak
+       @click.self="closeSplitModal()">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-content__header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>Tách hóa đơn</h3>
+        <button class="modal-content__close"
+                @click="closeSplitModal()"
+                aria-label="Đóng">&times;</button>
+      </div>
+
+      <div class="modal-content__body">
+        <!-- Tab navigation -->
+        <div style="display: flex; gap: var(--space-2); margin-bottom: var(--space-3);">
+          <button class="btn btn--sm"
+                  :class="splitMode === 'by_item' ? 'btn--primary' : 'btn--outline'"
+                  @click="splitMode = 'by_item'">
+            Theo món
+          </button>
+          <button class="btn btn--sm"
+                  :class="splitMode === 'equal' ? 'btn--primary' : 'btn--outline'"
+                  @click="splitMode = 'equal'">
+            Chia đều
+          </button>
+        </div>
+
+        <!-- By item mode: checkboxes -->
+        <div x-show="splitMode === 'by_item'">
+          <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-2);">
+            Chọn món cho hóa đơn 1 (các món còn lại sẽ vào hóa đơn 2):
+          </p>
+          <template x-for="(item, idx) in orderItems" :key="item.id">
+            <label style="display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border, #e5e7eb); cursor: pointer;">
+              <input type="checkbox" x-model="splitItemChecked[idx]">
+              <span x-text="item.menuItemName || item.menu_items?.name || ''" style="flex: 1;"></span>
+              <span style="font-size: var(--font-size-sm);" x-text="'x' + item.qty"></span>
+              <span style="font-weight: 600; font-size: var(--font-size-sm);" x-text="formatVND(item.price * item.qty) + 'đ'"></span>
+            </label>
+          </template>
+        </div>
+
+        <!-- Equal split mode: number input -->
+        <div x-show="splitMode === 'equal'" x-cloak>
+          <div class="form-group">
+            <label class="form-label" for="split-count">Số lượng hóa đơn</label>
+            <input type="number"
+                   id="split-count"
+                   class="form-input"
+                   x-model.number="splitEqualCount"
+                   min="2"
+                   max="10"
+                   step="1">
+          </div>
+          <template x-if="splitEqualCount >= 2">
+            <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--space-2);">
+              Mỗi hóa đơn: <strong x-text="formatVND(Math.floor(grandTotal / splitEqualCount)) + 'đ'"></strong>
+            </p>
+          </template>
+        </div>
+      </div>
+
+      <div class="modal-content__footer" style="display: flex; gap: var(--space-2); justify-content: flex-end;">
+        <button class="btn btn--outline"
+                @click="closeSplitModal()"
+                :disabled="isSplitting">
+          Hủy
+        </button>
+        <button class="btn btn--primary"
+                @click="submitSplit()"
+                :disabled="isSplitting">
+          <span x-show="!isSplitting">Xác nhận tách</span>
+          <span x-show="isSplitting" x-cloak class="spinner spinner--sm"></span>
         </button>
       </div>
     </div>
