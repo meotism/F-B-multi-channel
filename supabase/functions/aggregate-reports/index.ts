@@ -253,7 +253,7 @@ Deno.serve(async (req: Request) => {
         .eq('outlet_id', outletId)
         .gte('finalized_at', fromUtc)
         .lt('finalized_at', toUtc)
-        .in('status', ['finalized', 'printed']),
+        .in('status', ['finalized', 'printed', 'pending_print']),
 
       // 11b. Top items by qty (RPC)
       supabaseAdmin.rpc('get_top_items', {

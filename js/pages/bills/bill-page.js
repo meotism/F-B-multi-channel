@@ -125,6 +125,16 @@ export function billPage() {
     },
 
     /**
+     * Whether a Bluetooth printer is currently connected and ready to print.
+     * Used to gate auto-print after finalization — avoids prompting the
+     * Bluetooth picker when no printer has been paired.
+     * @returns {boolean}
+     */
+    get hasPrinterConnected() {
+      return this.connectionManager?.isConnected && !!this.connectionManager.writeChar;
+    },
+
+    /**
      * Status badge configuration based on bill state.
      * @returns {{ text: string, class: string }}
      */
@@ -371,9 +381,10 @@ export function billPage() {
 
         Alpine.store('ui').showToast('Hóa đơn đã được xuất thành công', 'success');
 
-        // Auto-trigger print if Bluetooth is supported and a printer is configured
+        // Auto-trigger print only if a Bluetooth printer is already connected.
+        // If not connected, skip — user can print later via the print button.
         // (Requirement 9 AC-1: auto-print after finalize when printer connected)
-        if (this.canPrint) {
+        if (this.canPrint && this.hasPrinterConnected) {
           await this.printBill();
         }
       } catch (err) {

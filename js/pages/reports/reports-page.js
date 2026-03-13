@@ -15,6 +15,26 @@ import { getRevenueByPaymentMethod, getRevenueByCategory, getPeakHours } from '.
 import { formatVND } from '../../utils/formatters.js';
 
 /**
+ * Convert a YYYY-MM-DD date string to a UTC ISO string representing
+ * the start of that day in the browser's local timezone.
+ * E.g. '2026-03-13' in Asia/Ho_Chi_Minh → '2026-03-12T17:00:00.000Z'
+ */
+function localDateToUtcStart(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0).toISOString();
+}
+
+/**
+ * Convert a YYYY-MM-DD date string to a UTC ISO string representing
+ * the start of the NEXT day in the browser's local timezone (exclusive upper bound).
+ * E.g. '2026-03-13' in Asia/Ho_Chi_Minh → '2026-03-13T17:00:00.000Z'
+ */
+function localDateToUtcEnd(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d + 1, 0, 0, 0).toISOString();
+}
+
+/**
  * Alpine component factory for the reports page.
  * Used as x-data="reportsPage()" in pages/reports.html.
  *
@@ -127,19 +147,19 @@ export function reportsPage() {
       try {
         const outletId = Alpine.store('auth').user?.outlet_id;
         const store = Alpine.store('reports');
-        const from = store.dateFrom;
-        const to = store.dateTo;
+        const fromUtc = localDateToUtcStart(store.dateFrom);
+        const toUtc = localDateToUtcEnd(store.dateTo);
 
         if (!outletId) {
           throw new Error('Không tìm thấy thông tin cửa hàng');
         }
 
         if (tab === 'by_payment') {
-          this.paymentMethodData = await getRevenueByPaymentMethod(outletId, from, to);
+          this.paymentMethodData = await getRevenueByPaymentMethod(outletId, fromUtc, toUtc);
         } else if (tab === 'by_category') {
-          this.categoryRevenueData = await getRevenueByCategory(outletId, from, to);
+          this.categoryRevenueData = await getRevenueByCategory(outletId, fromUtc, toUtc);
         } else if (tab === 'peak_hours') {
-          const rawData = await getPeakHours(outletId, from, to);
+          const rawData = await getPeakHours(outletId, fromUtc, toUtc);
           this.peakHoursData = rawData;
           this.buildPeakHoursGrid(rawData);
         }
