@@ -10,7 +10,7 @@
  *   - Other requests: network-only
  */
 
-const CACHE_NAME = 'fb-restaurant-v12';
+const CACHE_NAME = 'fb-restaurant-v13';
 
 // Critical static assets to pre-cache during installation.
 // This list covers the app shell, all CSS, core JS, store modules, and page HTML.
@@ -73,7 +73,15 @@ const STATIC_ASSETS = [
 // ---------------------------------------------------------------------------
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        STATIC_ASSETS.map((url) =>
+          cache.add(url).catch((err) =>
+            console.warn('SW: failed to cache', url, err)
+          )
+        )
+      )
+    )
   );
   // Activate new SW immediately without waiting for old clients to close
   self.skipWaiting();

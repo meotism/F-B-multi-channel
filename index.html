@@ -103,7 +103,7 @@
     <nav class="sidebar__nav">
       <a href="#/tables"
          class="sidebar__link"
-         :class="{ 'sidebar__link--active': window.location.hash === '#/tables' }"
+         :class="{ 'sidebar__link--active': $store.ui.currentHash === '#/tables' }"
          x-show="$store.auth.hasPermission('view_table_map')">
         <!-- Table map icon -->
         <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -117,7 +117,7 @@
 
       <a href="#/menu"
          class="sidebar__link"
-         :class="{ 'sidebar__link--active': window.location.hash === '#/menu' }"
+         :class="{ 'sidebar__link--active': $store.ui.currentHash === '#/menu' }"
          x-show="$store.auth.hasPermission('manage_menu')">
         <!-- Menu icon -->
         <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -128,7 +128,7 @@
 
       <a href="#/categories"
          class="sidebar__link"
-         :class="{ 'sidebar__link--active': window.location.hash === '#/categories' }"
+         :class="{ 'sidebar__link--active': $store.ui.currentHash === '#/categories' }"
          x-show="$store.auth.hasPermission('manage_menu')">
         <!-- Categories icon -->
         <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -139,7 +139,7 @@
 
       <a href="#/inventory"
          class="sidebar__link"
-         :class="{ 'sidebar__link--active': window.location.hash === '#/inventory' }"
+         :class="{ 'sidebar__link--active': $store.ui.currentHash === '#/inventory' }"
          x-show="$store.auth.hasPermission('manage_inventory')">
         <!-- Inventory icon -->
         <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -152,7 +152,7 @@
 
       <a href="#/ingredients"
          class="sidebar__link"
-         :class="{ 'sidebar__link--active': window.location.hash === '#/ingredients' }"
+         :class="{ 'sidebar__link--active': $store.ui.currentHash === '#/ingredients' }"
          x-show="$store.auth.hasPermission('manage_inventory')">
         <!-- Ingredients icon -->
         <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -165,7 +165,7 @@
 
       <a href="#/reports"
          class="sidebar__link"
-         :class="{ 'sidebar__link--active': window.location.hash === '#/reports' }"
+         :class="{ 'sidebar__link--active': $store.ui.currentHash === '#/reports' }"
          x-show="$store.auth.hasPermission('view_reports')">
         <!-- Reports icon -->
         <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -178,7 +178,7 @@
 
       <a href="#/users"
          class="sidebar__link"
-         :class="{ 'sidebar__link--active': window.location.hash === '#/users' }"
+         :class="{ 'sidebar__link--active': $store.ui.currentHash === '#/users' }"
          x-show="$store.auth.hasPermission('manage_users')">
         <!-- Users icon -->
         <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -192,7 +192,7 @@
 
       <a href="#/settings"
          class="sidebar__link"
-         :class="{ 'sidebar__link--active': window.location.hash === '#/settings' }"
+         :class="{ 'sidebar__link--active': $store.ui.currentHash === '#/settings' }"
          x-show="$store.auth.hasPermission('manage_settings')">
         <!-- Settings icon -->
         <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -258,7 +258,7 @@
        x-cloak>
     <a href="#/tables"
        class="bottom-nav__item"
-       :class="{ 'bottom-nav__item--active': window.location.hash === '#/tables' }"
+       :class="{ 'bottom-nav__item--active': $store.ui.currentHash === '#/tables' }"
        x-show="$store.auth.hasPermission('view_table_map')">
       <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="7" height="7"></rect>
@@ -271,7 +271,7 @@
 
     <a href="#/menu"
        class="bottom-nav__item"
-       :class="{ 'bottom-nav__item--active': window.location.hash === '#/menu' }"
+       :class="{ 'bottom-nav__item--active': $store.ui.currentHash === '#/menu' }"
        x-show="$store.auth.hasPermission('manage_menu')">
       <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 6h18M3 12h18M3 18h18"></path>
@@ -281,7 +281,7 @@
 
     <a href="#/inventory"
        class="bottom-nav__item"
-       :class="{ 'bottom-nav__item--active': window.location.hash === '#/inventory' }"
+       :class="{ 'bottom-nav__item--active': $store.ui.currentHash === '#/inventory' }"
        x-show="$store.auth.hasPermission('manage_inventory')">
       <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
@@ -293,7 +293,7 @@
 
     <a href="#/reports"
        class="bottom-nav__item"
-       :class="{ 'bottom-nav__item--active': window.location.hash === '#/reports' }"
+       :class="{ 'bottom-nav__item--active': $store.ui.currentHash === '#/reports' }"
        x-show="$store.auth.hasPermission('view_reports')">
       <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="18" y1="20" x2="18" y2="10"></line>
@@ -305,7 +305,7 @@
 
     <a href="#/settings"
        class="bottom-nav__item"
-       :class="{ 'bottom-nav__item--active': window.location.hash === '#/settings' }"
+       :class="{ 'bottom-nav__item--active': $store.ui.currentHash === '#/settings' }"
        x-show="$store.auth.hasPermission('manage_settings')">
       <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"></circle>

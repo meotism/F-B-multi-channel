@@ -19,6 +19,9 @@ export function uiStore() {
     // Sidebar (desktop/tablet)
     sidebarOpen: true,
 
+    // Current hash for reactive nav highlighting
+    currentHash: window.location.hash || '#/',
+
     /**
      * Show a toast notification.
      * @param {string} message - The message to display

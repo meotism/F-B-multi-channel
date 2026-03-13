@@ -258,6 +258,9 @@ function handleRoute() {
   // Update page title in the header
   updatePageTitle(matched.title);
 
+  // Update reactive hash for nav highlighting
+  Alpine.store('ui').currentHash = window.location.hash;
+
   // Load the page template
   loadPage(matched.page, matched.params);
 }
