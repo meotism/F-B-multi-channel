@@ -216,12 +216,21 @@ export async function getTodayBills() {
   const startUTC = new Date(todayStart.getTime() - utc7Offset).toISOString();
   const endUTC = new Date(todayStart.getTime() - utc7Offset + 24 * 60 * 60 * 1000).toISOString();
 
-  const { data, error } = await cachedSupabase
+  // Get current outlet for filtering
+  const outletId = Alpine.store('auth').user?.outlet_id;
+
+  let query = supabase
     .from('bills')
     .select('*, orders(id, table_id, started_at, tables(name))')
     .gte('finalized_at', startUTC)
     .lt('finalized_at', endUTC)
     .order('finalized_at', { ascending: false });
+
+  if (outletId) {
+    query = query.eq('outlet_id', outletId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error('Không thể tải danh sách hóa đơn: ' + error.message);
