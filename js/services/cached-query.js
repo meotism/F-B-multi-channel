@@ -187,6 +187,17 @@ export class CachedQueryBuilder {
   }
 
   /**
+   * Add a "greater than" filter.
+   * @param {string} column - Column name
+   * @param {*} value - Lower bound (exclusive)
+   * @returns {this}
+   */
+  gt(column, value) {
+    this._filters.push({ type: 'gt', column, value });
+    return this;
+  }
+
+  /**
    * Add a "less than or equal" filter.
    * @param {string} column - Column name
    * @param {*} value - Upper bound (inclusive)
@@ -194,6 +205,17 @@ export class CachedQueryBuilder {
    */
   lte(column, value) {
     this._filters.push({ type: 'lte', column, value });
+    return this;
+  }
+
+  /**
+   * Add a "less than" filter.
+   * @param {string} column - Column name
+   * @param {*} value - Upper bound (exclusive)
+   * @returns {this}
+   */
+  lt(column, value) {
+    this._filters.push({ type: 'lt', column, value });
     return this;
   }
 
@@ -215,6 +237,18 @@ export class CachedQueryBuilder {
    */
   or(filterString) {
     this._filters.push({ type: 'or', column: '_or', value: filterString });
+    return this;
+  }
+
+  /**
+   * Add a generic PostgREST filter (e.g., column-to-column comparison).
+   * @param {string} column - Column name
+   * @param {string} operator - PostgREST operator (e.g., 'lte', 'eq', 'gt')
+   * @param {*} value - Filter value
+   * @returns {this}
+   */
+  filter(column, operator, value) {
+    this._filters.push({ type: 'filter', column, operator, value });
     return this;
   }
 
@@ -366,8 +400,14 @@ export class CachedQueryBuilder {
         query = query.lte(filter.column, filter.value);
       } else if (filter.type === 'is') {
         query = query.is(filter.column, filter.value);
+      } else if (filter.type === 'gt') {
+        query = query.gt(filter.column, filter.value);
+      } else if (filter.type === 'lt') {
+        query = query.lt(filter.column, filter.value);
       } else if (filter.type === 'or') {
         query = query.or(filter.value);
+      } else if (filter.type === 'filter') {
+        query = query.filter(filter.column, filter.operator, filter.value);
       }
     }
 

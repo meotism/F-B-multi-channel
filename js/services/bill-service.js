@@ -219,7 +219,7 @@ export async function getTodayBills() {
   // Get current outlet for filtering
   const outletId = Alpine.store('auth').user?.outlet_id;
 
-  let query = supabase
+  let query = cachedSupabase
     .from('bills')
     .select('*, orders(id, table_id, started_at, tables(name))')
     .gte('finalized_at', startUTC)
