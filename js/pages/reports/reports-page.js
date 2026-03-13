@@ -221,11 +221,15 @@ export function reportsPage() {
       }
 
       // Fill in data from the raw results
+      // SQL get_peak_hours returns: hour_of_day, day_of_week (ISODOW: 1=Mon..7=Sun),
+      // order_count, revenue
       (rawData || []).forEach(item => {
-        const day = Number(item.day_of_week || item.dow || 0);
-        const hour = Number(item.hour || 0);
+        const isodow = Number(item.day_of_week || item.dow || 0);
+        // Convert ISODOW (1=Mon..7=Sun) to grid index (0=CN, 1=T2..6=T7)
+        const day = isodow === 7 ? 0 : isodow;
+        const hour = Number(item.hour_of_day ?? item.hour ?? 0);
         const count = Number(item.order_count || item.bill_count || 0);
-        const revenue = Number(item.total_revenue || 0);
+        const revenue = Number(item.revenue ?? item.total_revenue ?? 0);
 
         if (day >= 0 && day < 7 && hour >= 0 && hour < 24) {
           grid[day][hour].count = count;
