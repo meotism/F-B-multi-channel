@@ -11,7 +11,7 @@
  * This avoids fragile asset lists that break the SW install on any mismatch.
  */
 
-const CACHE_NAME = 'fb-restaurant-v16';
+const CACHE_NAME = 'fb-restaurant-v17';
 
 // ---------------------------------------------------------------------------
 // Install: activate immediately, no pre-caching

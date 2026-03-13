@@ -194,6 +194,7 @@
     left: 0;
     right: 0;
     max-height: 85vh;
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   .modal-content__close {
@@ -370,7 +371,7 @@
 @media (max-width: 767px) {
   .toast-container {
     top: auto;
-    bottom: calc(var(--bottom-nav-height) + var(--space-4));
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + var(--space-4));
     right: var(--space-2);
     left: var(--space-2);
     max-width: 100%;

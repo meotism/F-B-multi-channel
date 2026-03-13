@@ -420,7 +420,7 @@
   /* Sticky action buttons at bottom */
   .bill-actions {
     position: sticky;
-    bottom: var(--bottom-nav-height);
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
     background: var(--color-bg);
     padding: var(--space-3) 0;
     z-index: 10;

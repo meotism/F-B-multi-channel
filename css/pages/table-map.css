@@ -393,7 +393,7 @@
   /* Selected panel becomes bottom sheet on mobile */
   .map-selected-panel {
     position: fixed;
-    bottom: var(--bottom-nav-height);
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
     left: 0;
     right: 0;
     margin: 0;
@@ -421,6 +421,38 @@
     margin: 0 auto var(--space-3);
     cursor: grab;
   }
+}
+
+/* ------------------------------------------------------------------
+ * Responsive: Very small screens (<375px, e.g. iPhone SE)
+ * Scale down table nodes to fit small viewports.
+ * ------------------------------------------------------------------ */
+@media (max-width: 375px) {
+  .table-node {
+    width: 64px;
+    height: 64px;
+  }
+  .table-node[data-capacity="4"] { width: 80px; height: 80px; }
+  .table-node[data-capacity="6"] { width: 96px; height: 64px; }
+  .table-node[data-capacity="8"] { width: 112px; height: 72px; }
+  .table-node--rectangle { width: 96px; height: 64px; }
+  .table-node--rectangle[data-capacity="4"] { width: 120px; height: 80px; }
+  .table-node--rectangle[data-capacity="6"] { width: 96px; height: 64px; }
+  .table-node--rectangle[data-capacity="8"] { width: 108px; height: 72px; }
+
+  .table-node__name {
+    font-size: var(--font-size-xs);
+  }
+  .table-node__code,
+  .table-node__seats,
+  .table-node__timer {
+    font-size: 9px;
+  }
+}
+
+/* ── Context Menu: keep within viewport ── */
+.context-menu {
+  max-width: calc(100vw - 16px);
 }
 
 /* ── Urgent Pulse Animation (awaiting_payment) ── */
