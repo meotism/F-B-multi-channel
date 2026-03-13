@@ -165,6 +165,60 @@ export class CachedQueryBuilder {
   }
 
   /**
+   * Add a "not equal" filter.
+   * @param {string} column - Column name
+   * @param {*} value - Value to exclude
+   * @returns {this}
+   */
+  neq(column, value) {
+    this._filters.push({ type: 'neq', column, value });
+    return this;
+  }
+
+  /**
+   * Add a "greater than or equal" filter.
+   * @param {string} column - Column name
+   * @param {*} value - Lower bound (inclusive)
+   * @returns {this}
+   */
+  gte(column, value) {
+    this._filters.push({ type: 'gte', column, value });
+    return this;
+  }
+
+  /**
+   * Add a "less than or equal" filter.
+   * @param {string} column - Column name
+   * @param {*} value - Upper bound (inclusive)
+   * @returns {this}
+   */
+  lte(column, value) {
+    this._filters.push({ type: 'lte', column, value });
+    return this;
+  }
+
+  /**
+   * Add an "is" filter (for null checks: .is('col', null)).
+   * @param {string} column - Column name
+   * @param {*} value - Value (typically null or boolean)
+   * @returns {this}
+   */
+  is(column, value) {
+    this._filters.push({ type: 'is', column, value });
+    return this;
+  }
+
+  /**
+   * Add an OR filter (PostgREST syntax string).
+   * @param {string} filterString - e.g., 'col.is.null,col.lte.2024-01-01'
+   * @returns {this}
+   */
+  or(filterString) {
+    this._filters.push({ type: 'or', column: '_or', value: filterString });
+    return this;
+  }
+
+  /**
    * Specify ordering.
    * @param {string} column - Column to order by
    * @param {Object} [options] - e.g., { ascending: false }
@@ -304,6 +358,16 @@ export class CachedQueryBuilder {
         query = query.eq(filter.column, filter.value);
       } else if (filter.type === 'in') {
         query = query.in(filter.column, filter.value);
+      } else if (filter.type === 'neq') {
+        query = query.neq(filter.column, filter.value);
+      } else if (filter.type === 'gte') {
+        query = query.gte(filter.column, filter.value);
+      } else if (filter.type === 'lte') {
+        query = query.lte(filter.column, filter.value);
+      } else if (filter.type === 'is') {
+        query = query.is(filter.column, filter.value);
+      } else if (filter.type === 'or') {
+        query = query.or(filter.value);
       }
     }
 
@@ -393,7 +457,10 @@ export class CachedQueryBuilder {
    */
   async _networkFetch(cacheKey, tablePrefix, ttl) {
     // Kiểm tra offline — nếu đang mất kết nối, dùng cache nếu có
-    if (connectionStatus.state === 'disconnected') {
+    // Use navigator.onLine as the primary offline check. connectionStatus.state
+    // starts as 'disconnected' before Realtime connects, which is NOT the same
+    // as being offline. Only treat as offline if the browser says we're offline.
+    if (!navigator.onLine) {
       const cached = this._cache.get(cacheKey);
       if (cached) {
         // Notify UI that cached data is being served while offline
