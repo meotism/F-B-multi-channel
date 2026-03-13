@@ -405,13 +405,20 @@
   padding-right: var(--space-2);
 }
 .heatmap-cell {
-  aspect-ratio: 1;
+  width: 24px;
+  height: 24px;
   border-radius: 3px;
   background: var(--color-primary);
   cursor: pointer;
   transition: transform 150ms ease;
   position: relative;
-  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1;
 }
 .heatmap-cell:hover {
   transform: scale(1.15);

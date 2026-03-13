@@ -324,6 +324,7 @@
                         class="peak-cell">
                       <div class="heatmap-cell"
                            :style="'opacity: ' + (cell.count > 0 ? (cell.opacity * 0.85 + 0.15) : 0.08)">
+                        <span x-show="cell.count > 0" x-text="cell.count" style="pointer-events: none;"></span>
                         <!-- Tooltip -->
                         <div x-show="showTip" x-cloak
                              style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--color-surface-elevated, #1f2937); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; z-index: 10; pointer-events: none;">

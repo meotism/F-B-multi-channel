@@ -687,6 +687,65 @@ export function createCachedClient(supabaseClient, cacheMgr) {
     functions: createCachedFunctions(supabaseClient, cacheMgr),
 
     /**
+     * Cached RPC (stored procedure) invocation.
+     * Uses reports tier TTL (2 min) with stale-while-revalidate and dedup.
+     *
+     * @param {string} fnName - Stored procedure name
+     * @param {Object} [params={}] - RPC parameters
+     * @returns {Promise<{data: *, error: *}>}
+     */
+    async rpc(fnName, params = {}) {
+      const ttl = CACHE_TIERS.reports.ttlMs;
+      const cacheKey = `rpc:${fnName}:${JSON.stringify(params)}`;
+
+      // Check cache
+      const cached = cacheMgr.get(cacheKey);
+      if (cached && !cached.isStale) {
+        return { data: cached.data, error: null };
+      }
+
+      // Stale → return immediately + background revalidate
+      if (cached && cached.isStale) {
+        supabaseClient.rpc(fnName, params)
+          .then(({ data, error }) => {
+            if (!error && data != null) {
+              cacheMgr.set(cacheKey, data, ttl);
+            }
+          })
+          .catch(() => {});
+        return { data: cached.data, error: null };
+      }
+
+      // Dedup: check if same RPC call is already in-flight
+      if (inFlightRequests.has(cacheKey)) {
+        return inFlightRequests.get(cacheKey);
+      }
+
+      // Cache miss → network call
+      const fetchPromise = (async () => {
+        try {
+          const { data, error } = await supabaseClient.rpc(fnName, params);
+          if (!error && data != null) {
+            cacheMgr.set(cacheKey, data, ttl);
+          }
+          return { data, error };
+        } catch (err) {
+          // Offline fallback
+          const fallback = cacheMgr.get(cacheKey);
+          if (fallback) {
+            return { data: fallback.data, error: null };
+          }
+          return { data: null, error: { message: err.message } };
+        }
+      })();
+
+      inFlightRequests.set(cacheKey, fetchPromise);
+      fetchPromise.finally(() => inFlightRequests.delete(cacheKey));
+
+      return fetchPromise;
+    },
+
+    /**
      * Invalidate cache for a table and all related tables in its
      * INVALIDATION_GROUPS group.
      *
