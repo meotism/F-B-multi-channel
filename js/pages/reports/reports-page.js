@@ -4,7 +4,7 @@
 // selection, category filtering, revenue summary cards, Chart.js charts
 // (revenue bar chart + top items horizontal bar), and a breakdown data table.
 //
-// Chart.js is loaded via CDN in pages/reports.html (not in index.html).
+// Chart.js is loaded dynamically on first visit to the reports page.
 // Charts are created/destroyed reactively via $watch on store data.
 //
 // Design reference: design.md Section 18 (Reports Page)
@@ -13,6 +13,26 @@
 import { listCategories } from '../../services/menu-service.js';
 import { getRevenueByPaymentMethod, getRevenueByCategory, getPeakHours, getRevenueBySource } from '../../services/report-service.js';
 import { formatVND } from '../../utils/formatters.js';
+
+/**
+ * Dynamically load Chart.js from CDN. Script tags in innerHTML are not
+ * executed by the browser, so we create the element programmatically.
+ * Subsequent calls are no-ops once the library is loaded.
+ */
+let chartJsLoaded = false;
+async function loadChartJs() {
+  if (chartJsLoaded || typeof Chart !== 'undefined') {
+    chartJsLoaded = true;
+    return;
+  }
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+    script.onload = () => { chartJsLoaded = true; resolve(); };
+    script.onerror = () => reject(new Error('Không thể tải thư viện biểu đồ'));
+    document.head.appendChild(script);
+  });
+}
 
 /**
  * Convert a YYYY-MM-DD date string to a UTC ISO string representing
@@ -68,6 +88,14 @@ export function reportsPage() {
      * component mounts.
      */
     async init() {
+      // Load Chart.js dynamically (script tags in innerHTML are not executed)
+      try {
+        await loadChartJs();
+      } catch (err) {
+        console.error('[reportsPage] Failed to load Chart.js:', err);
+        Alpine.store('ui').showToast('Không thể tải thư viện biểu đồ', 'error');
+      }
+
       // Load categories for the filter dropdown
       const outletId = Alpine.store('auth').user?.outlet_id;
       if (outletId) {
