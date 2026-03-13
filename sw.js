@@ -10,7 +10,7 @@
  *   - Other requests: network-only
  */
 
-const CACHE_NAME = 'fb-restaurant-v11';
+const CACHE_NAME = 'fb-restaurant-v12';
 
 // Critical static assets to pre-cache during installation.
 // This list covers the app shell, all CSS, core JS, store modules, and page HTML.
@@ -47,6 +47,10 @@ const STATIC_ASSETS = [
   './js/stores/ui-store.js',
   './js/stores/order-store.js',
   './js/stores/report-store.js',
+  // JS - cache layer
+  './js/services/cache-manager.js',
+  './js/services/cached-query.js',
+  './js/services/cache-invalidation.js',
   // Manifest
   './manifest.json',
   // Page HTML templates
