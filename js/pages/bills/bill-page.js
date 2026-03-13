@@ -349,14 +349,23 @@ export function billPage() {
           this.order.status = 'finalized';
         }
 
-        // Mark table as 'paid' immediately after payment received — decoupled from print
+        // Reset table to 'empty' after finalization — table is now free for new guests
         if (this.order?.table_id) {
-          await supabase
+          const { error: tableErr } = await supabase
             .from('tables')
-            .update({ status: 'paid' })
+            .update({ status: 'empty' })
             .eq('id', this.order.table_id);
-          if (this.table) {
-            this.table.status = 'paid';
+
+          if (tableErr) {
+            console.error('[billPage] Failed to reset table status:', tableErr);
+          }
+
+          // Update the global tableMap store so the table map shows 'empty' immediately
+          const tableMap = Alpine.store('tableMap');
+          const tbl = tableMap.getTableById(this.order.table_id);
+          if (tbl) {
+            tbl.status = 'empty';
+            tbl.activeOrderStartedAt = null;
           }
         }
 

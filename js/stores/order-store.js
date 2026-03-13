@@ -593,6 +593,10 @@ export function orderStore() {
             }
           } else if (changedOrder.status === 'completed') {
             table.status = 'awaiting_payment';
+          } else if (changedOrder.status === 'finalized') {
+            // Bill finalized — table is now free for new guests
+            table.status = 'empty';
+            table.activeOrderStartedAt = null;
           } else if (changedOrder.status === 'cancelled') {
             // Optimistic reset -- the server handles the actual table
             // reset and verifies no other active orders exist on the table
