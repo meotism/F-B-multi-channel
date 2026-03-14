@@ -27,7 +27,7 @@ const routes = [
   { pattern: '/inventory',        page: 'inventory',  title: 'Quản lý tồn kho',      auth: true,  roles: ['owner', 'manager', 'warehouse'] },
   { pattern: '/ingredients',      page: 'ingredients', title: 'Quản lý nguyên liệu',  auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/reports',          page: 'reports',    title: 'Báo cáo doanh thu',    auth: true,  roles: ['owner', 'manager'] },
-  { pattern: '/users',            page: 'users',      title: 'Quản lý người dùng',   auth: true,  roles: ['owner'] },
+  { pattern: '/users',            page: 'users',      title: 'Quản lý người dùng',   auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/discounts',        page: 'discounts',  title: 'Quản lý khuyến mãi',  auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/settings',         page: 'settings',   title: 'Cài đặt',             auth: true,  roles: ['owner', 'manager', 'cashier'] },
 ];

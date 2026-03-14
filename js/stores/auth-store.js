@@ -27,8 +27,10 @@ const ROLE_PERMISSIONS = {
   ],
   manager: [
     'view_table_map', 'edit_table_map', 'create_order', 'finalize_bill',
-    'cancel_order', 'manage_menu', 'manage_categories', 'manage_inventory', 'view_reports',
-    'manage_settings', 'view_orders', 'view_bills', 'transfer_order', 'merge_orders',
+    'print_bill', 'cancel_order', 'manage_menu', 'manage_categories', 'manage_inventory',
+    'view_reports', 'manage_users', 'manage_settings',
+    'view_orders', 'view_bills', 'view_menu', 'view_inventory',
+    'transfer_order', 'merge_orders',
     'manage_discounts', 'view_order_list', 'view_dashboard',
   ],
   cashier: [
