@@ -238,7 +238,7 @@
                   x-text="formatVND($store.orders.cartTotal) + 'đ'"></span>
           </div>
           <button class="btn btn--primary order-cart-total__confirm"
-                  :disabled="$store.orders.cart.length === 0 || isSubmitting"
+                  :disabled="($store.orders.cart.length === 0 && !tableHourlyRate) || isSubmitting"
                   @click="confirmOrder()">
             <span x-show="!isSubmitting">Xác nhận đơn hàng</span>
             <span x-show="isSubmitting" x-cloak class="spinner spinner--sm"></span>

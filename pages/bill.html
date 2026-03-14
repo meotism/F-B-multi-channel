@@ -201,7 +201,7 @@
       <button class="btn btn--primary btn--lg btn--block"
               x-show="canFinalize"
               :disabled="isFinalizing"
-              @click="showFinalizeConfirm = true">
+              @click="openFinalizeModal()">
         <span x-show="!isFinalizing">Xuất hóa đơn <span class="kbd-hint" style="font-size: var(--font-size-xs); opacity: 0.7; margin-left: var(--space-1);">Ctrl+Enter</span></span>
         <span x-show="isFinalizing" x-cloak class="spinner spinner--sm"></span>
       </button>
@@ -278,7 +278,7 @@
        Finalize Confirmation Modal
        ================================================================ -->
   <div class="modal-backdrop" x-show="showFinalizeConfirm" x-cloak
-       @click.self="showFinalizeConfirm = false">
+       @click.self="closeFinalizeModal()">
     <div class="modal-content">
       <h3 class="modal-content__title">Xác nhận xuất hóa đơn</h3>
       <p>Bạn có chắc muốn xuất hóa đơn cho đơn hàng này?</p>
@@ -294,7 +294,7 @@
       </p>
       <div class="modal-content__actions">
         <button class="btn btn--outline"
-                @click="showFinalizeConfirm = false"
+                @click="closeFinalizeModal()"
                 :disabled="isFinalizing">
           Hủy
         </button>

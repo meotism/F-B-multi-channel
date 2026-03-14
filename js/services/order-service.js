@@ -64,24 +64,29 @@ export async function createOrder(tableId, outletId, userId, cartItems, options 
     order = orderData;
 
     // 2. Insert order_items with price snapshot (EC-5)
-    const itemRows = cartItems.map(item => ({
-      order_id: order.id,
-      menu_item_id: item.menuItemId,
-      qty: item.qty,
-      price: item.price,       // Snapshot: captures price at order time
-      note: item.note || null,
-    }));
+    // Skip when cart is empty (hourly-rate tables with no menu items)
+    if (cartItems.length > 0) {
+      const itemRows = cartItems.map(item => ({
+        order_id: order.id,
+        menu_item_id: item.menuItemId,
+        qty: item.qty,
+        price: item.price,       // Snapshot: captures price at order time
+        note: item.note || null,
+      }));
 
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('order_items')
-      .insert(itemRows)
-      .select('*, menu_items(name)');
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('order_items')
+        .insert(itemRows)
+        .select('*, menu_items(name)');
 
-    if (itemsError) {
-      throw new Error('Không thể thêm món vào đơn hàng: ' + itemsError.message);
+      if (itemsError) {
+        throw new Error('Không thể thêm món vào đơn hàng: ' + itemsError.message);
+      }
+
+      items = itemsData;
+    } else {
+      items = [];
     }
-
-    items = itemsData;
 
     // 3. Update table status to 'serving' (design 4.3.6: empty -> serving)
     // S3-26: Guard with .eq('status', 'empty') to prevent race conditions

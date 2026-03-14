@@ -82,9 +82,10 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Dữ liệu yêu cầu không hợp lệ', 400, 'INVALID_JSON');
     }
 
-    const { order_id, payment_method } = body as {
+    const { order_id, payment_method, frozen_at } = body as {
       order_id: string;
       payment_method: string;
+      frozen_at?: string;
     };
 
     // 7a. Validate order_id is a valid UUID
@@ -133,13 +134,19 @@ Deno.serve(async (req: Request) => {
     //    duplicate bill check, total calculation, bill insertion, order
     //    status update, and audit log creation -- all within a single
     //    transaction.
+    // Build RPC parameters, including optional frozen_at for hourly charge calculation
+    const rpcParams: Record<string, unknown> = {
+      p_order_id: order_id,
+      p_payment_method: payment_method,
+      p_user_id: authUser.id,
+    };
+    if (frozen_at) {
+      rpcParams.p_frozen_at = frozen_at;
+    }
+
     const { data: result, error: rpcError } = await supabaseAdmin.rpc(
       'finalize_bill',
-      {
-        p_order_id: order_id,
-        p_payment_method: payment_method,
-        p_user_id: authUser.id,
-      },
+      rpcParams,
     );
 
     // 10. Handle stored procedure errors

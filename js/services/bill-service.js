@@ -52,13 +52,17 @@ export function canTransition(currentStatus, nextStatus) {
  * @param {string} orderId - UUID of the completed order
  * @param {string} paymentMethod - 'cash' | 'card' | 'transfer'
  * @param {number} [discountAmount] - Optional discount amount to apply
+ * @param {string} [frozenAt] - Optional ISO timestamp to freeze hourly charge calculation
  * @returns {Promise<Object>} Created bill record with id, total, status, etc.
  * @throws {Error} With Vietnamese message on failure (403, 404, 409, 500)
  */
-export async function finalizeBill(orderId, paymentMethod, discountAmount) {
+export async function finalizeBill(orderId, paymentMethod, discountAmount, frozenAt) {
   const body = { order_id: orderId, payment_method: paymentMethod };
   if (discountAmount != null) {
     body.discount_amount = discountAmount;
+  }
+  if (frozenAt) {
+    body.frozen_at = frozenAt;
   }
 
   const { data, error } = await supabase.functions.invoke('finalize-bill', {

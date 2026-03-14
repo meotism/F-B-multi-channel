@@ -39,6 +39,7 @@ export function orderPage() {
     tableId: null,       // UUID from route params
     tableName: '',       // Display name (e.g., "Ban 5")
     tableLabel: '',      // Table code / label (e.g., "A5")
+    tableHourlyRate: 0,  // Hourly rate for time-based billing (0 = standard F&B)
 
     // --- UI state ---
     showCart: false,      // Whether the cart bottom sheet is visible (mobile/tablet)
@@ -110,6 +111,7 @@ export function orderPage() {
       if (table) {
         this.tableName = table.name || '';
         this.tableLabel = table.table_code || '';
+        this.tableHourlyRate = table.hourly_rate || 0;
       }
 
       // Load the menu for the current outlet
@@ -261,7 +263,8 @@ export function orderPage() {
       if (this.isSubmitting) return;
 
       const ordersStore = Alpine.store('orders');
-      if (ordersStore.cart.length === 0) return;
+      // Allow empty cart for hourly-rate tables (e.g., badminton courts)
+      if (ordersStore.cart.length === 0 && !this.tableHourlyRate) return;
 
       this.isSubmitting = true;
 

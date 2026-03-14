@@ -66,6 +66,7 @@ export function billPage() {
     // --- Hourly charge timer state ---
     _hourlyTimer: null,
     _hourlyTick: 0,
+    frozenAt: null,        // ISO timestamp when user clicks "Xuat hoa don" — freezes hourly charge
 
     // --- Computed properties ---
 
@@ -102,7 +103,9 @@ export function billPage() {
       if (this.bill || !this.table?.hourly_rate || !this.order?.started_at) return 0;
       // Reference _hourlyTick for Alpine reactivity (ticks every second)
       void this._hourlyTick;
-      const elapsed = (Date.now() - new Date(this.order.started_at).getTime()) / 1000;
+      // Use frozenAt timestamp if set (timer frozen when user clicks "Xuat hoa don")
+      const now = this.frozenAt ? new Date(this.frozenAt).getTime() : Date.now();
+      const elapsed = (now - new Date(this.order.started_at).getTime()) / 1000;
       return Math.round((elapsed / 3600) * this.table.hourly_rate);
     },
 
@@ -253,7 +256,7 @@ export function billPage() {
         if (e.ctrlKey && e.key === 'Enter') {
           e.preventDefault();
           if (this.canFinalize && !this.isFinalizing) {
-            this.showFinalizeConfirm = true;
+            this.openFinalizeModal();
           }
         }
         if (e.ctrlKey && (e.key === 'p' || e.key === 'P')) {
@@ -407,6 +410,37 @@ export function billPage() {
     },
 
     /**
+     * Open the finalize confirmation modal and freeze the hourly charge timer.
+     * Captures the current timestamp so the duration calculation uses this
+     * moment, not the later finalization time.
+     */
+    openFinalizeModal() {
+      // Freeze hourly charge at this moment
+      this.frozenAt = new Date().toISOString();
+      // Stop the timer interval
+      if (this._hourlyTimer) {
+        clearInterval(this._hourlyTimer);
+        this._hourlyTimer = null;
+      }
+      this.showFinalizeConfirm = true;
+    },
+
+    /**
+     * Close the finalize confirmation modal and resume the hourly charge timer
+     * if the bill hasn't been finalized yet.
+     */
+    closeFinalizeModal() {
+      this.showFinalizeConfirm = false;
+      this.frozenAt = null;
+      // Restart timer if table has hourly rate and bill not yet finalized
+      if (this.table?.hourly_rate > 0 && !this.bill) {
+        this._hourlyTimer = setInterval(() => {
+          this._hourlyTick = (this._hourlyTick || 0) + 1;
+        }, 1000);
+      }
+    },
+
+    /**
      * Finalize the bill. Shows confirmation dialog first, then calls the
      * bill service to create the bill record.
      * On success: updates local state, shows success toast.
@@ -418,7 +452,7 @@ export function billPage() {
       this.showFinalizeConfirm = false;
 
       try {
-        const billData = await finalizeBill(this.orderId, this.paymentMethod);
+        const billData = await finalizeBill(this.orderId, this.paymentMethod, undefined, this.frozenAt);
         this.bill = billData;
 
         // Stop hourly charge timer after finalization

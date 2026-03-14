@@ -211,7 +211,9 @@ export function orderStore() {
         throw new Error('Thiếu thông tin người dùng. Vui lòng đăng nhập lại.');
       }
 
-      if (this.cart.length === 0) {
+      // Allow empty cart for hourly-rate tables (e.g., badminton courts)
+      const tableInfo = Alpine.store('tableMap').getTableById(tableId);
+      if (this.cart.length === 0 && !(tableInfo?.hourly_rate > 0)) {
         throw new Error('Giỏ hàng trống. Vui lòng thêm món trước khi xác nhận.');
       }
 
@@ -255,7 +257,8 @@ export function orderStore() {
 
       // S3-08: Fire-and-forget inventory deduction (non-blocking)
       // The order is already created — inventory issues are warnings, not blockers
-      supabase.functions.invoke('deduct-inventory', {
+      // Skip when no items (hourly-rate tables with no menu items)
+      if ((result.items || []).length > 0) supabase.functions.invoke('deduct-inventory', {
         body: { order_id: result.order.id, action: 'deduct' },
       }).then(({ data, error }) => {
         if (error) {
