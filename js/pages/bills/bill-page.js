@@ -63,10 +63,8 @@ export function billPage() {
     // --- Keyboard shortcut handler ref (Task 10.1) ---
     _keyHandler: null,
 
-    // --- Hourly charge timer state ---
-    _hourlyTimer: null,
-    _hourlyTick: 0,
-    frozenAt: null,        // ISO timestamp when user clicks "Xuat hoa don" — freezes hourly charge
+    // --- Hourly charge frozen state ---
+    frozenAt: null,        // ISO timestamp frozen at page load — fixes hourly charge
 
     // --- Computed properties ---
 
@@ -95,18 +93,23 @@ export function billPage() {
     },
 
     /**
-     * Estimated hourly charge before finalization (live running cost).
+     * Estimated hourly charge before finalization (frozen at page load).
      * Returns 0 if table has no hourly rate or bill is already finalized.
      * @returns {number} Estimated charge in VND
      */
     get estimatedHourlyCharge() {
-      if (this.bill || !this.table?.hourly_rate || !this.order?.started_at) return 0;
-      // Reference _hourlyTick for Alpine reactivity (ticks every second)
-      void this._hourlyTick;
-      // Use frozenAt timestamp if set (timer frozen when user clicks "Xuat hoa don")
-      const now = this.frozenAt ? new Date(this.frozenAt).getTime() : Date.now();
-      const elapsed = (now - new Date(this.order.started_at).getTime()) / 1000;
+      if (this.bill || !this.table?.hourly_rate || !this.order?.started_at || !this.frozenAt) return 0;
+      const elapsed = (new Date(this.frozenAt).getTime() - new Date(this.order.started_at).getTime()) / 1000;
       return Math.round((elapsed / 3600) * this.table.hourly_rate);
+    },
+
+    /**
+     * Duration in seconds from order start to frozenAt (for sending to backend).
+     * @returns {number} Duration in seconds
+     */
+    get frozenDurationSeconds() {
+      if (!this.order?.started_at || !this.frozenAt) return 0;
+      return Math.max(0, Math.floor((new Date(this.frozenAt).getTime() - new Date(this.order.started_at).getTime()) / 1000));
     },
 
     /**
@@ -237,12 +240,9 @@ export function billPage() {
 
       await this.loadOrderData();
 
-      // Start timer for live hourly charge estimate (billiard tables)
+      // Freeze hourly charge at page load time (no ticking on bill page)
       if (this.table?.hourly_rate > 0 && !this.bill) {
-        this._hourlyTimer = setInterval(() => {
-          // Force Alpine reactivity by touching a reactive property
-          this._hourlyTick = (this._hourlyTick || 0) + 1;
-        }, 1000);
+        this.frozenAt = new Date().toISOString();
       }
 
       // Subscribe to bill changes for cross-device sync (Requirement 9 AC-4)
@@ -312,11 +312,6 @@ export function billPage() {
       if (this._keyHandler) {
         document.removeEventListener('keydown', this._keyHandler);
         this._keyHandler = null;
-      }
-      // Clean up hourly charge timer
-      if (this._hourlyTimer) {
-        clearInterval(this._hourlyTimer);
-        this._hourlyTimer = null;
       }
     },
 
@@ -410,34 +405,18 @@ export function billPage() {
     },
 
     /**
-     * Open the finalize confirmation modal and freeze the hourly charge timer.
-     * Captures the current timestamp so the duration calculation uses this
-     * moment, not the later finalization time.
+     * Open the finalize confirmation modal.
+     * frozenAt is already set on page load so no timer manipulation needed.
      */
     openFinalizeModal() {
-      // Freeze hourly charge at this moment
-      this.frozenAt = new Date().toISOString();
-      // Stop the timer interval
-      if (this._hourlyTimer) {
-        clearInterval(this._hourlyTimer);
-        this._hourlyTimer = null;
-      }
       this.showFinalizeConfirm = true;
     },
 
     /**
-     * Close the finalize confirmation modal and resume the hourly charge timer
-     * if the bill hasn't been finalized yet.
+     * Close the finalize confirmation modal.
      */
     closeFinalizeModal() {
       this.showFinalizeConfirm = false;
-      this.frozenAt = null;
-      // Restart timer if table has hourly rate and bill not yet finalized
-      if (this.table?.hourly_rate > 0 && !this.bill) {
-        this._hourlyTimer = setInterval(() => {
-          this._hourlyTick = (this._hourlyTick || 0) + 1;
-        }, 1000);
-      }
     },
 
     /**
@@ -452,14 +431,11 @@ export function billPage() {
       this.showFinalizeConfirm = false;
 
       try {
-        const billData = await finalizeBill(this.orderId, this.paymentMethod, undefined, this.frozenAt);
+        // Pass client-calculated hourly charge and duration to the backend
+        const hourlyCharge = this.estimatedHourlyCharge || undefined;
+        const durationSeconds = this.frozenDurationSeconds || undefined;
+        const billData = await finalizeBill(this.orderId, this.paymentMethod, this.discountAmount || undefined, hourlyCharge, durationSeconds);
         this.bill = billData;
-
-        // Stop hourly charge timer after finalization
-        if (this._hourlyTimer) {
-          clearInterval(this._hourlyTimer);
-          this._hourlyTimer = null;
-        }
 
         // Update local order status to reflect finalization
         if (this.order) {

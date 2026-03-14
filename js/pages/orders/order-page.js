@@ -15,7 +15,7 @@
 // Design reference: design.md Sections 4.3.4, 4.3.5
 // Requirements: 5.2 AC-2, 5.2 AC-4, 5.2 AC-6
 
-import { formatVND } from '../../utils/formatters.js';
+import { formatVND, calculateElapsed, formatTimer, getTimerColorClass } from '../../utils/formatters.js';
 import { navigate } from '../../utils/navigate.js';
 import { supabase } from '../../services/supabase-client.js';
 import { updateOrderNote, setGuestCount } from '../../services/order-service.js';
@@ -79,6 +79,10 @@ export function orderPage() {
     isMerging: false,
     mergeCandidates: [],    // [{ orderId, tableId, tableName, tableLabel }]
     selectedMergeSources: [],
+
+    // --- Hourly rate timer state ---
+    _timerTick: 0,
+    _timerInterval: null,
 
     // --- Discount state (Task 17.2) ---
     showDiscountModal: false,
@@ -164,6 +168,13 @@ export function orderPage() {
           Alpine.store('ui').showToast('Không thể tải đơn hàng hiện tại.', 'error');
         }
       }
+
+      // Start timer for live hourly charge display (hourly-rate tables)
+      if (this.tableHourlyRate > 0 && this.mode === 'detail') {
+        this._timerInterval = setInterval(() => {
+          this._timerTick = this._timerTick + 1;
+        }, 1000);
+      }
     },
 
     /**
@@ -173,6 +184,10 @@ export function orderPage() {
     destroy() {
       this._swipeCleanups.forEach(cleanup => cleanup());
       this._swipeCleanups = [];
+      if (this._timerInterval) {
+        clearInterval(this._timerInterval);
+        this._timerInterval = null;
+      }
     },
 
     /**
@@ -298,6 +313,41 @@ export function orderPage() {
       } finally {
         this.isSubmitting = false;
       }
+    },
+
+    // --- Hourly Rate Timer Methods ---
+
+    /**
+     * Get formatted elapsed time (HH:MM:SS) for the current order.
+     * @returns {string} Formatted timer string
+     */
+    getElapsedTime() {
+      void this._timerTick;
+      const startedAt = Alpine.store('orders').currentOrder?.started_at;
+      if (!startedAt) return '';
+      return formatTimer(calculateElapsed(startedAt));
+    },
+
+    /**
+     * Get the running hourly charge in VND.
+     * @returns {number} Running charge amount
+     */
+    getRunningHourlyCharge() {
+      void this._timerTick;
+      const startedAt = Alpine.store('orders').currentOrder?.started_at;
+      if (!startedAt || !this.tableHourlyRate) return 0;
+      const elapsed = calculateElapsed(startedAt);
+      return Math.round((elapsed / 3600) * this.tableHourlyRate);
+    },
+
+    /**
+     * Get timer color CSS class based on elapsed time.
+     * @returns {string} CSS class name
+     */
+    getTimerColorClass() {
+      const startedAt = Alpine.store('orders').currentOrder?.started_at;
+      if (!startedAt) return '';
+      return getTimerColorClass(calculateElapsed(startedAt));
     },
 
     // --- Detail Mode: Inline Modification Methods ---

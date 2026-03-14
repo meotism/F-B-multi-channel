@@ -1,10 +1,11 @@
 -- ============================================================
--- Add frozen_at parameter to finalize_bill()
+-- Add client-calculated hourly charge to finalize_bill()
 -- ============================================================
--- Allows the client to pass a timestamp captured when the user
--- clicks "Xuat hoa don" so that the hourly charge calculation
--- uses that moment instead of NOW(). This prevents the charge
--- from incrementing during modal interaction and network delay.
+-- Allows the client to pass pre-calculated hourly_charge and
+-- duration_seconds so the stored procedure uses those values
+-- directly instead of computing them server-side. This prevents
+-- the charge from incrementing during modal interaction and
+-- network delay.
 --
 -- Dependencies:
 --   - 030_add_hourly_rate_billing.sql (current finalize_bill)
@@ -12,15 +13,33 @@
 
 BEGIN;
 
--- Drop existing function signature (all overloads)
-DROP FUNCTION IF EXISTS finalize_bill(UUID, payment_method, UUID, DECIMAL);
+-- Ensure payment_method type exists (created in 001_initial_schema.sql)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_method') THEN
+        CREATE TYPE payment_method AS ENUM ('cash', 'card', 'transfer');
+    END IF;
+END $$;
+
+-- Drop all existing overloads of finalize_bill
+DO $$
+BEGIN
+    -- Drop all versions of finalize_bill regardless of signature
+    DROP FUNCTION IF EXISTS finalize_bill(UUID, payment_method, UUID, DECIMAL);
+    DROP FUNCTION IF EXISTS finalize_bill(UUID, payment_method, UUID, DECIMAL, TIMESTAMPTZ);
+    DROP FUNCTION IF EXISTS finalize_bill(UUID, payment_method, UUID, DECIMAL, DECIMAL, INTEGER);
+EXCEPTION WHEN undefined_object THEN
+    -- payment_method type might not exist in some environments; ignore
+    NULL;
+END $$;
 
 CREATE OR REPLACE FUNCTION finalize_bill(
     p_order_id UUID,
     p_payment_method payment_method,
     p_user_id UUID,
     p_discount_amount DECIMAL DEFAULT 0,
-    p_frozen_at TIMESTAMPTZ DEFAULT NULL
+    p_hourly_charge DECIMAL DEFAULT NULL,
+    p_duration_seconds INTEGER DEFAULT NULL
 ) RETURNS JSONB AS $$
 DECLARE
     v_order RECORD;
@@ -34,7 +53,6 @@ DECLARE
     v_other_active INTEGER;
     v_hourly_charge DECIMAL(12,0) := 0;
     v_duration_seconds INTEGER;
-    v_charge_time TIMESTAMPTZ;
 BEGIN
     -- 1. Lock the order row to prevent concurrent finalization
     SELECT * INTO v_order
@@ -89,13 +107,17 @@ BEGIN
     FROM tables
     WHERE id = v_order.table_id;
 
-    -- 7. Calculate hourly charge if table has hourly_rate > 0
-    --    Use frozen_at timestamp if provided (user clicked "Xuat hoa don"),
-    --    otherwise use NOW() for backward compatibility.
-    v_charge_time := COALESCE(p_frozen_at, NOW());
-    v_duration_seconds := EXTRACT(EPOCH FROM (v_charge_time - v_order.started_at))::INTEGER;
-    IF v_table_record.hourly_rate > 0 THEN
-        v_hourly_charge := ROUND((v_duration_seconds / 3600.0) * v_table_record.hourly_rate);
+    -- 7. Calculate hourly charge
+    --    If client provides pre-calculated values, use them directly.
+    --    Otherwise, compute server-side for backward compatibility.
+    IF p_hourly_charge IS NOT NULL THEN
+        v_hourly_charge := p_hourly_charge;
+        v_duration_seconds := COALESCE(p_duration_seconds, 0);
+    ELSE
+        v_duration_seconds := EXTRACT(EPOCH FROM (NOW() - v_order.started_at))::INTEGER;
+        IF v_table_record.hourly_rate > 0 THEN
+            v_hourly_charge := ROUND((v_duration_seconds / 3600.0) * v_table_record.hourly_rate);
+        END IF;
     END IF;
 
     -- 8. Calculate final total (items - discount + hourly + tax)
@@ -141,7 +163,6 @@ BEGIN
             'hourly_charge', v_hourly_charge,
             'hourly_rate', v_table_record.hourly_rate,
             'duration_seconds', v_duration_seconds,
-            'frozen_at', p_frozen_at,
             'total', v_final_total,
             'tax', v_tax,
             'payment_method', p_payment_method,
@@ -168,11 +189,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION finalize_bill(UUID, payment_method, UUID, DECIMAL, TIMESTAMPTZ) IS
+COMMENT ON FUNCTION finalize_bill(UUID, payment_method, UUID, DECIMAL, DECIMAL, INTEGER) IS
     'Atomic bill finalization with hourly rate billing support. '
-    'Locks order, calculates item total + discount + hourly charge '
-    '(from table.hourly_rate * duration), creates bill, finalizes order, '
-    'resets table. Accepts optional frozen_at to freeze hourly charge at '
-    'the moment user clicks export. Requirements: 4.1, 3.10, billiard billing.';
+    'Locks order, calculates item total + discount + hourly charge, '
+    'creates bill, finalizes order, resets table. '
+    'Accepts optional p_hourly_charge and p_duration_seconds from client '
+    'for pre-calculated hourly billing. Requirements: 4.1, 3.10, billiard billing.';
 
 COMMIT;
