@@ -126,7 +126,7 @@
              'table-node--' + table.shape,
              { 'is-editable': isEditMode, 'is-selected': selectedTable?.id === table.id }
            ]"
-           :style="`left: ${table.x}%; top: ${table.y}%; transform: rotate(${table.rotation || 0}deg);`"
+           :style="`left: ${Math.min(table.x, 90)}%; top: ${Math.min(table.y, 85)}%; transform: rotate(${table.rotation || 0}deg);`"
            :data-table-id="table.id"
            :data-capacity="table.capacity"
            :data-status="table.status"

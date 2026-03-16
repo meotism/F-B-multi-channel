@@ -785,8 +785,11 @@ export function tableMapPage() {
         const curTop = parseFloat(node.style.top) || 0;
         const dxPct = (ev.movementX / containerRect.width) * 100;
         const dyPct = (ev.movementY / containerRect.height) * 100;
-        const newX = Math.max(0, Math.min(100, curLeft + dxPct));
-        const newY = Math.max(0, Math.min(100, curTop + dyPct));
+        // Clamp so the entire node stays within the container (not just its anchor point)
+        const maxXPct = 100 - (node.offsetWidth / containerRect.width) * 100;
+        const maxYPct = 100 - (node.offsetHeight / containerRect.height) * 100;
+        const newX = Math.max(0, Math.min(maxXPct, curLeft + dxPct));
+        const newY = Math.max(0, Math.min(maxYPct, curTop + dyPct));
         node.style.left = newX + '%';
         node.style.top = newY + '%';
       };
