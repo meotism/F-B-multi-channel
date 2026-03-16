@@ -139,7 +139,7 @@ export async function updateBillStatus(billId, newStatus, userId) {
     throw new Error('Không thể cập nhật trạng thái hóa đơn: ' + error.message);
   }
 
-  cachedSupabase.invalidate('bills');
+  cachedSupabase.writeThrough('bills', 'update', data);
 
   // 6. Create audit log entry
   const action = newStatus === 'printed' ? 'print' : 'print_failed';

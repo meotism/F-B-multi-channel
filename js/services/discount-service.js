@@ -103,7 +103,7 @@ export async function updateDiscount(id, updates) {
   if (error) {
     throw new Error('Không thể cập nhật khuyến mãi: ' + error.message);
   }
-  cachedSupabase.invalidate('discounts');
+  cachedSupabase.writeThrough('discounts', 'update', data);
   return data;
 }
 
@@ -146,7 +146,7 @@ export async function applyToOrder(orderId, discountId) {
   if (error) {
     throw new Error('Không thể áp dụng khuyến mãi: ' + error.message);
   }
-  cachedSupabase.invalidate('orders');
+  cachedSupabase.writeThrough('orders', 'update', data);
   return data;
 }
 
@@ -168,7 +168,7 @@ export async function applyToItem(orderItemId, discountId) {
   if (error) {
     throw new Error('Không thể áp dụng khuyến mãi cho món: ' + error.message);
   }
-  cachedSupabase.invalidate('order_items');
+  cachedSupabase.writeThrough('order_items', 'update', data);
   return data;
 }
 
@@ -189,7 +189,7 @@ export async function removeFromOrder(orderId) {
   if (error) {
     throw new Error('Không thể xóa khuyến mãi: ' + error.message);
   }
-  cachedSupabase.invalidate('orders');
+  cachedSupabase.writeThrough('orders', 'update', data);
   return data;
 }
 

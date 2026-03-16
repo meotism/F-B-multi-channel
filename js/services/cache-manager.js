@@ -43,6 +43,7 @@ export class CacheManager {
     this._misses = 0;
     this._invalidations = 0;
     this._evictions = 0;
+    this._writeThroughs = 0;
   }
 
   /**
@@ -195,6 +196,7 @@ export class CacheManager {
     this._misses = 0;
     this._invalidations = 0;
     this._evictions = 0;
+    this._writeThroughs = 0;
 
     if (this.debug) {
       console.debug('[Cache] CLEAR — all entries and versions reset');
@@ -214,8 +216,68 @@ export class CacheManager {
       entries: this.store.size,
       invalidations: this._invalidations,
       evictions: this._evictions,
+      writeThroughs: this._writeThroughs,
       hitRate: total > 0 ? this._hits / total : 0,
     };
+  }
+
+  /**
+   * Scan all entries whose key starts with the given prefix and apply
+   * an updater function to each entry's data in-place.
+   *
+   * The updater receives the current entry data and returns either:
+   *   - The new data value (entry is replaced with fresh TTL)
+   *   - undefined (entry is left unchanged)
+   *   - null (entry should be deleted)
+   *
+   * Also increments the invalidation version counter for the prefix,
+   * so in-flight fetches that started before this call will not
+   * overwrite the freshly-updated entries.
+   *
+   * @param {string} prefix - Key prefix to match (e.g., 'categories:')
+   * @param {function(*): *|undefined|null} updateFn - Updater function
+   * @param {number} ttlMs - TTL to apply to updated entries
+   * @returns {number} Number of entries that were updated
+   */
+  updateByPrefix(prefix, updateFn, ttlMs) {
+    // Increment version BEFORE updating entries (same as invalidateByPrefix)
+    const currentVersion = this.invalidationVersions.get(prefix) || 0;
+    this.invalidationVersions.set(prefix, currentVersion + 1);
+
+    let updated = 0;
+    const toDelete = [];
+
+    for (const [key, entry] of this.store) {
+      if (key.startsWith(prefix)) {
+        const newData = updateFn(entry.data);
+        if (newData === null) {
+          // Signal deletion
+          toDelete.push(key);
+          updated++;
+        } else if (newData !== undefined) {
+          entry.data = newData;
+          entry.createdAt = Date.now();
+          entry.ttl = ttlMs;
+          entry.lastAccessed = Date.now();
+          updated++;
+        }
+      }
+    }
+
+    // Delete entries marked for removal
+    for (const key of toDelete) {
+      this.store.delete(key);
+    }
+
+    this._writeThroughs++;
+
+    if (this.debug) {
+      console.debug(
+        `[Cache] WRITE_THROUGH prefix="${prefix}" (${updated} entries updated, ${toDelete.length} deleted, version: ${currentVersion + 1})`,
+      );
+    }
+
+    return updated;
   }
 
   /**

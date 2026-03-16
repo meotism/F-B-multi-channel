@@ -54,6 +54,26 @@ export const INVALIDATION_GROUPS = {
   stock: ['ingredients', 'inventory'],
 };
 
+/**
+ * Per-table configuration for write-through cache updates.
+ * matchField: the primary key field used to locate an item in cached arrays/objects.
+ *
+ * Tables listed here can use writeThrough() instead of invalidate() for
+ * update and delete operations where the DB returns the fresh row data.
+ */
+export const WRITE_THROUGH_DEFINITIONS = {
+  categories:   { matchField: 'id' },
+  menu_items:   { matchField: 'id' },
+  orders:       { matchField: 'id' },
+  order_items:  { matchField: 'id' },
+  bills:        { matchField: 'id' },
+  ingredients:  { matchField: 'id' },
+  inventory:    { matchField: 'id' },
+  tables:       { matchField: 'id' },
+  users:        { matchField: 'id' },
+  discounts:    { matchField: 'id' },
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -758,6 +778,104 @@ export function createCachedClient(supabaseClient, cacheMgr) {
       cacheMgr.invalidateByPrefix(`${tableName}:`);
 
       // Tìm và invalidate tất cả bảng trong cùng nhóm
+      for (const groupMembers of Object.values(INVALIDATION_GROUPS)) {
+        if (groupMembers.includes(tableName)) {
+          for (const member of groupMembers) {
+            if (member !== tableName) {
+              cacheMgr.invalidateByPrefix(`${member}:`);
+            }
+          }
+        }
+      }
+    },
+
+    /**
+     * Write-through cache update: after a successful DB write that returns
+     * fresh data, update matching cache entries in-place rather than
+     * destroying them.
+     *
+     * - 'insert': falls back to invalidate() (can't predict which filtered queries include the new row)
+     * - 'update': merges fresh data into matching cached entries (arrays and single objects)
+     * - 'delete': removes matching items from cached arrays and deletes matching single-row entries
+     *
+     * Group members (related tables) are still invalidated since we don't have fresh data for them.
+     *
+     * @param {string} tableName - Table that was written to
+     * @param {'insert'|'update'|'delete'} operation - Type of write operation
+     * @param {Object|Array<Object>} data - Fresh data returned from the DB write
+     */
+    writeThrough(tableName, operation, data) {
+      const definition = WRITE_THROUGH_DEFINITIONS[tableName];
+
+      // No definition or insert → fall back to full invalidation
+      if (!definition || operation === 'insert') {
+        this.invalidate(tableName);
+        return;
+      }
+
+      const matchField = definition.matchField;
+      const tablePrefix = `${tableName}:`;
+      const ttl = getTtlForTable(tableName);
+
+      // Normalize data to an array for uniform handling
+      const items = Array.isArray(data) ? data : [data];
+
+      if (operation === 'update') {
+        // Build a lookup map: matchField value → fresh item
+        const freshMap = new Map();
+        for (const item of items) {
+          if (item && item[matchField] != null) {
+            freshMap.set(item[matchField], item);
+          }
+        }
+
+        cacheMgr.updateByPrefix(tablePrefix, (entryData) => {
+          if (Array.isArray(entryData)) {
+            // List cache entry: replace matching items in the array
+            let changed = false;
+            const updated = entryData.map((existing) => {
+              const fresh = freshMap.get(existing[matchField]);
+              if (fresh) {
+                changed = true;
+                // Merge: preserve joined/nested data from existing entry,
+                // overlay with fresh fields from DB response
+                return { ...existing, ...fresh };
+              }
+              return existing;
+            });
+            return changed ? updated : undefined;
+          } else if (entryData && typeof entryData === 'object') {
+            // Single-row cache entry: replace if matchField matches
+            const fresh = freshMap.get(entryData[matchField]);
+            if (fresh) {
+              return { ...entryData, ...fresh };
+            }
+          }
+          return undefined; // no change
+        }, ttl);
+      }
+
+      if (operation === 'delete') {
+        const deleteIds = new Set(
+          items.map((item) => item[matchField]).filter(Boolean),
+        );
+
+        cacheMgr.updateByPrefix(tablePrefix, (entryData) => {
+          if (Array.isArray(entryData)) {
+            const filtered = entryData.filter(
+              (existing) => !deleteIds.has(existing[matchField]),
+            );
+            return filtered.length !== entryData.length ? filtered : undefined;
+          } else if (entryData && typeof entryData === 'object') {
+            if (deleteIds.has(entryData[matchField])) {
+              return null; // signal deletion to CacheManager
+            }
+          }
+          return undefined; // no change
+        }, ttl);
+      }
+
+      // Group members: still invalidate (we don't have fresh data for related tables)
       for (const groupMembers of Object.values(INVALIDATION_GROUPS)) {
         if (groupMembers.includes(tableName)) {
           for (const member of groupMembers) {

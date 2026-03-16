@@ -77,7 +77,7 @@ export async function updateCategory(id, updates) {
     throw new Error('Không thể cập nhật danh mục: ' + error.message);
   }
 
-  cachedSupabase.invalidate('categories');
+  cachedSupabase.writeThrough('categories', 'update', data);
   return data;
 }
 
@@ -198,7 +198,7 @@ export async function updateMenuItem(id, updates) {
     throw new Error('Không thể cập nhật món ăn: ' + error.message);
   }
 
-  cachedSupabase.invalidate('menu_items');
+  cachedSupabase.writeThrough('menu_items', 'update', data);
   return data;
 }
 
@@ -222,7 +222,7 @@ export async function deleteMenuItem(id) {
     throw new Error('Không thể xóa món ăn: ' + error.message);
   }
 
-  cachedSupabase.invalidate('menu_items');
+  cachedSupabase.writeThrough('menu_items', 'update', data);
   return data;
 }
 
@@ -247,7 +247,7 @@ export async function updateMenuItemAvailability(id, isAvailable) {
     throw new Error('Không thể cập nhật trạng thái món ăn: ' + error.message);
   }
 
-  cachedSupabase.invalidate('menu_items');
+  cachedSupabase.writeThrough('menu_items', 'update', data);
   return data;
 }
 
@@ -281,7 +281,7 @@ export async function bulkUpdateActive(itemIds, isActive) {
     results.push(data);
   }
 
-  cachedSupabase.invalidate('menu_items');
+  cachedSupabase.writeThrough('menu_items', 'update', results);
   return results;
 }
 
@@ -344,7 +344,7 @@ export async function bulkUpdatePrice(categoryId, outletId, adjustment) {
     results.push(data);
   }
 
-  cachedSupabase.invalidate('menu_items');
+  cachedSupabase.writeThrough('menu_items', 'update', results);
   return results;
 }
 
@@ -368,7 +368,7 @@ export async function updateSortOrder(itemId, sortOrder) {
     throw new Error('Không thể cập nhật thứ tự món ăn: ' + error.message);
   }
 
-  cachedSupabase.invalidate('menu_items');
+  cachedSupabase.writeThrough('menu_items', 'update', data);
   return data;
 }
 

@@ -76,7 +76,7 @@ export async function updateUser(id, updates) {
     throw new Error('Không thể cập nhật người dùng: ' + error.message);
   }
 
-  cachedSupabase.invalidate('users');
+  cachedSupabase.writeThrough('users', 'update', data);
   return data;
 }
 
@@ -121,7 +121,7 @@ export async function deactivateUser(userId) {
     throw new Error('Không thể vô hiệu hóa người dùng: ' + error.message);
   }
 
-  cachedSupabase.invalidate('users');
+  cachedSupabase.writeThrough('users', 'update', data);
   return data;
 }
 
@@ -144,7 +144,7 @@ export async function reactivateUser(userId) {
     throw new Error('Không thể kích hoạt lại người dùng: ' + error.message);
   }
 
-  cachedSupabase.invalidate('users');
+  cachedSupabase.writeThrough('users', 'update', data);
   return data;
 }
 

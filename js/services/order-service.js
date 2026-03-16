@@ -255,7 +255,7 @@ export async function updateItemQty(orderItemId, newQty) {
       throw new Error('Không thể cập nhật số lượng: ' + error.message);
     }
 
-    cachedSupabase.invalidate('order_items');
+    cachedSupabase.writeThrough('order_items', 'update', data);
     return data;
   } catch (err) {
     // Task 24.1: If offline, enqueue the operation for later
@@ -293,7 +293,7 @@ export async function updateItemNote(orderItemId, note) {
     throw new Error('Không thể cập nhật ghi chú: ' + error.message);
   }
 
-  cachedSupabase.invalidate('order_items');
+  cachedSupabase.writeThrough('order_items', 'update', data);
   return data;
 }
 
@@ -353,7 +353,7 @@ export async function requestPayment(orderId) {
     throw new Error('Không thể cập nhật trạng thái bàn: ' + tableError.message);
   }
 
-  cachedSupabase.invalidate('orders');
+  cachedSupabase.writeThrough('orders', 'update', order);
   return order;
 }
 
@@ -389,7 +389,7 @@ export async function cancelPaymentRequest(orderId) {
     throw new Error('Không thể cập nhật trạng thái bàn: ' + tableError.message);
   }
 
-  cachedSupabase.invalidate('orders');
+  cachedSupabase.writeThrough('orders', 'update', order);
   return order;
 }
 
@@ -416,7 +416,7 @@ export async function updateOrderNote(orderId, note) {
     throw new Error('Không thể cập nhật ghi chú đơn hàng: ' + error.message);
   }
 
-  cachedSupabase.invalidate('orders');
+  cachedSupabase.writeThrough('orders', 'update', data);
   return data;
 }
 
@@ -439,7 +439,7 @@ export async function setGuestCount(orderId, guestCount) {
     throw new Error('Không thể cập nhật số khách: ' + error.message);
   }
 
-  cachedSupabase.invalidate('orders');
+  cachedSupabase.writeThrough('orders', 'update', data);
   return data;
 }
 
@@ -538,7 +538,7 @@ export async function updateOrderSafe(orderId, updates, expectedUpdatedAt) {
     throw new Error('Không thể cập nhật đơn hàng: ' + error.message);
   }
 
-  cachedSupabase.invalidate('orders');
+  cachedSupabase.writeThrough('orders', 'update', data);
   return data;
 }
 

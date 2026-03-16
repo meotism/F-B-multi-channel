@@ -102,7 +102,7 @@ export async function updateIngredient(id, updates) {
     throw new Error('Không thể cập nhật nguyên liệu: ' + error.message);
   }
 
-  cachedSupabase.invalidate('ingredients');
+  cachedSupabase.writeThrough('ingredients', 'update', data);
   return data;
 }
 
@@ -183,7 +183,7 @@ export async function updateInventory(id, newQty) {
     throw new Error('Khong the cap nhat ton kho: ' + error.message);
   }
 
-  cachedSupabase.invalidate('inventory');
+  cachedSupabase.writeThrough('inventory', 'update', data);
   return data;
 }
 
@@ -286,7 +286,7 @@ export async function recordStockIn(inventoryId, qty, supplierNote, userId, outl
     throw new Error('Không thể ghi nhận phiếu nhập kho: ' + movementError.message);
   }
 
-  cachedSupabase.invalidate('inventory');
+  cachedSupabase.writeThrough('inventory', 'update', updated);
   return updated;
 }
 
