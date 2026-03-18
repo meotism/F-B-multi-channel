@@ -295,6 +295,14 @@ export function onReconnect(callback) {
 }
 
 /**
+ * Clear all reconnect callbacks. Called before re-registering
+ * to prevent callback accumulation across page navigations.
+ */
+export function clearReconnectCallbacks() {
+  reconnectCallbacks.length = 0;
+}
+
+/**
  * Handle channel subscription status updates. Updates the global connectionStatus
  * and detects reconnection transitions to trigger data reconciliation.
  *

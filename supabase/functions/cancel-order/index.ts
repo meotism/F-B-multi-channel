@@ -155,6 +155,24 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      // MANAGER_APPROVAL_REQUIRED: cashier trying to cancel a completed (served) order
+      if (errorMessage.includes('MANAGER_APPROVAL_REQUIRED')) {
+        return errorResponse(
+          'Chỉ quản lý hoặc chủ có thể hủy đơn đã phục vụ',
+          403,
+          'MANAGER_APPROVAL_REQUIRED',
+        );
+      }
+
+      // CANCELLATION_REASON_REQUIRED: cancelling served order without providing reason
+      if (errorMessage.includes('CANCELLATION_REASON_REQUIRED')) {
+        return errorResponse(
+          'Vui lòng nhập lý do hủy đơn hàng đã phục vụ',
+          400,
+          'CANCELLATION_REASON_REQUIRED',
+        );
+      }
+
       // Unhandled database error
       console.error('cancel-order rpc error:', rpcError);
       return errorResponse(

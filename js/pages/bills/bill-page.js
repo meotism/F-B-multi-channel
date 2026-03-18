@@ -93,9 +93,17 @@ export function billPage() {
     },
 
     /**
+     * Prior hourly charges accumulated from table transfers.
+     * @returns {number} Prior hourly charge in VND
+     */
+    get priorHourlyCharge() {
+      return this.order?.prior_hourly_charge || 0;
+    },
+
+    /**
      * Estimated hourly charge before finalization (frozen at page load).
      * Returns 0 if table has no hourly rate or bill is already finalized.
-     * @returns {number} Estimated charge in VND
+     * @returns {number} Estimated charge in VND (current table only)
      */
     get estimatedHourlyCharge() {
       if (this.bill || !this.table?.hourly_rate || !this.order?.started_at || !this.frozenAt) return 0;
@@ -113,11 +121,12 @@ export function billPage() {
     },
 
     /**
-     * Display hourly charge: finalized value or live estimate.
-     * @returns {number} Hourly charge in VND
+     * Display hourly charge: finalized value or live estimate + prior transfers.
+     * @returns {number} Total hourly charge in VND (current + prior)
      */
     get displayHourlyCharge() {
-      return this.bill ? this.hourlyCharge : this.estimatedHourlyCharge;
+      if (this.bill) return this.hourlyCharge;
+      return this.estimatedHourlyCharge + this.priorHourlyCharge;
     },
 
     /**
@@ -125,7 +134,7 @@ export function billPage() {
      * @returns {boolean}
      */
     get hasHourlyCharge() {
-      return this.hourlyCharge > 0 || (this.table?.hourly_rate > 0 && !this.bill);
+      return this.hourlyCharge > 0 || this.priorHourlyCharge > 0 || (this.table?.hourly_rate > 0 && !this.bill);
     },
 
     /**

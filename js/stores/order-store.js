@@ -23,6 +23,7 @@ import {
   subscribeToOrders,
   subscribeToOrderItems,
   onReconnect,
+  clearReconnectCallbacks,
 } from '../services/realtime-service.js';
 import { withCacheInvalidation } from '../services/cache-invalidation.js';
 import { cacheManager } from '../services/cache-manager.js';
@@ -45,6 +46,7 @@ export function orderStore() {
     guestCount: 0,             // Number of guests at the table
     isLoading: false,
     error: null,
+    _loadGeneration: 0,    // Incremented on resetForTable(); stale async ops check this
 
     // --- Computed Properties ---
 
@@ -187,6 +189,20 @@ export function orderStore() {
       this.cart = [];
     },
 
+    /**
+     * Reset all order state for a new table navigation.
+     * Increments _loadGeneration to invalidate any in-flight async loads
+     * from Realtime handlers or previous navigations.
+     */
+    resetForTable() {
+      this._loadGeneration++;
+      this.clearCart();
+      this.currentOrder = null;
+      this.orderItems = [];
+      this.orderNote = '';
+      this.guestCount = 0;
+    },
+
     // --- Order Persistence Actions ---
 
     /**
@@ -301,11 +317,14 @@ export function orderStore() {
      * @throws {Error} With Vietnamese message on failure
      */
     async loadOrder(orderId) {
+      const gen = this._loadGeneration;
       this.isLoading = true;
       this.error = null;
 
       try {
         const data = await loadOrderService(orderId);
+        // Discard result if a table reset occurred during the fetch
+        if (this._loadGeneration !== gen) return data;
         this.currentOrder = data;
         this.orderNote = data.note || '';
         this.guestCount = data.guest_count || 0;
@@ -337,11 +356,14 @@ export function orderStore() {
      * @throws {Error} With Vietnamese message on failure
      */
     async loadOrderByTable(tableId) {
+      const gen = this._loadGeneration;
       this.isLoading = true;
       this.error = null;
 
       try {
         const data = await loadOrderByTableService(tableId);
+        // Discard result if a table reset occurred during the fetch
+        if (this._loadGeneration !== gen) return data;
 
         if (!data) {
           this.currentOrder = null;
@@ -549,6 +571,9 @@ export function orderStore() {
 
       subscribeToOrders(outletId, withCacheInvalidation('orders', (payload) => this.handleOrderChange(payload), cacheManager));
       subscribeToOrderItems(outletId, withCacheInvalidation('order_items', (payload) => this.handleOrderItemChange(payload), cacheManager));
+
+      // Clear previous reconnect callbacks to prevent stacking
+      clearReconnectCallbacks();
 
       // On reconnect after a disconnection, reload the current order
       // to reconcile any events that were missed while offline

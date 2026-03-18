@@ -104,15 +104,10 @@ export function orderPage() {
       );
       this.tableId = params.tableId;
 
-      // Reset global orders store to prevent cross-table contamination.
-      // The store is a global singleton that persists across route navigations,
-      // so stale cart/order data from a previous table must be cleared.
+      // Reset global orders store and increment load generation to invalidate
+      // any in-flight async loads from Realtime handlers or previous navigations.
       const ordersStore = Alpine.store('orders');
-      ordersStore.clearCart();
-      ordersStore.currentOrder = null;
-      ordersStore.orderItems = [];
-      ordersStore.orderNote = '';
-      ordersStore.guestCount = 0;
+      ordersStore.resetForTable();
 
       if (!this.tableId) {
         Alpine.store('ui').showToast('Thiếu thông tin bàn', 'error');
@@ -768,7 +763,8 @@ export function orderPage() {
     /**
      * Confirm the transfer to the selected target table.
      * Updates table statuses and navigates to the target table's order view.
-     * S3-22: Timer continuity — target table inherits original started_at.
+     * The stored procedure freezes the old table's hourly charge and resets
+     * started_at, so the target table starts a fresh timer.
      */
     async confirmTransfer() {
       if (this.isTransferring || !this.selectedTransferTarget) return;
@@ -776,7 +772,6 @@ export function orderPage() {
 
       try {
         const orderId = Alpine.store('orders').currentOrder?.id;
-        const startedAt = Alpine.store('orders').currentOrder?.started_at;
 
         if (!orderId) {
           throw new Error('Thiếu thông tin đơn hàng.');
@@ -802,8 +797,8 @@ export function orderPage() {
         const targetTable = tableMap.getTableById(this.selectedTransferTarget);
         if (targetTable) {
           targetTable.status = 'serving';
-          // S3-22: Timer continuity — keep original started_at
-          targetTable.activeOrderStartedAt = startedAt;
+          // Timer starts fresh — stored procedure reset started_at to NOW()
+          targetTable.activeOrderStartedAt = new Date().toISOString();
         }
 
         Alpine.store('ui').showToast('Đã chuyển bàn thành công', 'success');
