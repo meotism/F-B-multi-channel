@@ -104,6 +104,16 @@ export function orderPage() {
       );
       this.tableId = params.tableId;
 
+      // Reset global orders store to prevent cross-table contamination.
+      // The store is a global singleton that persists across route navigations,
+      // so stale cart/order data from a previous table must be cleared.
+      const ordersStore = Alpine.store('orders');
+      ordersStore.clearCart();
+      ordersStore.currentOrder = null;
+      ordersStore.orderItems = [];
+      ordersStore.orderNote = '';
+      ordersStore.guestCount = 0;
+
       if (!this.tableId) {
         Alpine.store('ui').showToast('Thiếu thông tin bàn', 'error');
         navigate('/tables');

@@ -1,12 +1,45 @@
-// Cache Manager - In-memory LRU cache with TTL, version counters, and diagnostics
+// Cache Manager - In-memory LRU cache with TTL, localStorage persistence, and diagnostics
 //
 // Core caching infrastructure for the Supabase cached egress layer.
 // Provides O(1) lookup, LRU eviction, stale-while-revalidate support,
 // invalidation version counters (prevents in-flight race conditions),
-// and structuredClone on read (prevents reference mutation).
+// structuredClone on read (prevents reference mutation), and localStorage
+// persistence for static-tier data (survives page refresh).
 //
 // Design reference: cache-manager.js in design.md
 // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 7.1, 7.2, 7.4
+
+// ---------------------------------------------------------------------------
+// localStorage persistence helpers
+// ---------------------------------------------------------------------------
+
+/** localStorage key prefix for persisted cache entries */
+const LS_PREFIX = 'fb_cache:';
+
+/**
+ * Tables whose data should be persisted to localStorage.
+ * These are "static" tier tables that change rarely and benefit from
+ * surviving page refreshes. Dynamic data (orders, order_items, etc.)
+ * is always fetched fresh and never persisted.
+ */
+const PERSIST_TABLES = new Set(['categories', 'menu_items', 'ingredients', 'tables']);
+
+/**
+ * Determine if a cache key belongs to a persistable table.
+ * Cache keys have the format "tableName:rest_of_key".
+ * @param {string} key - Cache key
+ * @returns {boolean}
+ */
+function shouldPersist(key) {
+  const colonIdx = key.indexOf(':');
+  if (colonIdx < 0) return false;
+  const tableName = key.substring(0, colonIdx);
+  return PERSIST_TABLES.has(tableName);
+}
+
+// ---------------------------------------------------------------------------
+// CacheManager
+// ---------------------------------------------------------------------------
 
 /**
  * @typedef {Object} CacheEntry
@@ -44,6 +77,11 @@ export class CacheManager {
     this._invalidations = 0;
     this._evictions = 0;
     this._writeThroughs = 0;
+
+    // Hydrate in-memory cache from localStorage on construction.
+    // Restores static-tier data after page refresh so the first
+    // render can display cached data without waiting for network.
+    this._hydrateFromLocalStorage();
   }
 
   /**
@@ -55,18 +93,31 @@ export class CacheManager {
    * If the entry exists but TTL has expired, returns { data, isStale: true }
    * so the caller can decide to serve stale or re-fetch (stale-while-revalidate).
    *
+   * Falls back to localStorage on in-memory miss (page refresh scenario).
+   *
    * @param {string} key - Cache key
    * @returns {{ data: *, isStale: boolean } | null} Cloned data with staleness flag, or null
    */
   get(key) {
-    const entry = this.store.get(key);
+    let entry = this.store.get(key);
 
     if (!entry) {
-      this._misses++;
-      if (this.debug) {
-        console.debug(`[Cache] MISS ${key}`);
+      // Try localStorage fallback (page refresh scenario)
+      const lsEntry = this._getFromLocalStorage(key);
+      if (lsEntry) {
+        // Restore to in-memory cache for subsequent fast access
+        this.store.set(key, lsEntry);
+        entry = lsEntry;
+        if (this.debug) {
+          console.debug(`[Cache] LS_RESTORE ${key}`);
+        }
+      } else {
+        this._misses++;
+        if (this.debug) {
+          console.debug(`[Cache] MISS ${key}`);
+        }
+        return null;
       }
-      return null;
     }
 
     const now = Date.now();
@@ -95,6 +146,8 @@ export class CacheManager {
    * If maxEntries is exceeded, evicts the least-recently-used entry
    * (the one with the oldest lastAccessed timestamp).
    *
+   * Static-tier entries are also persisted to localStorage.
+   *
    * @param {string} key - Cache key
    * @param {*} data - Data to cache (stored by reference internally; cloned on read)
    * @param {number} ttlMs - Time-to-live in milliseconds
@@ -111,12 +164,11 @@ export class CacheManager {
     }
 
     const now = Date.now();
-    this.store.set(key, {
-      data,
-      createdAt: now,
-      ttl: ttlMs,
-      lastAccessed: now,
-    });
+    const entry = { data, createdAt: now, ttl: ttlMs, lastAccessed: now };
+    this.store.set(key, entry);
+
+    // Persist static-tier entries to localStorage for page-refresh survival
+    this._persistToLocalStorage(key, entry);
 
     if (this.debug) {
       console.debug(`[Cache] SET ${key} (ttl: ${Math.round(ttlMs / 1000)}s)`);
@@ -131,8 +183,11 @@ export class CacheManager {
    */
   delete(key) {
     const existed = this.store.delete(key);
-    if (existed && this.debug) {
-      console.debug(`[Cache] DELETE ${key}`);
+    if (existed) {
+      this._removeFromLocalStorage(key);
+      if (this.debug) {
+        console.debug(`[Cache] DELETE ${key}`);
+      }
     }
     return existed;
   }
@@ -160,6 +215,9 @@ export class CacheManager {
         removed++;
       }
     }
+
+    // Also remove from localStorage
+    this._invalidateLocalStorageByPrefix(prefix);
 
     this._invalidations++;
 
@@ -197,6 +255,9 @@ export class CacheManager {
     this._invalidations = 0;
     this._evictions = 0;
     this._writeThroughs = 0;
+
+    // Clear all persisted cache entries from localStorage
+    this._clearLocalStorage();
 
     if (this.debug) {
       console.debug('[Cache] CLEAR — all entries and versions reset');
@@ -267,6 +328,14 @@ export class CacheManager {
     // Delete entries marked for removal
     for (const key of toDelete) {
       this.store.delete(key);
+      this._removeFromLocalStorage(key);
+    }
+
+    // Re-persist updated entries to localStorage
+    for (const [key, entry] of this.store) {
+      if (key.startsWith(prefix)) {
+        this._persistToLocalStorage(key, entry);
+      }
     }
 
     this._writeThroughs++;
@@ -303,6 +372,10 @@ export class CacheManager {
     return entries;
   }
 
+  // -------------------------------------------------------------------------
+  // Private methods
+  // -------------------------------------------------------------------------
+
   /**
    * Evict the least-recently-used entry (oldest lastAccessed).
    * @private
@@ -320,11 +393,233 @@ export class CacheManager {
 
     if (oldestKey !== null) {
       this.store.delete(oldestKey);
+      this._removeFromLocalStorage(oldestKey);
       this._evictions++;
 
       if (this.debug) {
         console.debug(`[Cache] EVICT (LRU) ${oldestKey}`);
       }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // localStorage persistence
+  // -------------------------------------------------------------------------
+
+  /**
+   * Restore persisted cache entries from localStorage into the in-memory Map.
+   * Only loads entries that haven't expired (TTL check).
+   * Silently skips corrupt or unparseable entries.
+   * @private
+   */
+  _hydrateFromLocalStorage() {
+    if (typeof localStorage === 'undefined') return;
+
+    const now = Date.now();
+    let hydrated = 0;
+
+    try {
+      // Collect keys first to avoid issues with iteration during removal
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const lsKey = localStorage.key(i);
+        if (lsKey && lsKey.startsWith(LS_PREFIX)) keys.push(lsKey);
+      }
+
+      for (const lsKey of keys) {
+        const cacheKey = lsKey.slice(LS_PREFIX.length);
+
+        try {
+          const raw = localStorage.getItem(lsKey);
+          if (!raw) continue;
+
+          const entry = JSON.parse(raw);
+
+          // Skip expired entries; remove them from localStorage
+          if (now > entry.createdAt + entry.ttl) {
+            localStorage.removeItem(lsKey);
+            continue;
+          }
+
+          // Restore into in-memory Map
+          entry.lastAccessed = now;
+          this.store.set(cacheKey, entry);
+          hydrated++;
+        } catch {
+          // Corrupt entry — remove it
+          localStorage.removeItem(lsKey);
+        }
+      }
+    } catch (err) {
+      // localStorage access may fail in certain contexts (private browsing quota, etc.)
+      if (this.debug) {
+        console.warn('[Cache] localStorage hydration failed:', err.message);
+      }
+    }
+
+    if (this.debug && hydrated > 0) {
+      console.debug(`[Cache] Hydrated ${hydrated} entries from localStorage`);
+    }
+  }
+
+  /**
+   * Try to read a cache entry from localStorage.
+   * @param {string} key - Cache key
+   * @returns {CacheEntry|null}
+   * @private
+   */
+  _getFromLocalStorage(key) {
+    if (typeof localStorage === 'undefined') return null;
+    if (!shouldPersist(key)) return null;
+
+    try {
+      const raw = localStorage.getItem(LS_PREFIX + key);
+      if (!raw) return null;
+
+      const entry = JSON.parse(raw);
+      entry.lastAccessed = Date.now();
+      return entry;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Write a cache entry to localStorage if it belongs to a persistable table.
+   * Handles quota errors gracefully by evicting the oldest persisted entries.
+   * @param {string} key - Cache key
+   * @param {{ data: *, createdAt: number, ttl: number }} entry - Entry to persist
+   * @private
+   */
+  _persistToLocalStorage(key, entry) {
+    if (typeof localStorage === 'undefined') return;
+    if (!shouldPersist(key)) return;
+
+    const lsKey = LS_PREFIX + key;
+    // Only persist data, createdAt, and ttl (not lastAccessed — transient)
+    const serialized = JSON.stringify({
+      data: entry.data,
+      createdAt: entry.createdAt,
+      ttl: entry.ttl,
+    });
+
+    try {
+      localStorage.setItem(lsKey, serialized);
+    } catch (err) {
+      // QuotaExceededError — try to free space
+      if (err.name === 'QuotaExceededError') {
+        this._evictLocalStorageEntries(3);
+        try {
+          localStorage.setItem(lsKey, serialized);
+        } catch {
+          // Still failed — give up silently; in-memory cache still works
+          if (this.debug) {
+            console.warn('[Cache] localStorage quota exceeded, could not persist:', key);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Remove a single cache entry from localStorage.
+   * @param {string} key - Cache key
+   * @private
+   */
+  _removeFromLocalStorage(key) {
+    if (typeof localStorage === 'undefined') return;
+    if (!shouldPersist(key)) return;
+
+    try {
+      localStorage.removeItem(LS_PREFIX + key);
+    } catch {
+      // Ignore — not critical
+    }
+  }
+
+  /**
+   * Remove all persisted cache entries whose key starts with the given prefix.
+   * @param {string} prefix - Key prefix to match
+   * @private
+   */
+  _invalidateLocalStorageByPrefix(prefix) {
+    if (typeof localStorage === 'undefined') return;
+
+    const lsPrefix = LS_PREFIX + prefix;
+    const toRemove = [];
+
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const lsKey = localStorage.key(i);
+        if (lsKey && lsKey.startsWith(lsPrefix)) {
+          toRemove.push(lsKey);
+        }
+      }
+
+      for (const lsKey of toRemove) {
+        localStorage.removeItem(lsKey);
+      }
+    } catch {
+      // Ignore — not critical
+    }
+  }
+
+  /**
+   * Remove all cache entries from localStorage (entries prefixed with fb_cache:).
+   * @private
+   */
+  _clearLocalStorage() {
+    if (typeof localStorage === 'undefined') return;
+
+    const toRemove = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const lsKey = localStorage.key(i);
+        if (lsKey && lsKey.startsWith(LS_PREFIX)) {
+          toRemove.push(lsKey);
+        }
+      }
+
+      for (const lsKey of toRemove) {
+        localStorage.removeItem(lsKey);
+      }
+    } catch {
+      // Ignore — not critical
+    }
+  }
+
+  /**
+   * Remove the oldest N persisted cache entries from localStorage to free space.
+   * @param {number} count - Number of entries to evict
+   * @private
+   */
+  _evictLocalStorageEntries(count) {
+    if (typeof localStorage === 'undefined') return;
+
+    const entries = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const lsKey = localStorage.key(i);
+        if (lsKey && lsKey.startsWith(LS_PREFIX)) {
+          try {
+            const raw = localStorage.getItem(lsKey);
+            const parsed = JSON.parse(raw);
+            entries.push({ lsKey, createdAt: parsed.createdAt || 0 });
+          } catch {
+            // Corrupt — remove immediately
+            localStorage.removeItem(lsKey);
+            count--;
+          }
+        }
+      }
+
+      // Sort oldest first and remove
+      entries.sort((a, b) => a.createdAt - b.createdAt);
+      for (let i = 0; i < Math.min(count, entries.length); i++) {
+        localStorage.removeItem(entries[i].lsKey);
+      }
+    } catch {
+      // Ignore — not critical
     }
   }
 }

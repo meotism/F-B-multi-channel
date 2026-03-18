@@ -377,17 +377,6 @@
     Mất kết nối — dữ liệu có thể chưa cập nhật
   </div>
 
-  <!-- ===================================================================
-       SW update banner
-       =================================================================== -->
-  <div class="update-banner"
-       x-data
-       x-show="$store.ui.showUpdateBanner"
-       x-transition
-       x-cloak>
-    <span>Phiên bản mới có sẵn</span>
-    <button class="btn btn--sm btn--primary" @click="$store.ui.applyUpdate()">Cập nhật</button>
-  </div>
 
   <!-- ===================================================================
        Centralized confirmation dialog
@@ -485,31 +474,23 @@
   </div>
 
   <!-- ===================================================================
-       Service Worker Registration
+       Service Worker Cleanup
+       Unregister any previously installed SWs and clear their caches.
        =================================================================== -->
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then((reg) => {
-            console.log('SW registered:', reg.scope);
-            // Detect new SW update
-            reg.addEventListener('updatefound', () => {
-              const newWorker = reg.installing;
-              if (newWorker) {
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    // New version available
-                    if (window.Alpine && Alpine.store('ui')) {
-                      Alpine.store('ui').showUpdateBanner = true;
-                    }
-                  }
-                });
-              }
-            });
-          })
-          .catch((err) => console.warn('SW registration failed:', err));
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const reg of registrations) {
+          reg.unregister().then((success) => {
+            if (success) console.log('SW unregistered:', reg.scope);
+          });
+        }
       });
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          keys.forEach((key) => caches.delete(key));
+        });
+      }
     }
   </script>
 </body>

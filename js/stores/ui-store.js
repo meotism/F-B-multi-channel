@@ -22,9 +22,6 @@ export function uiStore() {
     // Connectivity
     isOffline: !navigator.onLine,
 
-    // SW update banner
-    showUpdateBanner: false,
-
     // Sidebar (desktop/tablet)
     sidebarOpen: true,
 
@@ -106,11 +103,6 @@ export function uiStore() {
         await this.confirmAction.onConfirm();
       }
       this.confirmAction = null;
-    },
-
-    /** Reload the page to apply a SW update. */
-    applyUpdate() {
-      window.location.reload();
     },
   };
 }
