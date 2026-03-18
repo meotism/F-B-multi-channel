@@ -82,9 +82,10 @@ Deno.serve(async (req: Request) => {
       return errorResponse('Dữ liệu yêu cầu không hợp lệ', 400, 'INVALID_JSON');
     }
 
-    const { order_id, payment_method, hourly_charge, duration_seconds } = body as {
+    const { order_id, payment_method, discount_amount, hourly_charge, duration_seconds } = body as {
       order_id: string;
       payment_method: string;
+      discount_amount?: number;
       hourly_charge?: number;
       duration_seconds?: number;
     };
@@ -141,6 +142,9 @@ Deno.serve(async (req: Request) => {
       p_payment_method: payment_method,
       p_user_id: authUser.id,
     };
+    if (discount_amount != null) {
+      rpcParams.p_discount_amount = discount_amount;
+    }
     if (hourly_charge != null) {
       rpcParams.p_hourly_charge = hourly_charge;
     }
