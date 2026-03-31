@@ -130,6 +130,21 @@ async function loadPage(pageName, params) {
 
   ui.startLoading('Đang tải...');
 
+  // Call destroy() on the previous page component before replacing HTML.
+  // This ensures realtime subscriptions, intervals, and event listeners
+  // are cleaned up properly (hash navigation does not fire beforeunload).
+  try {
+    const prevRoot = container.querySelector('[x-data]');
+    if (prevRoot && prevRoot._x_dataStack) {
+      const prevData = prevRoot._x_dataStack[0];
+      if (prevData && typeof prevData.destroy === 'function') {
+        prevData.destroy();
+      }
+    }
+  } catch (cleanupErr) {
+    console.warn('[Router] Previous page cleanup failed:', cleanupErr);
+  }
+
   try {
     const response = await fetch(`pages/${pageName}.html`);
     if (!response.ok) {

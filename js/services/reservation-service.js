@@ -7,7 +7,7 @@
 
 import { supabase } from './supabase-client.js';
 import { assertOutlet } from '../utils/outlet-guard.js';
-import { DEFAULT_RESERVATION_TIMEOUT_MINUTES, SCHEDULER_API_URL, SUPABASE_ANON_KEY } from '../config.js';
+import { DEFAULT_RESERVATION_TIMEOUT_MINUTES, SCHEDULER_API_URL, SUPABASE_ANON_KEY, DEFAULT_PAGE_SIZE } from '../config.js';
 
 // ============================================================
 // QStash Scheduling Helper
@@ -52,7 +52,7 @@ async function scheduleExpiry(reservationId, scheduleFor) {
 // ============================================================
 
 /**
- * Load reservations for an outlet with optional filters.
+ * Load reservations for an outlet with optional filters and pagination.
  * Used by the /reservations list page for browsing across dates.
  *
  * @param {string} outletId - Outlet UUID
@@ -61,16 +61,24 @@ async function scheduleExpiry(reservationId, scheduleFor) {
  * @param {string} [filters.dateTo] - ISO date string (inclusive)
  * @param {string} [filters.status] - Filter by reservation_status
  * @param {string} [filters.tableId] - Filter by table UUID
- * @returns {Promise<Array>} Array of reservation objects
+ * @param {Object} [pagination] - Pagination options
+ * @param {number} [pagination.pageSize=50] - Items per page
+ * @param {number} [pagination.pageNumber=1] - Current page (1-based)
+ * @returns {Promise<{data: Array, totalCount: number, pageSize: number, pageNumber: number, totalPages: number}>}
  */
-export async function loadReservations(outletId, filters = {}) {
+export async function loadReservations(outletId, filters = {}, pagination = {}) {
   assertOutlet(outletId);
+
+  const pageSize = pagination.pageSize || DEFAULT_PAGE_SIZE;
+  const pageNumber = pagination.pageNumber || 1;
+  const offset = (pageNumber - 1) * pageSize;
 
   let query = supabase
     .from('reservations')
-    .select('*, tables(name, table_code)')
+    .select('*, tables(name, table_code)', { count: 'exact' })
     .eq('outlet_id', outletId)
-    .order('reserved_at', { ascending: true });
+    .order('reserved_at', { ascending: true })
+    .range(offset, offset + pageSize - 1);
 
   if (filters.dateFrom) {
     query = query.gte('reserved_at', filters.dateFrom + 'T00:00:00');
@@ -85,9 +93,16 @@ export async function loadReservations(outletId, filters = {}) {
     query = query.eq('table_id', filters.tableId);
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) throw new Error('Không thể tải danh sách đặt hẹn: ' + error.message);
-  return data || [];
+
+  return {
+    data: data || [],
+    totalCount: count || 0,
+    pageSize,
+    pageNumber,
+    totalPages: Math.ceil((count || 0) / pageSize),
+  };
 }
 
 /**

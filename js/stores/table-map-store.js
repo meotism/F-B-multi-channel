@@ -304,8 +304,98 @@ export function tableMapStore() {
     },
 
     /**
+     * Check if a reservation belongs to "today" (Vietnam timezone)
+     * and has an active status for the map overlay.
+     * @param {object} reservation - Reservation object
+     * @returns {boolean}
+     */
+    isRelevantForMap(reservation) {
+      if (!reservation) return false;
+      if (reservation.status !== 'pending' && reservation.status !== 'active') return false;
+      const vnFormatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+      });
+      const today = vnFormatter.format(new Date());
+      const resDate = vnFormatter.format(new Date(reservation.reserved_at));
+      return resDate === today;
+    },
+
+    /**
+     * Fetch a single reservation with joined table relation.
+     * Used after realtime events (which only contain raw row data).
+     * @param {string} id - Reservation UUID
+     * @returns {object|null}
+     */
+    async fetchReservationWithRelation(id) {
+      try {
+        const { data } = await supabase
+          .from('reservations')
+          .select('*, tables(name, table_code)')
+          .eq('id', id)
+          .single();
+        return data;
+      } catch {
+        return null;
+      }
+    },
+
+    /**
+     * Handle a realtime reservation change event directly on the local array.
+     * Avoids full reload — instant UI update via pub/sub.
+     * Fetches joined relation for INSERT/UPDATE to ensure data consistency.
+     * @param {object} payload - Supabase realtime payload
+     */
+    async handleReservationChange(payload) {
+      switch (payload.eventType) {
+        case 'INSERT': {
+          const row = payload.new;
+          if (this.isRelevantForMap(row) && !this.reservations.find(r => r.id === row.id)) {
+            // Fetch with relation so tables.name is available
+            const full = await this.fetchReservationWithRelation(row.id);
+            if (full && this.isRelevantForMap(full)) {
+              this.reservations.push(full);
+            }
+          }
+          break;
+        }
+
+        case 'UPDATE': {
+          const row = payload.new;
+          const idx = this.reservations.findIndex(r => r.id === row.id);
+
+          if (this.isRelevantForMap(row)) {
+            // Fetch with relation for consistent data
+            const full = await this.fetchReservationWithRelation(row.id);
+            if (full) {
+              if (idx !== -1) {
+                this.reservations[idx] = full;
+              } else {
+                this.reservations.push(full);
+              }
+            }
+          } else {
+            // No longer relevant (expired/cancelled/completed) — remove
+            if (idx !== -1) {
+              this.reservations.splice(idx, 1);
+            }
+          }
+          break;
+        }
+
+        case 'DELETE': {
+          const oldId = payload.old?.id;
+          if (oldId) {
+            this.reservations = this.reservations.filter(r => r.id !== oldId);
+          }
+          break;
+        }
+      }
+    },
+
+    /**
      * Subscribe to realtime reservation changes for the table map overlay.
-     * On any change, reloads today's reservations to keep the overlay current.
+     * Uses pub/sub to update local array directly — no DB reload needed.
      * @param {string} outletId - Outlet UUID
      */
     subscribeToReservationChanges(outletId) {
@@ -319,9 +409,8 @@ export function tableMapStore() {
           schema: 'public',
           table: 'reservations',
           filter: 'outlet_id=eq.' + outletId,
-        }, () => {
-          // Reload on any change — simple and reliable
-          this.loadReservations(outletId);
+        }, (payload) => {
+          this.handleReservationChange(payload);
         })
         .subscribe();
     },

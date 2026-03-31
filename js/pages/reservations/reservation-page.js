@@ -13,6 +13,7 @@ import {
   cancelReservation,
 } from '../../services/reservation-service.js';
 import { formatVND } from '../../utils/formatters.js';
+import { DEFAULT_PAGE_SIZE } from '../../config.js';
 import { navigate } from '../../utils/navigate.js';
 import { supabase } from '../../services/supabase-client.js';
 
@@ -27,6 +28,12 @@ export function reservationPage() {
     // --- Page state ---
     isLoading: true,
     reservations: [],
+
+    // --- Pagination state ---
+    currentPage: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
+    totalCount: 0,
+    totalPages: 0,
 
     // --- Filter state ---
     filterStatus: '',
@@ -79,6 +86,10 @@ export function reservationPage() {
         supabase.removeChannel(this._realtimeChannel);
         this._realtimeChannel = null;
       }
+      if (this._silentReloadTimer) {
+        clearTimeout(this._silentReloadTimer);
+        this._silentReloadTimer = null;
+      }
     },
 
     /**
@@ -105,14 +116,56 @@ export function reservationPage() {
         if (this.filterStatus) filters.status = this.filterStatus;
         if (this.filterTableId) filters.tableId = this.filterTableId;
 
-        this.reservations = await loadReservations(outletId, filters);
+        const result = await loadReservations(outletId, filters, {
+          pageSize: this.pageSize,
+          pageNumber: this.currentPage,
+        });
+
+        this.reservations = result.data;
+        this.totalCount = result.totalCount;
+        this.totalPages = result.totalPages;
       } catch (err) {
         console.error('[ReservationPage] loadData failed:', err);
         Alpine.store('ui').showToast(err.message, 'error');
         this.reservations = [];
+        this.totalCount = 0;
+        this.totalPages = 0;
       } finally {
         this.isLoading = false;
       }
+    },
+
+    // Debounce timer for silentReload to avoid duplicate API calls
+    // when both submitForm() and realtime fire in quick succession.
+    _silentReloadTimer: null,
+
+    /**
+     * Silently reload data without showing the loading spinner.
+     * Debounced (300ms) so rapid realtime events don't cause multiple API calls.
+     */
+    silentReload() {
+      if (this._silentReloadTimer) clearTimeout(this._silentReloadTimer);
+      this._silentReloadTimer = setTimeout(async () => {
+        try {
+          const outletId = Alpine.store('auth').user?.outlet_id;
+          const filters = {};
+          if (this.filterDateFrom) filters.dateFrom = this.filterDateFrom;
+          if (this.filterDateTo) filters.dateTo = this.filterDateTo;
+          if (this.filterStatus) filters.status = this.filterStatus;
+          if (this.filterTableId) filters.tableId = this.filterTableId;
+
+          const result = await loadReservations(outletId, filters, {
+            pageSize: this.pageSize,
+            pageNumber: this.currentPage,
+          });
+
+          this.reservations = result.data;
+          this.totalCount = result.totalCount;
+          this.totalPages = result.totalPages;
+        } catch (err) {
+          console.error('[ReservationPage] silentReload failed:', err);
+        }
+      }, 300);
     },
 
     /**
@@ -133,22 +186,23 @@ export function reservationPage() {
             filter: `outlet_id=eq.${outletId}`,
           },
           () => {
-            // Reload data on any change (simple & reliable)
-            this.loadData();
+            // Silent reload to avoid spinner flicker on realtime updates
+            this.silentReload();
           },
         )
         .subscribe();
     },
 
     /**
-     * Apply filters and reload data.
+     * Apply filters and reload data (resets to page 1).
      */
     applyFilters() {
+      this.currentPage = 1;
       this.loadData();
     },
 
     /**
-     * Clear all filters and reload.
+     * Clear all filters and reload (resets to page 1).
      */
     clearFilters() {
       const today = this.todayDateString();
@@ -156,7 +210,42 @@ export function reservationPage() {
       this.filterDateFrom = today;
       this.filterDateTo = today;
       this.filterTableId = '';
+      this.currentPage = 1;
       this.loadData();
+    },
+
+    // --- Pagination ---
+
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+        this.loadData();
+      }
+    },
+
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+        this.loadData();
+      }
+    },
+
+    goToPage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+        this.loadData();
+      }
+    },
+
+    /**
+     * Get the display range string, e.g. "1-50 / 120".
+     * @returns {string}
+     */
+    get paginationInfo() {
+      if (this.totalCount === 0) return '';
+      const start = (this.currentPage - 1) * this.pageSize + 1;
+      const end = Math.min(this.currentPage * this.pageSize, this.totalCount);
+      return `${start}-${end} / ${this.totalCount}`;
     },
 
     // --- Modal ---

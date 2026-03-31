@@ -35,6 +35,7 @@ import './pages/settings/settings-page.js';
 import './pages/discounts/discounts-page.js';
 import './pages/dashboard/dashboard-page.js';
 import './pages/orders/order-list-page.js';
+import './pages/reservations/reservation-page.js';
 
 // Make Alpine available globally (required for x-data, $store, etc. in templates)
 window.Alpine = Alpine;

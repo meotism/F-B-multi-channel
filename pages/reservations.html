@@ -1,5 +1,5 @@
 <!-- Reservation list page template - loaded by router -->
-<section x-data="reservationPage()" x-init="init()" style="padding: var(--space-4); max-width: 1200px; margin: 0 auto;">
+<section x-data="reservationPage()" x-init="init()" @beforeunload.window="destroy()" style="padding: var(--space-4); max-width: 1200px; margin: 0 auto;">
 
   <!-- ================================================================
        Header + Create Button
@@ -216,6 +216,35 @@
         </div>
       </div>
     </template>
+  </div>
+
+  <!-- ================================================================
+       Pagination Controls
+       ================================================================ -->
+  <div x-show="!isLoading && totalPages > 1" x-cloak
+       style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-4); padding: var(--space-3) 0; border-top: 1px solid var(--color-border);">
+    <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);"
+          x-text="paginationInfo"></span>
+    <div style="display: flex; gap: var(--space-2); align-items: center;">
+      <button class="btn btn--outline btn--sm"
+              @click="prevPage()"
+              :disabled="currentPage <= 1">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <span style="font-size: var(--font-size-sm); min-width: 60px; text-align: center;"
+            x-text="currentPage + ' / ' + totalPages"></span>
+      <button class="btn btn--outline btn--sm"
+              @click="nextPage()"
+              :disabled="currentPage >= totalPages">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
   </div>
 
   <!-- ================================================================
