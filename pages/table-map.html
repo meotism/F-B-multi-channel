@@ -122,7 +122,7 @@
     <template x-for="table in tables" :key="table.id">
       <div class="table-node"
            :class="[
-             'table-node--' + table.status,
+             isTableBlocked(table, timerTick) ? ('table-node--reserved-' + getBlockingReservation(table)?.status) : ('table-node--' + table.status),
              'table-node--' + table.shape,
              { 'is-editable': isEditMode, 'is-selected': selectedTable?.id === table.id }
            ]"
@@ -140,7 +140,7 @@
 
         <!-- Color-blind status icon (Task 8.3) -->
         <span class="table-node__status-icon" aria-hidden="true"
-              x-text="{'empty':'\u2713','serving':'\u23F1','awaiting_payment':'\uD83D\uDD14','paid':'\uD83D\uDCB5'}[table.status] || ''"></span>
+              x-text="isTableBlocked(table, timerTick) ? '\uD83D\uDCC5' : ({'empty':'\u2713','serving':'\u23F1','awaiting_payment':'\uD83D\uDD14','paid':'\uD83D\uDCB5'}[table.status] || '')"></span>
 
         <!-- Table name: double-click to inline rename in edit mode -->
         <span class="table-node__name"
@@ -186,18 +186,16 @@
                 x-cloak></span>
         </div>
 
-        <!-- Reservation overlay: dashed border (pending) or solid border (active) -->
-        <template x-if="getReservation(table)">
-          <div class="table-node__reservation"
-               :class="{ 'table-node__reservation--active': getReservation(table)?.status === 'active' }">
+        <!-- Reservation time blocks (multi-reservation per table) -->
+        <template x-if="getReservations(table).length > 0">
+          <div class="table-node__res-blocks">
+            <template x-for="res in getReservations(table)" :key="res.id">
+              <span class="table-node__res-block"
+                    :class="'table-node__res-block--' + res.status"
+                    x-text="formatTimeRange(res)">
+              </span>
+            </template>
           </div>
-        </template>
-        <!-- Reservation time badge -->
-        <template x-if="getReservation(table)">
-          <span class="table-node__reservation-time"
-                :class="{ 'table-node__reservation-time--active': getReservation(table)?.status === 'active' }"
-                x-text="formatReservationTime(getReservation(table)?.reserved_at)">
-          </span>
         </template>
       </div>
     </template>
@@ -495,8 +493,32 @@
        :style="`left: ${contextMenu.x}px; top: ${contextMenu.y}px;`"
        @click.stop>
 
-    <!-- empty status -->
-    <template x-if="contextMenu.table?.status === 'empty'">
+    <!-- Blocked pending: table is in a pending reservation's time slot -->
+    <template x-if="contextMenu.table?.status === 'empty' && getBlockingReservation(contextMenu.table)?.status === 'pending'">
+      <div>
+        <button class="context-menu__item"
+                @click="handleContextAction('confirm-reservation', contextMenu.table)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>X&#225;c nh&#7853;n kh&#225;ch &#273;&#7871;n</span>
+        </button>
+        <div class="context-menu__divider"></div>
+        <button class="context-menu__item context-menu__item--danger"
+                @click="handleContextAction('cancel-reservation', contextMenu.table)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>H&#7911;y &#273;&#7863;t h&#7865;n</span>
+        </button>
+      </div>
+    </template>
+
+    <!-- Blocked active: table has an active reservation (customer can order) -->
+    <template x-if="contextMenu.table?.status === 'empty' && getBlockingReservation(contextMenu.table)?.status === 'active'">
       <div>
         <button class="context-menu__item"
                 @click="handleContextAction('create-order', contextMenu.table)">
@@ -507,20 +529,30 @@
           </svg>
           <span>T&#7841;o order</span>
         </button>
-        <!-- Confirm arrival (only if table has a pending reservation) -->
-        <template x-if="getReservation(contextMenu.table)?.status === 'pending'">
-          <div>
-            <div class="context-menu__divider"></div>
-            <button class="context-menu__item"
-                    @click="handleContextAction('confirm-reservation', contextMenu.table)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              <span>X&#225;c nh&#7853;n kh&#225;ch &#273;&#7871;n</span>
-            </button>
-          </div>
-        </template>
+        <div class="context-menu__divider"></div>
+        <button class="context-menu__item"
+                @click="handleContextAction('complete-reservation', contextMenu.table)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>Ho&#224;n th&#224;nh &#273;&#7863;t h&#7865;n</span>
+        </button>
+      </div>
+    </template>
+
+    <!-- Empty status: not blocked by any reservation -->
+    <template x-if="contextMenu.table?.status === 'empty' && !getBlockingReservation(contextMenu.table)">
+      <div>
+        <button class="context-menu__item"
+                @click="handleContextAction('create-order', contextMenu.table)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>T&#7841;o order</span>
+        </button>
         <div class="context-menu__divider"></div>
         <button class="context-menu__item"
                 @click="handleContextAction('reserve', contextMenu.table)">

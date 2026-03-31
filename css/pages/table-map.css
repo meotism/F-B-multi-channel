@@ -129,40 +129,41 @@
 .table-node--awaiting_payment { background: var(--color-awaiting-payment); color: white; }
 .table-node--paid             { background: var(--color-paid);             color: white; }
 
-/* Reservation overlay: dashed border around table node */
-.table-node__reservation {
+/* Blocked table states (reservation in progress) */
+.table-node--reserved-pending { background: var(--color-reserved-pending); color: white; }
+.table-node--reserved-active  { background: var(--color-reserved-active);  color: white; }
+
+/* Reservation time blocks container (inside table node) */
+.table-node__res-blocks {
   position: absolute;
-  top: -5px;
-  left: -5px;
-  right: -5px;
-  bottom: -5px;
-  border: 3px dashed var(--color-reserved-pending);
-  border-radius: inherit;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  justify-content: center;
   pointer-events: none;
-  z-index: 1;
-}
-.table-node__reservation--active {
-  border-color: var(--color-reserved-active);
-  border-style: solid;
+  z-index: 2;
 }
 
-/* Reservation time badge on table node */
-.table-node__reservation-time {
-  position: absolute;
-  top: -10px;
-  right: -10px;
+/* Individual reservation time block */
+.table-node__res-block {
+  font-size: 8px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  line-height: 1.3;
   background: var(--color-reserved-pending);
   color: white;
-  font-size: 9px;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 999px;
-  white-space: nowrap;
-  z-index: 2;
-  line-height: 1.4;
+  opacity: 0.9;
 }
-.table-node__reservation-time--active {
+.table-node__res-block--active {
   background: var(--color-reserved-active);
+}
+.table-node__res-block--pending {
+  background: var(--color-reserved-pending);
 }
 
 /* Hover effect */

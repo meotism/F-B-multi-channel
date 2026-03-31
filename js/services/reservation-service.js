@@ -7,6 +7,7 @@
 
 import { supabase } from './supabase-client.js';
 import { assertOutlet } from '../utils/outlet-guard.js';
+import { createOrder } from './order-service.js';
 import { DEFAULT_RESERVATION_TIMEOUT_MINUTES, SCHEDULER_API_URL, SUPABASE_ANON_KEY, DEFAULT_PAGE_SIZE } from '../config.js';
 
 // ============================================================
@@ -123,17 +124,28 @@ export async function loadTodayReservations(outletId) {
   });
   const today = vnFormatter.format(now); // YYYY-MM-DD
 
+  // Load reservations whose time range overlaps with today:
+  // reserved_at < end_of_today AND end_at > start_of_today
   const { data, error } = await supabase
     .from('reservations')
     .select('*, tables(name, table_code)')
     .eq('outlet_id', outletId)
     .in('status', ['pending', 'active'])
-    .gte('reserved_at', today + 'T00:00:00')
-    .lte('reserved_at', today + 'T23:59:59')
+    .lt('reserved_at', today + 'T23:59:59')
+    .gt('end_at', today + 'T00:00:00')
     .order('reserved_at', { ascending: true });
 
   if (error) throw new Error('Không thể tải đặt hẹn hôm nay: ' + error.message);
   return data || [];
+}
+
+/**
+ * Compute end_at for a reservation (client-side helper).
+ * @param {Object} reservation - Reservation object with reserved_at and duration_hours
+ * @returns {Date}
+ */
+export function getEndAt(reservation) {
+  return new Date(new Date(reservation.reserved_at).getTime() + (reservation.duration_hours || 1) * 3600000);
 }
 
 // ============================================================
@@ -167,12 +179,16 @@ async function getReservationTimeout(outletId) {
  * @param {string} [data.customer_phone] - Customer phone
  * @param {number} data.party_size - Number of guests
  * @param {string} data.reserved_at - ISO datetime string for arrival time
+ * @param {number} [data.duration_hours=1] - Duration in hours (0.5-24)
+ * @param {boolean} [data.prepaid=false] - If true, creates as 'active' (paid in advance)
  * @param {string} [data.notes] - Notes
  * @param {string} userId - UUID of the user creating the reservation
  * @returns {Promise<Object>} Created reservation object
  */
 export async function createReservation(outletId, data, userId) {
   assertOutlet(outletId);
+
+  const isPrepaid = !!data.prepaid;
 
   const { data: reservation, error } = await supabase
     .from('reservations')
@@ -183,6 +199,9 @@ export async function createReservation(outletId, data, userId) {
       customer_phone: data.customer_phone || null,
       party_size: data.party_size,
       reserved_at: data.reserved_at,
+      duration_hours: data.duration_hours || 1,
+      prepaid: isPrepaid,
+      status: isPrepaid ? 'active' : 'pending',
       notes: data.notes || null,
       created_by: userId,
     })
@@ -190,11 +209,30 @@ export async function createReservation(outletId, data, userId) {
     .single();
 
   if (error) {
-    // Unique index violation → double booking
     if (error.code === '23505') {
-      throw new Error('Bàn này đã có đặt hẹn cho ngày đó. Vui lòng chọn bàn hoặc ngày khác.');
+      throw new Error('Bàn đã có đặt hẹn trong khoảng thời gian này. Vui lòng chọn thời gian khác.');
     }
     throw new Error('Không thể tạo đặt hẹn: ' + error.message);
+  }
+
+  // Prepaid: auto-create order (empty cart, hourly tracking starts)
+  if (isPrepaid) {
+    try {
+      const { order } = await createOrder(
+        data.table_id, outletId, userId, [],
+        { guestCount: data.party_size, reservationId: reservation.id }
+      );
+      // Link order to reservation
+      if (order?.id) {
+        await supabase.from('orders')
+          .update({ reservation_id: reservation.id })
+          .eq('id', order.id);
+      }
+    } catch (err) {
+      console.error('[reservation-service] Auto-create order for prepaid failed:', err);
+      // Non-fatal: reservation is created, order can be created manually
+    }
+    return reservation;
   }
 
   // Enqueue expiry task at reserved_at + timeout
@@ -226,7 +264,7 @@ export async function createReservation(outletId, data, userId) {
  * @returns {Promise<Object>} Updated reservation
  */
 export async function updateReservation(reservationId, updates, outletId) {
-  const timeChanged = !!updates.reserved_at;
+  const timeChanged = !!updates.reserved_at || !!updates.duration_hours;
 
   const { data: reservation, error } = await supabase
     .from('reservations')

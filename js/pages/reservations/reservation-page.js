@@ -11,6 +11,7 @@ import {
   updateReservation,
   confirmArrival,
   cancelReservation,
+  getEndAt,
 } from '../../services/reservation-service.js';
 import { formatVND } from '../../utils/formatters.js';
 import { DEFAULT_PAGE_SIZE } from '../../config.js';
@@ -55,6 +56,8 @@ export function reservationPage() {
       customer_phone: '',
       party_size: 2,
       reserved_at: '',
+      duration_hours: 1,
+      prepaid: false,
       notes: '',
     },
     formError: '',
@@ -268,6 +271,8 @@ export function reservationPage() {
         customer_phone: '',
         party_size: 2,
         reserved_at: local.toISOString().slice(0, 16),
+        duration_hours: 1,
+        prepaid: false,
         notes: '',
       };
       this.showModal = true;
@@ -290,6 +295,8 @@ export function reservationPage() {
         customer_phone: reservation.customer_phone || '',
         party_size: reservation.party_size,
         reserved_at: local.toISOString().slice(0, 16),
+        duration_hours: reservation.duration_hours || 1,
+        prepaid: reservation.prepaid || false,
         notes: reservation.notes || '',
       };
       this.showModal = true;
@@ -342,6 +349,7 @@ export function reservationPage() {
             customer_phone: this.form.customer_phone.trim() || null,
             party_size: this.form.party_size,
             reserved_at: reservedAtISO,
+            duration_hours: this.form.duration_hours,
             notes: this.form.notes.trim() || null,
           }, outletId);
           Alpine.store('ui').showToast('Đã cập nhật đặt hẹn', 'success');
@@ -352,6 +360,8 @@ export function reservationPage() {
             customer_phone: this.form.customer_phone.trim() || null,
             party_size: this.form.party_size,
             reserved_at: reservedAtISO,
+            duration_hours: this.form.duration_hours,
+            prepaid: this.form.prepaid,
             notes: this.form.notes.trim() || null,
           }, userId);
           Alpine.store('ui').showToast('Đã tạo đặt hẹn', 'success');
@@ -480,6 +490,46 @@ export function reservationPage() {
         completed: 'badge--success',
       };
       return classes[status] || '';
+    },
+
+    /**
+     * Format time range for a reservation, e.g. "14:00 - 16:00".
+     * @param {Object} res - Reservation object
+     * @returns {string}
+     */
+    formatTimeRange(res) {
+      if (!res?.reserved_at) return '—';
+      const start = this.formatDateShort(res.reserved_at);
+      const end = this.formatDateShort(getEndAt(res).toISOString());
+      return `${start} - ${end}`;
+    },
+
+    /**
+     * Format duration_hours to display string, e.g. "2 tiếng" or "1.5 tiếng".
+     * @param {number} hours
+     * @returns {string}
+     */
+    formatDuration(hours) {
+      if (!hours) return '1 tiếng';
+      return `${hours} tiếng`;
+    },
+
+    /**
+     * Get the hourly_rate of the currently selected table in the form.
+     * @returns {number}
+     */
+    getSelectedTableRate() {
+      if (!this.form.table_id) return 0;
+      const table = this.tables.find(t => t.id === this.form.table_id);
+      return table?.hourly_rate || 0;
+    },
+
+    /**
+     * Get the prepaid price: hourly_rate * duration_hours.
+     * @returns {number}
+     */
+    getPrepaidPrice() {
+      return this.getSelectedTableRate() * (this.form.duration_hours || 1);
     },
 
     /**

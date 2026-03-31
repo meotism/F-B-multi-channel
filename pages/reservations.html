@@ -99,31 +99,32 @@
         <tr>
           <th>Th&#7901;i gian</th>
           <th>Kh&#225;ch h&#224;ng</th>
-          <th>S&#272;T</th>
           <th>S&#7889; kh&#225;ch</th>
           <th>B&#224;n</th>
           <th>Tr&#7841;ng th&#225;i</th>
-          <th>Ghi ch&#250;</th>
           <th>Thao t&#225;c</th>
         </tr>
       </thead>
       <tbody>
         <template x-for="res in reservations" :key="res.id">
           <tr>
-            <td x-text="formatDateTime(res.reserved_at)"></td>
             <td>
-              <span style="font-weight: 600;" x-text="res.customer_name"></span>
+              <div x-text="formatTimeRange(res)" style="font-weight: 600; white-space: nowrap;"></div>
+              <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary);"
+                   x-text="formatDuration(res.duration_hours)"></div>
             </td>
-            <td x-text="res.customer_phone || '—'"></td>
+            <td>
+              <div style="font-weight: 600;" x-text="res.customer_name"></div>
+              <div x-show="res.customer_phone" style="font-size: var(--font-size-xs); color: var(--color-text-secondary);"
+                   x-text="res.customer_phone" x-cloak></div>
+            </td>
             <td x-text="res.party_size"></td>
             <td x-text="tableName(res)"></td>
             <td>
               <span class="badge" :class="statusBadgeClass(res.status)"
                     x-text="statusLabel(res.status)"></span>
-            </td>
-            <td>
-              <span style="font-size: var(--font-size-xs); color: var(--color-text-secondary);"
-                    x-text="res.notes || '—'"></span>
+              <span x-show="res.prepaid" x-cloak class="badge badge--success"
+                    style="font-size: 9px; margin-left: 2px;">Tr&#7843; tr&#432;&#7899;c</span>
             </td>
             <td>
               <div style="display: flex; gap: var(--space-1); flex-wrap: wrap;">
@@ -304,6 +305,50 @@
           <label class="form-label" for="res-time">Th&#7901;i gian &#273;&#7871;n <span style="color: var(--color-danger);">*</span></label>
           <input id="res-time" type="datetime-local" class="form-input"
                  x-model="form.reserved_at" required>
+        </div>
+
+        <!-- Duration -->
+        <div class="form-group">
+          <label class="form-label" for="res-duration">Th&#7901;i l&#432;&#7907;ng (gi&#7901;) <span style="color: var(--color-danger);">*</span></label>
+          <select id="res-duration" class="form-select" x-model.number="form.duration_hours">
+            <option value="0.5">0.5 gi&#7901;</option>
+            <option value="1">1 gi&#7901;</option>
+            <option value="1.5">1.5 gi&#7901;</option>
+            <option value="2">2 gi&#7901;</option>
+            <option value="3">3 gi&#7901;</option>
+            <option value="4">4 gi&#7901;</option>
+            <option value="5">5 gi&#7901;</option>
+            <option value="6">6 gi&#7901;</option>
+            <option value="8">8 gi&#7901;</option>
+            <option value="10">10 gi&#7901;</option>
+            <option value="12">12 gi&#7901;</option>
+            <option value="24">24 gi&#7901;</option>
+          </select>
+        </div>
+
+        <!-- Prepaid checkbox (only on create) -->
+        <div class="form-group" x-show="!isEditing" x-cloak>
+          <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+            <input type="checkbox" x-model="form.prepaid"
+                   style="width: 18px; height: 18px; accent-color: var(--color-primary);">
+            <span class="form-label" style="margin: 0;">Kh&#225;ch tr&#7843; ti&#7873;n tr&#432;&#7899;c</span>
+          </label>
+          <p style="margin-top: var(--space-1); font-size: var(--font-size-xs); color: var(--color-text-secondary);">
+            N&#7871;u tick, &#273;&#7863;t h&#7865;n s&#7869; &#273;&#432;&#7907;c x&#225;c nh&#7853;n ngay v&#224; t&#7841;o &#273;&#417;n t&#7921; &#273;&#7897;ng.
+          </p>
+          <!-- Prepaid price preview -->
+          <div x-show="form.prepaid && form.table_id && getPrepaidPrice() > 0" x-cloak
+               style="margin-top: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Ph&#237; theo gi&#7901;:</span>
+              <span style="font-size: var(--font-size-sm);"
+                    x-text="formatVND(getSelectedTableRate()) + '/h &times; ' + form.duration_hours + 'h'"></span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-1); font-weight: 700; font-size: var(--font-size-base); color: var(--color-primary);">
+              <span>T&#7893;ng c&#7897;c:</span>
+              <span x-text="formatVND(getPrepaidPrice()) + '&#273;'"></span>
+            </div>
+          </div>
         </div>
 
         <!-- Notes -->

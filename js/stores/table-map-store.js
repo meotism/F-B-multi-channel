@@ -293,19 +293,35 @@ export function tableMapStore() {
     },
 
     /**
-     * Get the pending/active reservation for a specific table (if any).
+     * Get all pending/active reservations for a specific table today.
      * @param {string} tableId - Table UUID
-     * @returns {object|undefined} Reservation object or undefined
+     * @returns {Array} Array of reservation objects
      */
-    getReservationForTable(tableId) {
-      return this.reservations.find(
+    getReservationsForTable(tableId) {
+      return this.reservations.filter(
         r => r.table_id === tableId && (r.status === 'pending' || r.status === 'active')
       );
     },
 
     /**
-     * Check if a reservation belongs to "today" (Vietnam timezone)
-     * and has an active status for the map overlay.
+     * Get the reservation currently blocking a table (now is within its time slot).
+     * @param {string} tableId - Table UUID
+     * @returns {object|undefined} The blocking reservation, or undefined
+     */
+    getBlockingReservation(tableId) {
+      const now = new Date();
+      return this.reservations.find(r => {
+        if (r.table_id !== tableId) return false;
+        if (r.status !== 'pending' && r.status !== 'active') return false;
+        const start = new Date(r.reserved_at);
+        const end = new Date(r.end_at);
+        return now >= start && now < end;
+      });
+    },
+
+    /**
+     * Check if a reservation's time range overlaps with today
+     * and has a pending/active status for the map overlay.
      * @param {object} reservation - Reservation object
      * @returns {boolean}
      */
@@ -317,8 +333,14 @@ export function tableMapStore() {
         year: 'numeric', month: '2-digit', day: '2-digit',
       });
       const today = vnFormatter.format(new Date());
-      const resDate = vnFormatter.format(new Date(reservation.reserved_at));
-      return resDate === today;
+      const startDate = vnFormatter.format(new Date(reservation.reserved_at));
+      // Use end_at from DB if available, else compute from duration_hours
+      const endTime = reservation.end_at
+        ? new Date(reservation.end_at)
+        : new Date(new Date(reservation.reserved_at).getTime() + (reservation.duration_hours || 1) * 3600000);
+      const endDate = vnFormatter.format(endTime);
+      // Relevant if time range overlaps with today
+      return startDate <= today && endDate >= today;
     },
 
     /**
@@ -350,12 +372,13 @@ export function tableMapStore() {
       switch (payload.eventType) {
         case 'INSERT': {
           const row = payload.new;
-          if (this.isRelevantForMap(row) && !this.reservations.find(r => r.id === row.id)) {
-            // Fetch with relation so tables.name is available
-            const full = await this.fetchReservationWithRelation(row.id);
-            if (full && this.isRelevantForMap(full)) {
-              this.reservations.push(full);
-            }
+          if (row.status !== 'pending' && row.status !== 'active') break;
+          if (this.reservations.find(r => r.id === row.id)) break;
+
+          // Always fetch full record (with end_at + tables relation) for consistency
+          const full = await this.fetchReservationWithRelation(row.id);
+          if (full && this.isRelevantForMap(full)) {
+            this.reservations.push(full);
           }
           break;
         }
@@ -364,21 +387,22 @@ export function tableMapStore() {
           const row = payload.new;
           const idx = this.reservations.findIndex(r => r.id === row.id);
 
-          if (this.isRelevantForMap(row)) {
-            // Fetch with relation for consistent data
-            const full = await this.fetchReservationWithRelation(row.id);
-            if (full) {
-              if (idx !== -1) {
-                this.reservations[idx] = full;
-              } else {
-                this.reservations.push(full);
-              }
-            }
-          } else {
-            // No longer relevant (expired/cancelled/completed) — remove
+          // If no longer pending/active → remove
+          if (row.status !== 'pending' && row.status !== 'active') {
+            if (idx !== -1) this.reservations.splice(idx, 1);
+            break;
+          }
+
+          // Fetch full record with end_at + relations
+          const full = await this.fetchReservationWithRelation(row.id);
+          if (full && this.isRelevantForMap(full)) {
             if (idx !== -1) {
-              this.reservations.splice(idx, 1);
+              this.reservations[idx] = full;
+            } else {
+              this.reservations.push(full);
             }
+          } else if (idx !== -1) {
+            this.reservations.splice(idx, 1);
           }
           break;
         }

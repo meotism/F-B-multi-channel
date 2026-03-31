@@ -14,7 +14,7 @@ import {
   releaseLock,
   unsubscribeMapLock,
 } from '../../services/map-lock-service.js';
-import { confirmArrival } from '../../services/reservation-service.js';
+import { confirmArrival, completeReservation, cancelReservation } from '../../services/reservation-service.js';
 
 /**
  * Pad a number to 2 digits with leading zero.
@@ -338,17 +338,28 @@ export function tableMapPage() {
      * @param {Object} table - The table object with at least { id, status }
      */
     navigateByStatus(table) {
+      // Check if table is blocked by a reservation
+      const blockingRes = this.getBlockingReservation(table);
+      if (blockingRes) {
+        if (blockingRes.status === 'pending') {
+          // Pending block: don't navigate, show info toast
+          Alpine.store('ui').showToast(
+            `Bàn đang chờ khách: ${blockingRes.customer_name} (${this.formatTimeRange(blockingRes)})`,
+            'info',
+          );
+          return;
+        }
+        // Active block: allow navigation to order page (customer can order)
+      }
+
       switch (table.status) {
         case 'empty':
         case 'serving':
         case 'awaiting_payment':
-          // Navigate to order page; the order page init() detects the table
-          // status and switches between order creation and order detail mode
           navigate(`/orders/${table.id}`);
           break;
 
         case 'paid':
-          // S3-23: Show reset table confirmation panel
           this.resetTableTarget = table;
           this.showResetPanel = true;
           break;
@@ -441,6 +452,14 @@ export function tableMapPage() {
           this.handleConfirmReservationArrival(table);
           break;
 
+        case 'complete-reservation':
+          this.handleCompleteReservation(table);
+          break;
+
+        case 'cancel-reservation':
+          this.handleCancelReservation(table);
+          break;
+
         default:
           console.warn(`[TableMapPage] Unknown context action: ${action}`);
       }
@@ -477,12 +496,46 @@ export function tableMapPage() {
     // --- Reservation Helpers (for map overlay) ---
 
     /**
-     * Get the pending/active reservation for a table (if any).
+     * Get all pending/active reservations for a table today.
+     * @param {Object} table - Table object
+     * @returns {Array}
+     */
+    getReservations(table) {
+      return Alpine.store('tableMap').getReservationsForTable(table.id);
+    },
+
+    /**
+     * Get the reservation currently blocking a table (in its time slot right now).
      * @param {Object} table - Table object
      * @returns {object|undefined}
      */
-    getReservation(table) {
-      return Alpine.store('tableMap').getReservationForTable(table.id);
+    getBlockingReservation(table) {
+      return Alpine.store('tableMap').getBlockingReservation(table.id);
+    },
+
+    /**
+     * Check if a table is currently blocked by a reservation.
+     * @param {Object} table - Table object
+     * @param {number} [_tick] - Pass timerTick from template to force re-evaluation every second
+     * @returns {boolean}
+     */
+    isTableBlocked(table, _tick) {
+      return !!this.getBlockingReservation(table);
+    },
+
+    /**
+     * Format a reservation's time range, e.g. "14:00-16:00".
+     * @param {Object} res - Reservation object
+     * @returns {string}
+     */
+    formatTimeRange(res) {
+      if (!res?.reserved_at) return '';
+      const fmt = (d) => d.toLocaleTimeString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour: '2-digit', minute: '2-digit',
+      });
+      const endTime = res.end_at ? new Date(res.end_at) : new Date(new Date(res.reserved_at).getTime() + (res.duration_hours || 1) * 3600000);
+      return fmt(new Date(res.reserved_at)) + '-' + fmt(endTime);
     },
 
     /**
@@ -505,12 +558,44 @@ export function tableMapPage() {
      * @param {Object} table - Table object
      */
     async handleConfirmReservationArrival(table) {
-      const reservation = this.getReservation(table);
+      const reservation = this.getBlockingReservation(table);
       if (!reservation || reservation.status !== 'pending') return;
 
       try {
         await confirmArrival(reservation.id);
         Alpine.store('ui').showToast('Đã xác nhận khách đến', 'success');
+      } catch (err) {
+        Alpine.store('ui').showToast(err.message, 'error');
+      }
+    },
+
+    /**
+     * Complete a reservation early (customer leaves before end time).
+     * @param {Object} table - Table object
+     */
+    async handleCompleteReservation(table) {
+      const reservation = this.getBlockingReservation(table);
+      if (!reservation || reservation.status !== 'active') return;
+
+      try {
+        await completeReservation(reservation.id);
+        Alpine.store('ui').showToast('Đã hoàn thành đặt hẹn', 'success');
+      } catch (err) {
+        Alpine.store('ui').showToast(err.message, 'error');
+      }
+    },
+
+    /**
+     * Cancel a blocking reservation from the context menu.
+     * @param {Object} table - Table object
+     */
+    async handleCancelReservation(table) {
+      const reservation = this.getBlockingReservation(table);
+      if (!reservation) return;
+
+      try {
+        await cancelReservation(reservation.id);
+        Alpine.store('ui').showToast('Đã hủy đặt hẹn', 'success');
       } catch (err) {
         Alpine.store('ui').showToast(err.message, 'error');
       }
