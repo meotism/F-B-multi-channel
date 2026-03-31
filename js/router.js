@@ -17,6 +17,7 @@ const routes = [
   { pattern: '/login',            page: 'login',      title: 'Đăng nhập',           auth: false, roles: [] },
   { pattern: '/dashboard',        page: 'dashboard',  title: 'Tổng quan',           auth: true,  roles: ['owner', 'manager', 'staff', 'cashier', 'warehouse'] },
   { pattern: '/tables',           page: 'table-map',  title: 'Sơ đồ bàn',           auth: true,  roles: ['owner', 'manager', 'staff', 'cashier'] },
+  { pattern: '/reservations',     page: 'reservations', title: 'Đặt hẹn',            auth: true,  roles: ['owner', 'manager', 'staff', 'cashier'] },
   { pattern: '/orders/:tableId',  page: 'order',      title: 'Đặt món',             auth: true,  roles: ['owner', 'manager', 'staff', 'cashier'] },
   { pattern: '/order-list',       page: 'order-list', title: 'Danh sách đơn hàng',  auth: true,  roles: ['owner', 'manager'] },
   { pattern: '/bills/:orderId',   page: 'bill',       title: 'Hóa đơn',             auth: true,  roles: ['owner', 'manager', 'cashier'] },

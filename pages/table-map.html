@@ -185,6 +185,20 @@
                 x-text="'\u23F1 ' + formatVND(getRunningHourlyCharge(table)) + '\u0111'"
                 x-cloak></span>
         </div>
+
+        <!-- Reservation overlay: dashed border (pending) or solid border (active) -->
+        <template x-if="getReservation(table)">
+          <div class="table-node__reservation"
+               :class="{ 'table-node__reservation--active': getReservation(table)?.status === 'active' }">
+          </div>
+        </template>
+        <!-- Reservation time badge -->
+        <template x-if="getReservation(table)">
+          <span class="table-node__reservation-time"
+                :class="{ 'table-node__reservation-time--active': getReservation(table)?.status === 'active' }"
+                x-text="formatReservationTime(getReservation(table)?.reserved_at)">
+          </span>
+        </template>
       </div>
     </template>
     </div>
@@ -483,15 +497,43 @@
 
     <!-- empty status -->
     <template x-if="contextMenu.table?.status === 'empty'">
-      <button class="context-menu__item"
-              @click="handleContextAction('create-order', contextMenu.table)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        <span>T&#7841;o order</span>
-      </button>
+      <div>
+        <button class="context-menu__item"
+                @click="handleContextAction('create-order', contextMenu.table)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>T&#7841;o order</span>
+        </button>
+        <!-- Confirm arrival (only if table has a pending reservation) -->
+        <template x-if="getReservation(contextMenu.table)?.status === 'pending'">
+          <div>
+            <div class="context-menu__divider"></div>
+            <button class="context-menu__item"
+                    @click="handleContextAction('confirm-reservation', contextMenu.table)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>X&#225;c nh&#7853;n kh&#225;ch &#273;&#7871;n</span>
+            </button>
+          </div>
+        </template>
+        <div class="context-menu__divider"></div>
+        <button class="context-menu__item"
+                @click="handleContextAction('reserve', contextMenu.table)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <span>&#272;&#7863;t h&#7865;n</span>
+        </button>
+      </div>
     </template>
 
     <!-- serving status -->

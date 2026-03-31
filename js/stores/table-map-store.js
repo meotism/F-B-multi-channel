@@ -10,6 +10,7 @@
 
 import { supabase } from '../services/supabase-client.js';
 import { cachedSupabase } from '../services/cached-query.js';
+import { loadTodayReservations } from '../services/reservation-service.js';
 
 export function tableMapStore() {
   return {
@@ -23,6 +24,8 @@ export function tableMapStore() {
     isLoading: false,
     error: null,
     _realtimeChannel: null,    // Supabase RealtimeChannel reference for cleanup
+    reservations: [],            // Today's pending/active reservations (for map overlay)
+    _reservationChannel: null,   // Supabase RealtimeChannel for reservation changes
 
     // --- Actions ---
 
@@ -271,6 +274,65 @@ export function tableMapStore() {
           this.error = 'Khong the xoa ban. Vui long thu lai.';
         }
         return false;
+      }
+    },
+
+    // --- Reservation Data (for table map overlay) ---
+
+    /**
+     * Load today's pending/active reservations for the table map overlay.
+     * @param {string} outletId - Outlet UUID
+     */
+    async loadReservations(outletId) {
+      try {
+        this.reservations = await loadTodayReservations(outletId);
+      } catch (err) {
+        console.error('[tableMapStore] loadReservations failed:', err);
+        this.reservations = [];
+      }
+    },
+
+    /**
+     * Get the pending/active reservation for a specific table (if any).
+     * @param {string} tableId - Table UUID
+     * @returns {object|undefined} Reservation object or undefined
+     */
+    getReservationForTable(tableId) {
+      return this.reservations.find(
+        r => r.table_id === tableId && (r.status === 'pending' || r.status === 'active')
+      );
+    },
+
+    /**
+     * Subscribe to realtime reservation changes for the table map overlay.
+     * On any change, reloads today's reservations to keep the overlay current.
+     * @param {string} outletId - Outlet UUID
+     */
+    subscribeToReservationChanges(outletId) {
+      if (!outletId) return;
+      this.unsubscribeFromReservationChanges();
+
+      this._reservationChannel = supabase
+        .channel(`reservation-changes:${outletId}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'reservations',
+          filter: 'outlet_id=eq.' + outletId,
+        }, () => {
+          // Reload on any change — simple and reliable
+          this.loadReservations(outletId);
+        })
+        .subscribe();
+    },
+
+    /**
+     * Remove the reservation realtime subscription.
+     */
+    unsubscribeFromReservationChanges() {
+      if (this._reservationChannel) {
+        supabase.removeChannel(this._reservationChannel);
+        this._reservationChannel = null;
       }
     },
 

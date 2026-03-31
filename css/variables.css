@@ -32,6 +32,8 @@
   --color-serving: #f97316;          /* Orange — Dang phuc vu */
   --color-awaiting-payment: #ef4444; /* Red    — Cho thanh toan */
   --color-paid: #3b82f6;            /* Blue   — Da thanh toan */
+  --color-reserved-pending: #a855f7; /* Purple — Dat truoc (cho den) */
+  --color-reserved-active: #8b5cf6;  /* Violet — Dat truoc (da den) */
 
   /* ------------------------------------------------------------------
    * Colors — UI

@@ -1,0 +1,299 @@
+<!-- Reservation list page template - loaded by router -->
+<section x-data="reservationPage()" x-init="init()" style="padding: var(--space-4); max-width: 1200px; margin: 0 auto;">
+
+  <!-- ================================================================
+       Header + Create Button
+       ================================================================ -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+    <h2 style="margin: 0; font-size: var(--font-size-lg);">&#272;&#7863;t h&#7865;n</h2>
+    <button class="btn btn--primary" @click="openCreateModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>T&#7841;o &#273;&#7863;t h&#7865;n</span>
+    </button>
+  </div>
+
+  <!-- ================================================================
+       Filter Bar
+       ================================================================ -->
+  <div style="display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-end; margin-bottom: var(--space-4);">
+
+    <!-- Status filter -->
+    <div class="form-group" style="margin-bottom: 0; min-width: 140px;">
+      <label class="form-label" for="filter-res-status">Tr&#7841;ng th&#225;i</label>
+      <select id="filter-res-status" class="form-select" x-model="filterStatus" @change="applyFilters()">
+        <option value="">T&#7845;t c&#7843;</option>
+        <option value="pending">Ch&#7901; &#273;&#7871;n</option>
+        <option value="active">&#272;&#227; &#273;&#7871;n</option>
+        <option value="expired">H&#7871;t h&#7841;n</option>
+        <option value="cancelled">&#272;&#227; h&#7911;y</option>
+        <option value="completed">Ho&#224;n th&#224;nh</option>
+      </select>
+    </div>
+
+    <!-- Date from -->
+    <div class="form-group" style="margin-bottom: 0; min-width: 140px;">
+      <label class="form-label" for="filter-res-from">T&#7915; ng&#224;y</label>
+      <input id="filter-res-from" type="date" class="form-input"
+             x-model="filterDateFrom" @change="applyFilters()">
+    </div>
+
+    <!-- Date to -->
+    <div class="form-group" style="margin-bottom: 0; min-width: 140px;">
+      <label class="form-label" for="filter-res-to">&#272;&#7871;n ng&#224;y</label>
+      <input id="filter-res-to" type="date" class="form-input"
+             x-model="filterDateTo" @change="applyFilters()">
+    </div>
+
+    <!-- Table filter -->
+    <div class="form-group" style="margin-bottom: 0; min-width: 140px;">
+      <label class="form-label" for="filter-res-table">B&#224;n</label>
+      <select id="filter-res-table" class="form-select" x-model="filterTableId" @change="applyFilters()">
+        <option value="">T&#7845;t c&#7843; b&#224;n</option>
+        <template x-for="table in tables" :key="table.id">
+          <option :value="table.id" x-text="table.name"></option>
+        </template>
+      </select>
+    </div>
+
+    <!-- Clear filters -->
+    <button class="btn btn--outline btn--sm" @click="clearFilters()"
+            style="height: 38px;">
+      X&#243;a b&#7897; l&#7885;c
+    </button>
+  </div>
+
+  <!-- ================================================================
+       Loading State
+       ================================================================ -->
+  <div x-show="isLoading" x-cloak style="text-align: center; padding: var(--space-6);">
+    <div class="spinner"></div>
+    <p style="margin-top: var(--space-3); color: var(--color-text-secondary);">&#272;ang t&#7843;i danh s&#225;ch &#273;&#7863;t h&#7865;n...</p>
+  </div>
+
+  <!-- ================================================================
+       Empty State
+       ================================================================ -->
+  <div x-show="!isLoading && reservations.length === 0" x-cloak
+       style="text-align: center; padding: var(--space-8); color: var(--color-text-secondary);">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+         style="color: var(--color-text-secondary); margin-bottom: var(--space-3);">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="16" y1="2" x2="16" y2="6"></line>
+      <line x1="8" y1="2" x2="8" y2="6"></line>
+      <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>
+    <p>Kh&#244;ng c&#243; &#273;&#7863;t h&#7865;n n&#224;o</p>
+  </div>
+
+  <!-- ================================================================
+       Desktop: Data Table
+       ================================================================ -->
+  <div x-show="!isLoading && reservations.length > 0" x-cloak class="data-table-wrapper hide-mobile">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Th&#7901;i gian</th>
+          <th>Kh&#225;ch h&#224;ng</th>
+          <th>S&#272;T</th>
+          <th>S&#7889; kh&#225;ch</th>
+          <th>B&#224;n</th>
+          <th>Tr&#7841;ng th&#225;i</th>
+          <th>Ghi ch&#250;</th>
+          <th>Thao t&#225;c</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="res in reservations" :key="res.id">
+          <tr>
+            <td x-text="formatDateTime(res.reserved_at)"></td>
+            <td>
+              <span style="font-weight: 600;" x-text="res.customer_name"></span>
+            </td>
+            <td x-text="res.customer_phone || '—'"></td>
+            <td x-text="res.party_size"></td>
+            <td x-text="tableName(res)"></td>
+            <td>
+              <span class="badge" :class="statusBadgeClass(res.status)"
+                    x-text="statusLabel(res.status)"></span>
+            </td>
+            <td>
+              <span style="font-size: var(--font-size-xs); color: var(--color-text-secondary);"
+                    x-text="res.notes || '—'"></span>
+            </td>
+            <td>
+              <div style="display: flex; gap: var(--space-1); flex-wrap: wrap;">
+                <!-- Pending actions -->
+                <template x-if="res.status === 'pending'">
+                  <div style="display: flex; gap: var(--space-1); flex-wrap: wrap;">
+                    <button class="btn btn--success btn--sm" @click="handleConfirmArrival(res)"
+                            title="X&#225;c nh&#7853;n kh&#225;ch &#273;&#7871;n">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </button>
+                    <button class="btn btn--outline btn--sm" @click="openEditModal(res)"
+                            title="S&#7917;a">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                    </button>
+                    <button class="btn btn--danger btn--sm" @click="handleCancel(res)"
+                            title="H&#7911;y">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                </template>
+                <!-- Active: go to order -->
+                <template x-if="res.status === 'active'">
+                  <button class="btn btn--primary btn--sm" @click="goToOrder(res)">
+                    T&#7841;o order
+                  </button>
+                </template>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ================================================================
+       Mobile: Card Layout
+       ================================================================ -->
+  <div x-show="!isLoading && reservations.length > 0" x-cloak class="show-mobile-only"
+       style="display: flex; flex-direction: column; gap: var(--space-3);">
+    <template x-for="res in reservations" :key="res.id">
+      <div class="reservation-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+          <span style="font-weight: 600;" x-text="res.customer_name"></span>
+          <span class="badge" :class="statusBadgeClass(res.status)"
+                x-text="statusLabel(res.status)"></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--font-size-sm);">
+          <span x-text="tableName(res)"></span>
+          <span x-text="res.party_size + ' kh\u00E1ch'"></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-2); font-size: var(--font-size-xs); color: var(--color-text-secondary);">
+          <span x-text="formatDateTime(res.reserved_at)"></span>
+          <span x-text="res.customer_phone || ''"></span>
+        </div>
+        <!-- Notes -->
+        <div x-show="res.notes" x-cloak
+             style="margin-top: var(--space-2); font-size: var(--font-size-xs); color: var(--color-text-secondary); font-style: italic;"
+             x-text="res.notes"></div>
+        <!-- Card actions -->
+        <div style="display: flex; gap: var(--space-2); margin-top: var(--space-3);">
+          <template x-if="res.status === 'pending'">
+            <div style="display: flex; gap: var(--space-2); width: 100%;">
+              <button class="btn btn--success btn--sm" style="flex: 1;" @click="handleConfirmArrival(res)">
+                X&#225;c nh&#7853;n
+              </button>
+              <button class="btn btn--outline btn--sm" @click="openEditModal(res)">
+                S&#7917;a
+              </button>
+              <button class="btn btn--danger btn--sm" @click="handleCancel(res)">
+                H&#7911;y
+              </button>
+            </div>
+          </template>
+          <template x-if="res.status === 'active'">
+            <button class="btn btn--primary btn--sm" style="width: 100%;" @click="goToOrder(res)">
+              T&#7841;o order
+            </button>
+          </template>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ================================================================
+       Create / Edit Reservation Modal
+       ================================================================ -->
+  <div x-show="showModal" x-cloak
+       class="modal-backdrop"
+       @click.self="closeModal()"
+       @keydown.escape.window="showModal && closeModal()">
+    <div class="modal-content" @click.stop style="max-width: 480px;">
+      <!-- Header -->
+      <div class="modal-content__header">
+        <h3 x-text="isEditing ? 'S\u1EEDa \u0111\u1EB7t h\u1EB9n' : 'T\u1EA1o \u0111\u1EB7t h\u1EB9n'"></h3>
+        <button class="modal-content__close" @click="closeModal()" aria-label="&#272;&#243;ng">&times;</button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-content__body">
+        <!-- Error -->
+        <div x-show="formError" x-cloak class="form-error"
+             style="margin-bottom: var(--space-4);" x-text="formError"></div>
+
+        <!-- Customer name -->
+        <div class="form-group">
+          <label class="form-label" for="res-name">T&#234;n kh&#225;ch <span style="color: var(--color-danger);">*</span></label>
+          <input id="res-name" type="text" class="form-input"
+                 x-model="form.customer_name" placeholder="VD: Nguy&#7877;n V&#259;n A" required>
+        </div>
+
+        <!-- Phone -->
+        <div class="form-group">
+          <label class="form-label" for="res-phone">S&#7889; &#273;i&#7879;n tho&#7841;i</label>
+          <input id="res-phone" type="tel" class="form-input"
+                 x-model="form.customer_phone" placeholder="VD: 0912345678">
+        </div>
+
+        <!-- Party size -->
+        <div class="form-group">
+          <label class="form-label" for="res-party">S&#7889; kh&#225;ch <span style="color: var(--color-danger);">*</span></label>
+          <input id="res-party" type="number" class="form-input"
+                 x-model.number="form.party_size" min="1" required>
+        </div>
+
+        <!-- Table selection -->
+        <div class="form-group">
+          <label class="form-label" for="res-table">Ch&#7885;n b&#224;n <span style="color: var(--color-danger);">*</span></label>
+          <select id="res-table" class="form-select" x-model="form.table_id" required>
+            <option value="">-- Ch&#7885;n b&#224;n --</option>
+            <template x-for="table in tables" :key="table.id">
+              <option :value="table.id" x-text="table.name + ' (' + table.capacity + ' ch\u1ED7)'"></option>
+            </template>
+          </select>
+        </div>
+
+        <!-- Reserved at -->
+        <div class="form-group">
+          <label class="form-label" for="res-time">Th&#7901;i gian &#273;&#7871;n <span style="color: var(--color-danger);">*</span></label>
+          <input id="res-time" type="datetime-local" class="form-input"
+                 x-model="form.reserved_at" required>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-group">
+          <label class="form-label" for="res-notes">Ghi ch&#250;</label>
+          <textarea id="res-notes" class="form-input" rows="2"
+                    x-model="form.notes" placeholder="VD: B&#224;n ngo&#224;i s&#226;n, sinh nh&#7853;t..."></textarea>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-content__footer">
+        <button class="btn btn--outline" @click="closeModal()">H&#7911;y</button>
+        <button class="btn btn--primary" @click="submitForm()" :disabled="isSaving">
+          <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
+          <span x-text="isSaving ? '&#272;ang l&#432;u...' : (isEditing ? 'C&#7853;p nh&#7853;t' : 'T&#7841;o &#273;&#7863;t h&#7865;n')"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</section>

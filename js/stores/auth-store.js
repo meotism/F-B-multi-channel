@@ -24,6 +24,7 @@ const ROLE_PERMISSIONS = {
     'view_orders', 'view_bills', 'view_menu', 'view_inventory',
     'transfer_order', 'merge_orders',
     'manage_discounts', 'view_order_list', 'view_dashboard',
+    'manage_reservations',
   ],
   manager: [
     'view_table_map', 'edit_table_map', 'create_order', 'finalize_bill',
@@ -32,15 +33,18 @@ const ROLE_PERMISSIONS = {
     'view_orders', 'view_bills', 'view_menu', 'view_inventory',
     'transfer_order', 'merge_orders',
     'manage_discounts', 'view_order_list', 'view_dashboard',
+    'manage_reservations',
   ],
   cashier: [
     'view_table_map', 'create_order', 'finalize_bill', 'print_bill',
     'cancel_order', 'manage_settings', 'view_orders', 'view_bills', 'transfer_order',
     'view_dashboard',
+    'manage_reservations',
   ],
   staff: [
     'view_table_map', 'create_order', 'view_orders', 'transfer_order',
     'view_dashboard',
+    'manage_reservations',
   ],
   warehouse: [
     'view_table_map', 'manage_inventory', 'view_inventory',

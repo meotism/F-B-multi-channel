@@ -129,6 +129,42 @@
 .table-node--awaiting_payment { background: var(--color-awaiting-payment); color: white; }
 .table-node--paid             { background: var(--color-paid);             color: white; }
 
+/* Reservation overlay: dashed border around table node */
+.table-node__reservation {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border: 3px dashed var(--color-reserved-pending);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+}
+.table-node__reservation--active {
+  border-color: var(--color-reserved-active);
+  border-style: solid;
+}
+
+/* Reservation time badge on table node */
+.table-node__reservation-time {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: var(--color-reserved-pending);
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 999px;
+  white-space: nowrap;
+  z-index: 2;
+  line-height: 1.4;
+}
+.table-node__reservation-time--active {
+  background: var(--color-reserved-active);
+}
+
 /* Hover effect */
 .table-node:hover {
   box-shadow: var(--shadow-md);

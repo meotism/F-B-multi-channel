@@ -12,3 +12,6 @@ export const TIMER_UPDATE_INTERVAL_MS = 1000;
 export const TOAST_DURATION_MS = 3000;
 export const MAX_RETRY_ATTEMPTS = 3;
 export const DEFAULT_PAGE_SIZE = 50;
+export const DEFAULT_RESERVATION_TIMEOUT_MINUTES = 10;
+// Vercel deployment URL for QStash scheduler
+export const SCHEDULER_API_URL = 'https://vercel-cron-teal.vercel.app';

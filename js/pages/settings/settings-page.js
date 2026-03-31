@@ -9,6 +9,8 @@
 // Design reference: Section 13 (Printer Store), Section 2.10.8 (Settings Page)
 
 import { bluetoothService, showBluetoothFallback } from '../../services/bluetooth-service.js';
+import { supabase } from '../../services/supabase-client.js';
+import { DEFAULT_RESERVATION_TIMEOUT_MINUTES } from '../../config.js';
 
 /**
  * Alpine component factory for the settings page.
@@ -24,12 +26,16 @@ export function settingsPage() {
     isPrinterLoading: false,
     testPrintingId: null, // ID of printer currently test-printing
 
+    // --- Reservation settings state ---
+    reservationTimeout: DEFAULT_RESERVATION_TIMEOUT_MINUTES,
+
     /**
-     * Initialize the component: load printers from the store.
+     * Initialize the component: load printers and reservation settings.
      * Called automatically by Alpine when the component mounts.
      */
     async init() {
       await this.loadPrinters();
+      await this.loadReservationSettings();
     },
 
     /**
@@ -221,6 +227,64 @@ export function settingsPage() {
      */
     getBluetoothFallback() {
       return showBluetoothFallback();
+    },
+
+    // --- Reservation Settings ---
+
+    /**
+     * Load reservation timeout from outlet settings.
+     */
+    async loadReservationSettings() {
+      try {
+        const outletId = Alpine.store('auth').user?.outlet_id;
+        if (!outletId) return;
+
+        const { data } = await supabase
+          .from('outlets')
+          .select('settings')
+          .eq('id', outletId)
+          .single();
+
+        this.reservationTimeout =
+          data?.settings?.reservation_timeout_minutes || DEFAULT_RESERVATION_TIMEOUT_MINUTES;
+      } catch (err) {
+        console.error('[SettingsPage] loadReservationSettings failed:', err);
+      }
+    },
+
+    /**
+     * Save reservation timeout to outlet settings.
+     */
+    async saveReservationTimeout() {
+      try {
+        const outletId = Alpine.store('auth').user?.outlet_id;
+        if (!outletId) return;
+
+        // Read current settings, merge, update
+        const { data: outlet } = await supabase
+          .from('outlets')
+          .select('settings')
+          .eq('id', outletId)
+          .single();
+
+        const currentSettings = outlet?.settings || {};
+        const newSettings = {
+          ...currentSettings,
+          reservation_timeout_minutes: this.reservationTimeout,
+        };
+
+        const { error } = await supabase
+          .from('outlets')
+          .update({ settings: newSettings })
+          .eq('id', outletId);
+
+        if (error) throw error;
+
+        Alpine.store('ui').showToast('Đã lưu cài đặt đặt hẹn', 'success');
+      } catch (err) {
+        console.error('[SettingsPage] saveReservationTimeout failed:', err);
+        Alpine.store('ui').showToast('Không thể lưu cài đặt: ' + err.message, 'error');
+      }
     },
   };
 }

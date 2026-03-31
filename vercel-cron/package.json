@@ -1,0 +1,9 @@
+{
+  "name": "fb-reservation-scheduler",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2",
+    "@upstash/qstash": "^2"
+  }
+}

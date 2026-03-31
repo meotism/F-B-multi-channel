@@ -14,6 +14,7 @@ import {
   releaseLock,
   unsubscribeMapLock,
 } from '../../services/map-lock-service.js';
+import { confirmArrival } from '../../services/reservation-service.js';
 
 /**
  * Pad a number to 2 digits with leading zero.
@@ -121,6 +122,9 @@ export function tableMapPage() {
         // Load guest count and order total from table_summary view (Task 8.2)
         await this.loadTableSummary();
 
+        // Load today's reservations for map overlay
+        await store.loadReservations(Alpine.store('auth').user?.outlet_id);
+
         console.log('[TableMapPage] Tables loaded successfully');
       } catch (err) {
         console.error('[TableMapPage] Failed to load tables:', err);
@@ -171,6 +175,9 @@ export function tableMapPage() {
         // status updates (e.g., active -> serving, completed -> awaiting_payment).
         // Design reference: Section 4.3.7
         Alpine.store('orders').subscribeToChanges(outletId);
+
+        // Subscribe to reservation realtime changes for map overlay
+        Alpine.store('tableMap').subscribeToReservationChanges(outletId);
       }
 
       // Sync selectedTable to the store so that handleRemoteChange() can
@@ -247,6 +254,13 @@ export function tableMapPage() {
         Alpine.store('tableMap').unsubscribeFromChanges();
       } catch (err) {
         console.error('[TableMapPage] destroy: failed to unsubscribe table changes:', err);
+      }
+
+      // Clean up Realtime subscription for reservation changes
+      try {
+        Alpine.store('tableMap').unsubscribeFromReservationChanges();
+      } catch (err) {
+        console.error('[TableMapPage] destroy: failed to unsubscribe reservation changes:', err);
       }
 
       // Clear any remaining intervals that might have been missed
@@ -419,6 +433,14 @@ export function tableMapPage() {
           this.showResetPanel = true;
           break;
 
+        case 'reserve':
+          navigate('/reservations');
+          break;
+
+        case 'confirm-reservation':
+          this.handleConfirmReservationArrival(table);
+          break;
+
         default:
           console.warn(`[TableMapPage] Unknown context action: ${action}`);
       }
@@ -449,6 +471,48 @@ export function tableMapPage() {
       if (this._longPressTimer) {
         clearTimeout(this._longPressTimer);
         this._longPressTimer = null;
+      }
+    },
+
+    // --- Reservation Helpers (for map overlay) ---
+
+    /**
+     * Get the pending/active reservation for a table (if any).
+     * @param {Object} table - Table object
+     * @returns {object|undefined}
+     */
+    getReservation(table) {
+      return Alpine.store('tableMap').getReservationForTable(table.id);
+    },
+
+    /**
+     * Format a reservation's reserved_at to HH:MM for the time badge.
+     * @param {string} isoString - ISO datetime string
+     * @returns {string}
+     */
+    formatReservationTime(isoString) {
+      if (!isoString) return '';
+      const d = new Date(isoString);
+      return d.toLocaleTimeString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    },
+
+    /**
+     * Confirm arrival for a reservation from the context menu.
+     * @param {Object} table - Table object
+     */
+    async handleConfirmReservationArrival(table) {
+      const reservation = this.getReservation(table);
+      if (!reservation || reservation.status !== 'pending') return;
+
+      try {
+        await confirmArrival(reservation.id);
+        Alpine.store('ui').showToast('Đã xác nhận khách đến', 'success');
+      } catch (err) {
+        Alpine.store('ui').showToast(err.message, 'error');
       }
     },
 
