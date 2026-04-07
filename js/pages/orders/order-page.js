@@ -712,7 +712,11 @@ export function orderPage() {
         });
 
         if (error) {
-          const msg = data?.error?.message || error.message || 'Không thể hủy đơn hàng.';
+          let msg = error.message || 'Không thể hủy đơn hàng.';
+          try {
+            const errBody = await error.context?.json?.();
+            if (errBody?.error?.message) msg = errBody.error.message;
+          } catch { /* ignore parse errors */ }
           throw new Error(msg);
         }
 
@@ -782,7 +786,11 @@ export function orderPage() {
         });
 
         if (error) {
-          const msg = data?.error?.message || error.message || 'Không thể chuyển bàn.';
+          let msg = error.message || 'Không thể chuyển bàn.';
+          try {
+            const errBody = await error.context?.json?.();
+            if (errBody?.error?.message) msg = errBody.error.message;
+          } catch { /* ignore parse errors */ }
           throw new Error(msg);
         }
 
@@ -906,7 +914,11 @@ export function orderPage() {
         });
 
         if (error) {
-          const msg = data?.error?.message || error.message || 'Không thể gộp đơn hàng.';
+          let msg = error.message || 'Không thể gộp đơn hàng.';
+          try {
+            const errBody = await error.context?.json?.();
+            if (errBody?.error?.message) msg = errBody.error.message;
+          } catch { /* ignore parse errors */ }
           throw new Error(msg);
         }
 

@@ -75,8 +75,12 @@ export async function finalizeBill(orderId, paymentMethod, discountAmount, hourl
 
   if (error) {
     // Edge Function errors come as FunctionsHttpError with context
-    const message = error.message || 'Lỗi không xác định';
-    throw new Error('Không thể xuất hóa đơn: ' + message);
+    let message = error.message || 'Lỗi không xác định';
+    try {
+      const errBody = await error.context?.json?.();
+      if (errBody?.error?.message) message = errBody.error.message;
+    } catch { /* ignore parse errors */ }
+    throw new Error(message);
   }
 
   // The Edge Function may return an error in the response body
