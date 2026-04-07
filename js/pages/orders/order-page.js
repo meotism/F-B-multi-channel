@@ -712,7 +712,7 @@ export function orderPage() {
         });
 
         if (error) {
-          const msg = data?.message || error.message || 'Không thể hủy đơn hàng.';
+          const msg = data?.error?.message || error.message || 'Không thể hủy đơn hàng.';
           throw new Error(msg);
         }
 
@@ -782,7 +782,7 @@ export function orderPage() {
         });
 
         if (error) {
-          const msg = data?.message || error.message || 'Không thể chuyển bàn.';
+          const msg = data?.error?.message || error.message || 'Không thể chuyển bàn.';
           throw new Error(msg);
         }
 
@@ -906,7 +906,7 @@ export function orderPage() {
         });
 
         if (error) {
-          const msg = data?.message || error.message || 'Không thể gộp đơn hàng.';
+          const msg = data?.error?.message || error.message || 'Không thể gộp đơn hàng.';
           throw new Error(msg);
         }
 

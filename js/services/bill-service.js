@@ -86,8 +86,10 @@ export async function finalizeBill(orderId, paymentMethod, discountAmount, hourl
       ORDER_NOT_COMPLETED: 'Đơn hàng chưa hoàn thành',
       BILL_ALREADY_EXISTS: 'Hóa đơn đã được xuất trước đó',
       FORBIDDEN: 'Bạn không có quyền xuất hóa đơn',
+      INVALID_DISCOUNT: 'Giảm giá không hợp lệ',
     };
-    const msg = errorMessages[data.error] || data.message || 'Lỗi xuất hóa đơn';
+    const code = data.error?.code || data.error;
+    const msg = errorMessages[code] || data.error?.message || 'Lỗi xuất hóa đơn';
     throw new Error(msg);
   }
 

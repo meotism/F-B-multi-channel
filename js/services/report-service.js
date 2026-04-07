@@ -40,7 +40,7 @@ export async function generateReport(from, to, type, categoryId = null, topN = 1
 
   // The Edge Function may return an error in the response body
   if (data?.error) {
-    throw new Error(data.message || 'Loi tao bao cao');
+    throw new Error(data.error?.message || 'Lỗi tạo báo cáo');
   }
 
   return data;

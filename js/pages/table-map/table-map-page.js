@@ -1586,7 +1586,7 @@ export function tableMapPage() {
         });
 
         if (error) {
-          const msg = data?.message || error.message || 'Không thể chuyển bàn.';
+          const msg = data?.error?.message || error.message || 'Không thể chuyển bàn.';
           throw new Error(msg);
         }
 

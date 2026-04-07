@@ -174,11 +174,17 @@ Deno.serve(async (req: Request) => {
       }
 
       // Unhandled database error
-      console.error('cancel-order rpc error:', rpcError);
+      console.error('cancel-order rpc error:', JSON.stringify({
+        message: rpcError.message,
+        details: rpcError.details,
+        hint: rpcError.hint,
+        code: rpcError.code,
+      }));
       return errorResponse(
         'Lỗi máy chủ nội bộ',
         500,
         'INTERNAL_ERROR',
+        rpcError.message,
       );
     }
 
@@ -198,11 +204,15 @@ Deno.serve(async (req: Request) => {
     }
 
     // Handle unexpected errors
-    console.error('cancel-order error:', error);
+    console.error('cancel-order error:', JSON.stringify({
+      message: (error as Error).message,
+      stack: (error as Error).stack,
+    }));
     return errorResponse(
       'Lỗi máy chủ nội bộ',
       500,
       'INTERNAL_ERROR',
+      (error as Error).message,
     );
   }
 });

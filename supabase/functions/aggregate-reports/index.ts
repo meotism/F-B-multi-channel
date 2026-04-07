@@ -282,23 +282,43 @@ Deno.serve(async (req: Request) => {
 
     // 12. Handle query errors
     if (summaryResult.error) {
-      console.error('aggregate-reports summary query error:', summaryResult.error);
-      return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR');
+      console.error('aggregate-reports summary query error:', JSON.stringify({
+        message: summaryResult.error.message,
+        details: summaryResult.error.details,
+        hint: summaryResult.error.hint,
+        code: summaryResult.error.code,
+      }));
+      return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR', summaryResult.error.message);
     }
 
     if (topItemsResult.error) {
-      console.error('aggregate-reports get_top_items rpc error:', topItemsResult.error);
-      return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR');
+      console.error('aggregate-reports get_top_items rpc error:', JSON.stringify({
+        message: topItemsResult.error.message,
+        details: topItemsResult.error.details,
+        hint: topItemsResult.error.hint,
+        code: topItemsResult.error.code,
+      }));
+      return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR', topItemsResult.error.message);
     }
 
     if (breakdownResult.error) {
-      console.error('aggregate-reports get_revenue_breakdown rpc error:', breakdownResult.error);
-      return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR');
+      console.error('aggregate-reports get_revenue_breakdown rpc error:', JSON.stringify({
+        message: breakdownResult.error.message,
+        details: breakdownResult.error.details,
+        hint: breakdownResult.error.hint,
+        code: breakdownResult.error.code,
+      }));
+      return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR', breakdownResult.error.message);
     }
 
     if (revenueSourceResult.error) {
-      console.error('aggregate-reports get_revenue_by_source rpc error:', revenueSourceResult.error);
-      return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR');
+      console.error('aggregate-reports get_revenue_by_source rpc error:', JSON.stringify({
+        message: revenueSourceResult.error.message,
+        details: revenueSourceResult.error.details,
+        hint: revenueSourceResult.error.hint,
+        code: revenueSourceResult.error.code,
+      }));
+      return errorResponse('Lỗi máy chủ nội bộ', 500, 'INTERNAL_ERROR', revenueSourceResult.error.message);
     }
 
     // 13. Aggregate revenue summary from bills data
@@ -345,11 +365,15 @@ Deno.serve(async (req: Request) => {
     }
 
     // Handle unexpected errors
-    console.error('aggregate-reports error:', error);
+    console.error('aggregate-reports error:', JSON.stringify({
+      message: (error as Error).message,
+      stack: (error as Error).stack,
+    }));
     return errorResponse(
       'Lỗi máy chủ nội bộ',
       500,
       'INTERNAL_ERROR',
+      (error as Error).message,
     );
   }
 });

@@ -1,11 +1,14 @@
-// Edge Function: Merge/transfer order logic
+// Edge Function: Merge/transfer order logic (stub)
 // Handles merging tables and transferring orders between tables
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+// TODO: Implement merge/transfer order logic
 
-serve(async (req: Request) => {
-  // TODO: Implement merge/transfer order logic
-  return new Response(JSON.stringify({ message: 'Not implemented' }), {
-    status: 501,
-    headers: { 'Content-Type': 'application/json' },
-  });
+import { handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { errorResponse } from '../_shared/response.ts';
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return handleCorsPreflightRequest();
+  }
+
+  return errorResponse('Tính năng chưa được triển khai', 501, 'NOT_IMPLEMENTED');
 });
