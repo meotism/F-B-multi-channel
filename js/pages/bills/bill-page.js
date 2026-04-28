@@ -66,6 +66,10 @@ export function billPage() {
     // --- Hourly charge frozen state ---
     frozenAt: null,        // ISO timestamp frozen at page load — fixes hourly charge
 
+    // --- Receipt-style layout state ---
+    outlet: null,          // Outlet record { id, name, address, settings } pulled from store
+    cashTendered: 0,       // Cash handed over by customer (UI-only, not persisted)
+
     // --- Computed properties ---
 
     /**
@@ -227,6 +231,34 @@ export function billPage() {
       return this.orderItems.reduce((sum, item) => sum + item.qty, 0);
     },
 
+    /**
+     * 6-digit bill code derived from bill UUID. Stable per bill, no migration.
+     * Replace with a per-outlet sequence later if accounting requires monotonic numbering.
+     * @returns {string} e.g. "HD036175", or '' if no bill yet
+     */
+    get billCode() {
+      if (!this.bill?.id) return '';
+      const hex = this.bill.id.replace(/-/g, '').slice(0, 6);
+      const num = parseInt(hex, 16) % 1_000_000;
+      return 'HD' + String(num).padStart(6, '0');
+    },
+
+    /**
+     * Change owed back to the customer (UI-only, not persisted).
+     * @returns {number} VND
+     */
+    get changeAmount() {
+      return Math.max(0, (Number(this.cashTendered) || 0) - this.grandTotal);
+    },
+
+    /**
+     * Phone number from outlet settings JSONB (optional).
+     * @returns {string} phone or '' when missing
+     */
+    get outletPhone() {
+      return this.outlet?.settings?.phone || '';
+    },
+
     // --- Lifecycle ---
 
     /**
@@ -331,6 +363,9 @@ export function billPage() {
       this.isLoading = true;
 
       try {
+        // 0. Pull outlet from store (loaded at bootstrap/login)
+        this.outlet = Alpine.store('outlet').currentOutlet;
+
         // 1. Load order with items
         const order = await loadOrder(this.orderId);
         this.order = order;
@@ -528,6 +563,7 @@ export function billPage() {
           this.table || { name: 'Khong xac dinh' },
           this.staffName,
           printerConfig,
+          { cashTendered: this.cashTendered, changeAmount: this.changeAmount },
         );
 
         // 4. Get or establish Bluetooth connection

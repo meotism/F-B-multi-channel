@@ -177,14 +177,18 @@ export class EscPosBuilder {
 // ============================================================
 
 /**
- * Format a bill number for display on the receipt.
- * Uses the bill ID prefix (first 8 chars of UUID) for readability.
+ * Format a bill code as 'HD' + 6 digits, derived deterministically from
+ * the bill UUID. Mirrors the `billCode` getter in bill-page.js so screen
+ * and print show the same code. Replace with a per-outlet sequence later
+ * if accounting requires monotonic numbering.
  * @param {Object} bill - Bill record with id field
- * @returns {string} Formatted bill number (e.g., "HD-A1B2C3D4")
+ * @returns {string} Formatted bill code (e.g., "HD036175")
  */
-function formatBillNumber(bill) {
-  if (!bill || !bill.id) return 'HD-000000';
-  return 'HD-' + bill.id.substring(0, 8).toUpperCase();
+function formatBillCode(bill) {
+  if (!bill || !bill.id) return 'HD000000';
+  const hex = bill.id.replace(/-/g, '').slice(0, 6);
+  const num = parseInt(hex, 16) % 1_000_000;
+  return 'HD' + String(num).padStart(6, '0');
 }
 
 /**
@@ -291,6 +295,22 @@ function padRight(label, value, width) {
 }
 
 /**
+ * Place two strings on one line, the first left-aligned, the second right-aligned.
+ * Truncates the right value to fit if the combined length exceeds the width.
+ * @param {string} left - Left-aligned text
+ * @param {string} right - Right-aligned text
+ * @param {number} width - Total line width in characters
+ * @returns {string} Formatted left / right row
+ */
+function padBetween(left, right, width) {
+  const leftStr = String(left);
+  const rightStr = String(right);
+  const space = width - leftStr.length - rightStr.length;
+  if (space <= 0) return (leftStr + ' ' + rightStr).slice(0, width);
+  return leftStr + ' '.repeat(space) + rightStr;
+}
+
+/**
  * Truncate a string to a maximum length, appending '..' if truncated.
  * @param {string} str - String to truncate
  * @param {number} maxLen - Maximum allowed length
@@ -308,54 +328,73 @@ function truncate(str, maxLen) {
 
 /**
  * Build ESC/POS bytes for a bill receipt.
- * Produces a complete thermal receipt with header, bill info, item list,
- * totals, payment info, footer, barcode, and paper cut.
+ * Produces a complete thermal receipt matching the on-screen receipt layout:
+ * shop header (name/address/phone), title + bill code, table tag + time row,
+ * item table, totals (Tổng tiền hàng / Chiết khấu / Tổng cộng), payment lines
+ * (cash → Tiền khách đưa + Tiền thừa; transfer → Chuyển khoản), footer, cut.
  *
- * @param {Object} bill - Bill record (id, total, tax, payment_method, finalized_at)
- * @param {Object} outlet - Outlet record (name, address)
- * @param {Object} order - Order record (created_at or started_at)
+ * @param {Object} bill - Bill record (id, total, tax, discount_amount, hourly_charge, duration_seconds, payment_method, finalized_at)
+ * @param {Object} outlet - Outlet record (name, address, settings.phone)
+ * @param {Object} order - Order record (started_at)
  * @param {Array<{name: string, quantity: number, price: number, note?: string}>} orderItems - Order items
  * @param {Object} table - Table record (name)
- * @param {string} staffName - Name of the staff who served
+ * @param {string} staffName - Name of the staff who served (kept for future use)
  * @param {Object} printerConfig - Printer configuration { paperWidth, encoding, chunkSize }
+ * @param {Object} [paymentInfo={}] - Cashier-flow values { cashTendered, changeAmount }
  * @returns {Uint8Array} ESC/POS byte data ready to send to printer
  */
-export function buildBillEscPos(bill, outlet, order, orderItems, table, staffName, printerConfig) {
+export function buildBillEscPos(bill, outlet, order, orderItems, table, staffName, printerConfig, paymentInfo = {}) {
   const b = new EscPosBuilder(printerConfig);
   const w = b.charsPerLine;
+  const phone = outlet?.settings?.phone || '';
+  const cashTendered = Number(paymentInfo.cashTendered) || 0;
+  const changeAmount = Number(paymentInfo.changeAmount) || 0;
+  const grandTotal = (bill.total || 0) + (bill.tax || 0) + (bill.hourly_charge || 0);
+  const discount = bill.discount_amount || 0;
 
   b.initialize()
    .setVietnamese(printerConfig.encoding)
-   // Header: restaurant name centered, bold, double size
+   // Header: shop name centered, bold, double size
    .alignCenter().boldOn().fontDoubleWH()
-   .textLine(outlet.name)
-   .fontNormal().boldOff()
-   .textLine(outlet.address || '')
-   .separator('=', w)
-   // Bill info: left-aligned label:value pairs
-   .alignLeft()
-   .textLine(padRight('HD:', formatBillNumber(bill), w))
-   .textLine(padRight('Ngay:', formatDateTime(bill.finalized_at), w))
-   .textLine(padRight('Ban:', table.name, w))
-   .textLine(padRight('NV:', staffName, w))
+   .textLine(outlet?.name || '')
+   .fontNormal().boldOff();
+
+  if (outlet?.address) b.textLine('ĐC: ' + outlet.address);
+  if (phone) b.textLine('ĐT: ' + phone);
+
+  b.separator('=', w)
+   // Title + bill code
+   .alignCenter().boldOn()
+   .textLine('PHIẾU TÍNH TIỀN')
+   .boldOff()
+   .textLine(formatBillCode(bill))
    .separator('-', w)
-   // Column headers: bold
+   // Table tag + Giờ vào / Giờ ra row
+   .alignLeft().boldOn()
+   .textLine('[Bàn ' + (table?.name || '?') + ']')
+   .boldOff()
+   .textLine(padBetween(
+     'Giờ vào: ' + formatDateTime(order?.started_at),
+     'Giờ ra: ' + (bill.finalized_at ? formatDateTime(bill.finalized_at) : '(Giờ):(Phút)'),
+     w,
+   ))
+   .separator('-', w)
+   // Column headers: Tên hàng | Đ.Giá | SL | Thành tiền
    .boldOn()
-   .textLine(padColumns('Mon', 'SL', 'DG', 'TT', w))
+   .textLine(padColumns('Tên hàng', 'Đ.Giá', 'SL', 'TT', w))
    .boldOff()
    .separator('-', w);
 
-  // Items: each line shows name, quantity, unit price, line total
+  // Items: column order matches headers (name, price, qty, line total)
   for (const item of orderItems) {
     const lineTotal = item.price * item.quantity;
     b.textLine(padColumns(
       truncate(item.name, w - 18),
-      String(item.quantity),
       formatVND(item.price),
+      String(item.quantity),
       formatVND(lineTotal),
-      w
+      w,
     ));
-    // If item has a note, print it indented on the next line
     if (item.note) {
       b.textLine('  * ' + truncate(item.note, w - 4));
     }
@@ -367,28 +406,35 @@ export function buildBillEscPos(bill, outlet, order, orderItems, table, staffNam
     const dh = Math.floor(durationSecs / 3600);
     const dm = Math.floor((durationSecs % 3600) / 60);
     const durStr = dh > 0 ? `${dh}h${dm}p` : `${dm}p`;
-    b.textLine(padRight(`Phi gio (${durStr}):`, formatVND(bill.hourly_charge), w));
+    b.textLine(padRight(`Phí giờ (${durStr}):`, formatVND(bill.hourly_charge), w));
   }
 
   b.separator('-', w)
-   // Totals section
-   .textLine(padRight('Tam tinh:', formatVND(bill.total), w))
-   .textLine(padRight('Thue:', formatVND(bill.tax), w))
+   // Totals
+   .textLine(padRight('Tổng tiền hàng:', formatVND(bill.total), w))
+   .textLine(padRight('Chiết khấu:', formatVND(discount), w))
    .boldOn().fontDoubleH()
-   .textLine(padRight('TONG:', formatVND(bill.total + bill.tax), w))
-   .fontNormal().boldOff()
-   .separator('-', w)
-   // Payment info
-   .textLine(padRight('Thanh toan:', formatPaymentMethod(bill.payment_method), w))
-   .textLine(padRight('Thoi gian:', formatDuration(order.created_at, bill.finalized_at), w))
-   .separator('=', w)
+   .textLine(padRight('Tổng cộng:', formatVND(grandTotal), w))
+   .fontNormal().boldOff();
+
+  // Payment lines
+  if (bill.payment_method === 'cash') {
+    b.textLine(padRight('Tiền Khách Đưa:', formatVND(cashTendered), w))
+     .textLine(padRight('Tiền Thừa trả Khách:', formatVND(changeAmount), w));
+  } else if (bill.payment_method === 'transfer') {
+    b.textLine(padRight('Chuyển khoản:', formatVND(grandTotal), w));
+  } else {
+    b.textLine(padRight('Thanh toán:', formatPaymentMethod(bill.payment_method), w));
+  }
+
+  b.separator('=', w)
    // Footer
    .alignCenter()
-   .textLine('Cam on quy khach!')
+   .textLine('Cám Ơn & Hẹn Gặp Lại!!!')
    .textLine('')
    .textLine('Made by Meotism\u{1F495}')
    .textLine('')
-   .barcode(formatBillNumber(bill))
+   .barcode(formatBillCode(bill))
    .feedLines(3)
    .cutPaper(true);
 

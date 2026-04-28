@@ -28,45 +28,48 @@
   <!-- ================================================================
        Bill Content — shown after loading
        ================================================================ -->
-  <div x-show="!isLoading" x-cloak class="bill-content">
+  <div x-show="!isLoading" x-cloak class="bill-content bill-receipt">
 
     <!-- ============================================================
-         Order Info — Table name, staff, date/time
+         Receipt header — shop name, address, phone
          ============================================================ -->
-    <div class="bill-info">
-      <div class="bill-info__row">
-        <span class="bill-info__label">Bàn:</span>
-        <span class="bill-info__value" x-text="table?.name || 'Không xác định'"></span>
-      </div>
-      <div class="bill-info__row">
-        <span class="bill-info__label">Nhân viên:</span>
-        <span class="bill-info__value" x-text="staffName || 'Không xác định'"></span>
-      </div>
-      <div class="bill-info__row">
-        <span class="bill-info__label">Thời gian:</span>
-        <span class="bill-info__value" x-text="formatDateTime(order?.started_at)"></span>
-      </div>
-      <template x-if="bill?.finalized_at">
-        <div class="bill-info__row">
-          <span class="bill-info__label">Xuất hóa đơn:</span>
-          <span class="bill-info__value" x-text="formatDateTime(bill.finalized_at)"></span>
-        </div>
+    <div class="bill-receipt-header">
+      <div class="bill-receipt-header__name" x-text="outlet?.name || ''"></div>
+      <template x-if="outlet?.address">
+        <div class="bill-receipt-header__line">ĐC: <span x-text="outlet.address"></span></div>
       </template>
-      <div class="bill-info__row">
-        <span class="bill-info__label">Số món:</span>
-        <span class="bill-info__value" x-text="itemCount + ' món'"></span>
-      </div>
+      <template x-if="outletPhone">
+        <div class="bill-receipt-header__line">ĐT: <span x-text="outletPhone"></span></div>
+      </template>
+    </div>
+
+    <!-- ============================================================
+         Receipt title + bill code
+         ============================================================ -->
+    <div class="bill-receipt-title">
+      <div class="bill-receipt-title__main">PHIẾU TÍNH TIỀN</div>
+      <div class="bill-receipt-title__code" x-text="billCode" x-show="billCode" x-cloak></div>
+    </div>
+
+    <!-- ============================================================
+         Table tag + Giờ vào / Giờ ra row
+         ============================================================ -->
+    <div class="bill-table-tag" x-text="'Bàn ' + (table?.name || '?')"></div>
+    <div class="bill-time-row">
+      <span>Giờ vào: <span x-text="formatDateTime(order?.started_at)"></span></span>
+      <span>Giờ ra: <span x-text="bill?.finalized_at ? formatDateTime(bill.finalized_at) : '(Giờ):(Phút)'"></span></span>
     </div>
 
     <!-- ============================================================
          Order Items Summary Table
+         (column order: Tên hàng | Đ.Giá | SL | Thành tiền)
          ============================================================ -->
     <div class="bill-summary">
       <!-- Table header -->
       <div class="bill-summary__header">
-        <span class="bill-summary__col bill-summary__col--name">Món</span>
+        <span class="bill-summary__col bill-summary__col--name">Tên hàng</span>
+        <span class="bill-summary__col bill-summary__col--price">Đ.Giá</span>
         <span class="bill-summary__col bill-summary__col--qty">SL</span>
-        <span class="bill-summary__col bill-summary__col--price">Đơn giá</span>
         <span class="bill-summary__col bill-summary__col--total">Thành tiền</span>
       </div>
 
@@ -80,12 +83,12 @@
         <div class="bill-summary__row">
           <span class="bill-summary__col bill-summary__col--name"
                 x-text="item.menuItemName || item.menu_items?.name || ''"></span>
+          <span class="bill-summary__col bill-summary__col--price"
+                x-text="formatVND(item.price)"></span>
           <span class="bill-summary__col bill-summary__col--qty"
                 x-text="item.qty"></span>
-          <span class="bill-summary__col bill-summary__col--price"
-                x-text="formatVND(item.price) + 'đ'"></span>
           <span class="bill-summary__col bill-summary__col--total"
-                x-text="formatVND(item.price * item.qty) + 'đ'"></span>
+                x-text="formatVND(item.price * item.qty)"></span>
         </div>
       </template>
     </div>
@@ -95,22 +98,16 @@
          ============================================================ -->
     <div class="bill-totals">
       <div class="bill-totals__row">
-        <span class="bill-totals__label">Tạm tính:</span>
-        <span class="bill-totals__value" x-text="formatVND(subtotal) + 'đ'"></span>
+        <span class="bill-totals__label">Tổng tiền hàng:</span>
+        <span class="bill-totals__value" x-text="formatVND(subtotal)"></span>
       </div>
 
-      <!-- Task 10.3: Discount line -->
-      <template x-if="discount && discountAmount > 0">
-        <div class="bill-totals__row bill-totals__row--discount">
-          <span class="bill-totals__label">
-            Giảm giá (<span x-text="discount.name"></span>
-            - <span x-text="discount.type === 'percent' ? discount.value + '%' : formatVND(discount.value) + 'đ'"></span>):
-          </span>
-          <span class="bill-totals__value" style="color: var(--color-danger, #dc2626);">
-            -<span x-text="formatVND(discountAmount) + 'đ'"></span>
-          </span>
-        </div>
-      </template>
+      <div class="bill-totals__row">
+        <span class="bill-totals__label">
+          Chiết khấu<template x-if="discount && discountAmount > 0"><span style="font-weight: 400; font-size: var(--font-size-xs);"> (<span x-text="discount.name"></span> - <span x-text="discount.type === 'percent' ? discount.value + '%' : formatVND(discount.value) + 'đ'"></span>)</span></template>:
+        </span>
+        <span class="bill-totals__value" x-text="formatVND(discountAmount)"></span>
+      </div>
 
       <!-- Hourly charge line (billiard/pool tables) -->
       <template x-if="hasHourlyCharge">
@@ -118,21 +115,52 @@
           <span class="bill-totals__label">
             Phí giờ chơi<template x-if="durationDisplay"><span style="font-weight: 400; font-size: var(--font-size-xs);"> (<span x-text="durationDisplay"></span>)</span></template>:
           </span>
-          <span class="bill-totals__value" x-text="formatVND(displayHourlyCharge) + 'đ'"></span>
+          <span class="bill-totals__value" x-text="formatVND(displayHourlyCharge)"></span>
         </div>
       </template>
 
-      <template x-if="tax > 0">
-        <div class="bill-totals__row">
-          <span class="bill-totals__label">Thuế:</span>
-          <span class="bill-totals__value" x-text="formatVND(tax) + 'đ'"></span>
-        </div>
-      </template>
       <div class="bill-totals__row bill-totals__row--grand">
         <span class="bill-totals__label">Tổng cộng:</span>
-        <span class="bill-totals__value" x-text="formatVND(grandTotal) + 'đ'"></span>
+        <span class="bill-totals__value" x-text="formatVND(grandTotal)"></span>
       </div>
+
+      <!-- Cash payment: Tiền khách đưa + Tiền thừa (editable before finalize, static after) -->
+      <template x-if="paymentMethod === 'cash'">
+        <div>
+          <div class="bill-totals__row">
+            <span class="bill-totals__label">Tiền Khách Đưa:</span>
+            <span class="bill-totals__value">
+              <template x-if="!isBillFinalized">
+                <input type="number"
+                       class="bill-cash-input"
+                       min="0"
+                       step="1000"
+                       x-model.number="cashTendered"
+                       :placeholder="formatVND(grandTotal)">
+              </template>
+              <template x-if="isBillFinalized">
+                <span x-text="formatVND(cashTendered)"></span>
+              </template>
+            </span>
+          </div>
+          <div class="bill-totals__row">
+            <span class="bill-totals__label">Tiền Thừa trả Khách:</span>
+            <span class="bill-totals__value" x-text="formatVND(changeAmount)"></span>
+          </div>
+        </div>
+      </template>
+
+      <!-- Transfer payment: Chuyển khoản line -->
+      <template x-if="paymentMethod === 'transfer'">
+        <div class="bill-totals__row">
+          <span class="bill-totals__label">Chuyển khoản:</span>
+          <span class="bill-totals__value" x-text="formatVND(grandTotal)"></span>
+        </div>
+      </template>
     </div>
+
+    <!-- Footer thank-you (visible on the receipt body, in addition to Meotism credit lower) -->
+    <div class="bill-receipt-footer">Cám Ơn &amp; Hẹn Gặp Lại!!!</div>
 
     <!-- ============================================================
          Payment Method Selection — only editable before finalization

@@ -244,12 +244,13 @@ ON CONFLICT DO NOTHING;
 -- 2. Outlet
 -- ============================================================
 
-INSERT INTO outlets (id, name, address, timezone)
+INSERT INTO outlets (id, name, address, timezone, settings)
 VALUES (
     'b0000000-0000-0000-0000-000000000001',
-    'Nhà Hàng Test',
-    '123 Nguyễn Huệ, Quận 1, TP.HCM',
-    'Asia/Ho_Chi_Minh'
+    'Meotism F&B',
+    '21/27 Nguyễn An Ninh, P Ea Tam, TP Buôn Ma Thuột',
+    'Asia/Ho_Chi_Minh',
+    '{"phone": "0946.327.399"}'::jsonb
 )
 ON CONFLICT (id) DO NOTHING;
 

@@ -548,3 +548,90 @@
 .bill-totals__row--discount .bill-totals__value {
   color: var(--color-success);
 }
+
+/* ------------------------------------------------------------------
+ * Receipt Layout — printed-bill look (bill-receipt modifier on .bill-content)
+ * ------------------------------------------------------------------ */
+.bill-receipt {
+  max-width: 420px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.bill-receipt-header {
+  text-align: center;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+}
+.bill-receipt-header__name {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: var(--space-1);
+}
+.bill-receipt-header__line {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.bill-receipt-title {
+  text-align: center;
+  border-top: 1px dashed var(--color-border);
+  border-bottom: 1px dashed var(--color-border);
+  padding: var(--space-2) 0;
+  margin: 0 var(--space-3);
+}
+.bill-receipt-title__main {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-size: var(--font-size-base);
+}
+.bill-receipt-title__code {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.bill-table-tag {
+  display: inline-block;
+  border: 1px solid var(--color-text);
+  padding: 2px 12px;
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  margin: var(--space-2) var(--space-3) 0;
+}
+
+.bill-time-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  color: var(--color-text-secondary);
+  flex-wrap: wrap;
+}
+
+.bill-cash-input {
+  width: 110px;
+  padding: 2px 6px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-align: right;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.bill-cash-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.bill-receipt-footer {
+  text-align: center;
+  font-style: italic;
+  font-size: var(--font-size-sm);
+  padding: var(--space-3) 0;
+  border-top: 1px dashed var(--color-border);
+  margin: 0 var(--space-3);
+}
