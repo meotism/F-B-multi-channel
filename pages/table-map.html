@@ -82,6 +82,38 @@
       </svg>
       <span x-text="lockOwner?.user_name + ' đang chỉnh sửa sơ đồ bàn'"></span>
     </div>
+
+    <!-- Zoom controls (desktop/tablet; hidden on mobile where pinch-zoom is used).
+         Kept last so margin-left:auto pins it to the right in both view/edit modes. -->
+    <div class="map-toolbar__zoom">
+      <button class="btn btn--outline btn--sm" @click="zoomOut()" :disabled="mapScale <= 0.5"
+              aria-label="Thu nhỏ" title="Thu nhỏ">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+      <span class="map-toolbar__zoom-label" x-text="Math.round(mapScale * 100) + '%'"></span>
+      <button class="btn btn--outline btn--sm" @click="zoomIn()" :disabled="mapScale >= 2"
+              aria-label="Phóng to" title="Phóng to">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+      <button class="btn btn--outline btn--sm" @click="zoomFit()" :disabled="mapScale === 1"
+              aria-label="Vừa màn hình" title="Vừa màn hình">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <polyline points="9 21 3 21 3 15"></polyline>
+          <line x1="21" y1="3" x2="14" y2="10"></line>
+          <line x1="3" y1="21" x2="10" y2="14"></line>
+        </svg>
+        <span>Vừa màn hình</span>
+      </button>
+    </div>
   </div>
 
   <!-- ================================================================
@@ -90,6 +122,11 @@
   <div id="map-container"
        class="map-container"
        :class="{ 'map-container--edit': isEditMode }">
+
+    <!-- Zoom spacer: reserves the scrollable area at the current zoom so
+         #map-container can pan zoomed-in content (CSS transforms don't grow
+         scrollWidth/Height). Sized imperatively by applyMapScale(). -->
+    <div id="map-canvas-spacer" class="map-canvas-spacer" aria-hidden="true"></div>
 
     <!-- Task 19.1: Skeleton loading grid shown while tables are loading -->
     <div x-show="$store.tableMap.isLoading" x-cloak
@@ -118,7 +155,7 @@
 
     <!-- Table nodes rendered from store data (hidden while loading) -->
     <template x-if="!$store.tableMap.isLoading">
-    <div>
+    <div id="map-canvas" class="map-canvas">
     <template x-for="table in tables" :key="table.id">
       <div class="table-node"
            :class="[
@@ -126,7 +163,7 @@
              'table-node--' + table.shape,
              { 'is-editable': isEditMode, 'is-selected': selectedTable?.id === table.id }
            ]"
-           :style="`left: ${Math.min(table.x, 90)}%; top: ${Math.min(table.y, 85)}%; transform: rotate(${table.rotation || 0}deg);`"
+           :style="`left: ${clampX(table)}%; top: ${clampY(table)}%; transform: rotate(${table.rotation || 0}deg);`"
            :data-table-id="table.id"
            :data-capacity="table.capacity"
            :data-status="table.status"

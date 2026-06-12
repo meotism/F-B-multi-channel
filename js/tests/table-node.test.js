@@ -38,13 +38,13 @@ function describe(name, fn) {
 // ---------------------------------------------------------------------------
 
 const CAPACITY_SIZES = {
-  2: { width: 80,  height: 80  },
-  4: { width: 100, height: 100 },
-  6: { width: 120, height: 80  },
-  8: { width: 140, height: 90  },
+  2: { width: 64,  height: 64 },
+  4: { width: 76,  height: 76 },
+  6: { width: 92,  height: 60 },
+  8: { width: 104, height: 68 },
 };
 
-const DEFAULT_SIZE = { width: 80, height: 80 };
+const DEFAULT_SIZE = { width: 64, height: 64 };
 
 function getTableWidth(table) {
   const size = CAPACITY_SIZES[table.capacity] || DEFAULT_SIZE;
@@ -65,39 +65,39 @@ function getTableHeight(table) {
 
 describe('getTableWidth / getTableHeight - square shape (capacity sizing)', () => {
   assert(
-    getTableWidth({ capacity: 2, shape: 'square' }) === 80,
-    '2-seat square: width = 80px',
+    getTableWidth({ capacity: 2, shape: 'square' }) === 64,
+    '2-seat square: width = 64px',
   );
   assert(
-    getTableHeight({ capacity: 2, shape: 'square' }) === 80,
-    '2-seat square: height = 80px',
-  );
-
-  assert(
-    getTableWidth({ capacity: 4, shape: 'square' }) === 100,
-    '4-seat square: width = 100px',
-  );
-  assert(
-    getTableHeight({ capacity: 4, shape: 'square' }) === 100,
-    '4-seat square: height = 100px',
+    getTableHeight({ capacity: 2, shape: 'square' }) === 64,
+    '2-seat square: height = 64px',
   );
 
   assert(
-    getTableWidth({ capacity: 6, shape: 'square' }) === 120,
-    '6-seat square: width = 120px',
+    getTableWidth({ capacity: 4, shape: 'square' }) === 76,
+    '4-seat square: width = 76px',
   );
   assert(
-    getTableHeight({ capacity: 6, shape: 'square' }) === 80,
-    '6-seat square: height = 80px',
+    getTableHeight({ capacity: 4, shape: 'square' }) === 76,
+    '4-seat square: height = 76px',
   );
 
   assert(
-    getTableWidth({ capacity: 8, shape: 'square' }) === 140,
-    '8-seat square: width = 140px',
+    getTableWidth({ capacity: 6, shape: 'square' }) === 92,
+    '6-seat square: width = 92px',
   );
   assert(
-    getTableHeight({ capacity: 8, shape: 'square' }) === 90,
-    '8-seat square: height = 90px',
+    getTableHeight({ capacity: 6, shape: 'square' }) === 60,
+    '6-seat square: height = 60px',
+  );
+
+  assert(
+    getTableWidth({ capacity: 8, shape: 'square' }) === 104,
+    '8-seat square: width = 104px',
+  );
+  assert(
+    getTableHeight({ capacity: 8, shape: 'square' }) === 68,
+    '8-seat square: height = 68px',
   );
 });
 
@@ -107,21 +107,21 @@ describe('getTableWidth / getTableHeight - square shape (capacity sizing)', () =
 
 describe('getTableWidth / getTableHeight - round shape', () => {
   assert(
-    getTableWidth({ capacity: 2, shape: 'round' }) === 80,
-    '2-seat round: width = 80px',
+    getTableWidth({ capacity: 2, shape: 'round' }) === 64,
+    '2-seat round: width = 64px',
   );
   assert(
-    getTableHeight({ capacity: 2, shape: 'round' }) === 80,
-    '2-seat round: height = 80px',
+    getTableHeight({ capacity: 2, shape: 'round' }) === 64,
+    '2-seat round: height = 64px',
   );
 
   assert(
-    getTableWidth({ capacity: 4, shape: 'round' }) === 100,
-    '4-seat round: width = 100px',
+    getTableWidth({ capacity: 4, shape: 'round' }) === 76,
+    '4-seat round: width = 76px',
   );
   assert(
-    getTableHeight({ capacity: 4, shape: 'round' }) === 100,
-    '4-seat round: height = 100px',
+    getTableHeight({ capacity: 4, shape: 'round' }) === 76,
+    '4-seat round: height = 76px',
   );
 });
 
@@ -130,44 +130,44 @@ describe('getTableWidth / getTableHeight - round shape', () => {
 // ---------------------------------------------------------------------------
 
 describe('getTableWidth / getTableHeight - rectangle shape (1.5:1 aspect ratio)', () => {
-  // 2-seat rectangle: height 80 -> width 120
+  // 2-seat rectangle: height 64 -> width 96
   assert(
-    getTableWidth({ capacity: 2, shape: 'rectangle' }) === 120,
-    '2-seat rectangle: width = 120px (1.5 * 80)',
+    getTableWidth({ capacity: 2, shape: 'rectangle' }) === 96,
+    '2-seat rectangle: width = 96px (1.5 * 64)',
   );
   assert(
-    getTableHeight({ capacity: 2, shape: 'rectangle' }) === 80,
-    '2-seat rectangle: height = 80px',
-  );
-
-  // 4-seat rectangle: height 100 -> width 150
-  assert(
-    getTableWidth({ capacity: 4, shape: 'rectangle' }) === 150,
-    '4-seat rectangle: width = 150px (1.5 * 100)',
-  );
-  assert(
-    getTableHeight({ capacity: 4, shape: 'rectangle' }) === 100,
-    '4-seat rectangle: height = 100px',
+    getTableHeight({ capacity: 2, shape: 'rectangle' }) === 64,
+    '2-seat rectangle: height = 64px',
   );
 
-  // 6-seat rectangle: height 80 -> width 120
+  // 4-seat rectangle: height 76 -> width 114
   assert(
-    getTableWidth({ capacity: 6, shape: 'rectangle' }) === 120,
-    '6-seat rectangle: width = 120px (1.5 * 80)',
+    getTableWidth({ capacity: 4, shape: 'rectangle' }) === 114,
+    '4-seat rectangle: width = 114px (1.5 * 76)',
   );
   assert(
-    getTableHeight({ capacity: 6, shape: 'rectangle' }) === 80,
-    '6-seat rectangle: height = 80px',
+    getTableHeight({ capacity: 4, shape: 'rectangle' }) === 76,
+    '4-seat rectangle: height = 76px',
   );
 
-  // 8-seat rectangle: height 90 -> width 135
+  // 6-seat rectangle: height 60 -> width 90
   assert(
-    getTableWidth({ capacity: 8, shape: 'rectangle' }) === 135,
-    '8-seat rectangle: width = 135px (1.5 * 90)',
+    getTableWidth({ capacity: 6, shape: 'rectangle' }) === 90,
+    '6-seat rectangle: width = 90px (1.5 * 60)',
   );
   assert(
-    getTableHeight({ capacity: 8, shape: 'rectangle' }) === 90,
-    '8-seat rectangle: height = 90px',
+    getTableHeight({ capacity: 6, shape: 'rectangle' }) === 60,
+    '6-seat rectangle: height = 60px',
+  );
+
+  // 8-seat rectangle: height 68 -> width 102
+  assert(
+    getTableWidth({ capacity: 8, shape: 'rectangle' }) === 102,
+    '8-seat rectangle: width = 102px (1.5 * 68)',
+  );
+  assert(
+    getTableHeight({ capacity: 8, shape: 'rectangle' }) === 68,
+    '8-seat rectangle: height = 68px',
   );
 });
 
@@ -177,17 +177,17 @@ describe('getTableWidth / getTableHeight - rectangle shape (1.5:1 aspect ratio)'
 
 describe('getTableWidth / getTableHeight - unknown capacity (fallback to default)', () => {
   assert(
-    getTableWidth({ capacity: 3, shape: 'square' }) === 80,
-    'unknown capacity (3): falls back to default width 80px',
+    getTableWidth({ capacity: 3, shape: 'square' }) === 64,
+    'unknown capacity (3): falls back to default width 64px',
   );
   assert(
-    getTableHeight({ capacity: 3, shape: 'square' }) === 80,
-    'unknown capacity (3): falls back to default height 80px',
+    getTableHeight({ capacity: 3, shape: 'square' }) === 64,
+    'unknown capacity (3): falls back to default height 64px',
   );
 
   assert(
-    getTableWidth({ capacity: 10, shape: 'rectangle' }) === 120,
-    'unknown capacity (10) rectangle: falls back to 1.5 * 80 = 120px width',
+    getTableWidth({ capacity: 10, shape: 'rectangle' }) === 96,
+    'unknown capacity (10) rectangle: falls back to 1.5 * 64 = 96px width',
   );
 });
 

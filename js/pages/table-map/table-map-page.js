@@ -15,6 +15,7 @@ import {
   unsubscribeMapLock,
 } from '../../services/map-lock-service.js';
 import { confirmArrival, completeReservation, cancelReservation } from '../../services/reservation-service.js';
+import { getTableWidth, getTableHeight } from './table-node.js';
 
 /**
  * Pad a number to 2 digits with leading zero.
@@ -98,6 +99,40 @@ export function tableMapPage() {
      */
     get tables() {
       return Alpine.store('tableMap').tables;
+    },
+
+    // --- Position clamping (size-aware) ---
+    //
+    // The view-mode :style binding uses these so a node's right/bottom edge
+    // never overflows the container — mirroring the drag-time clamp in
+    // startDrag(). Without this, fixed-px nodes positioned by % near the edge
+    // get clipped by the container. Falls back to a fixed % cap before the
+    // container has been measured (first paint).
+
+    /**
+     * Clamp a table's x (left %) so its full width stays inside the map.
+     * @param {Object} table - Table with x, capacity, shape
+     * @returns {number} Clamped left percentage
+     */
+    clampX(table) {
+      const container = document.getElementById('map-container');
+      const w = container ? container.clientWidth : 0;
+      if (!w) return Math.min(table.x, 90);
+      const maxX = 100 - (getTableWidth(table) / w) * 100;
+      return Math.max(0, Math.min(table.x, maxX));
+    },
+
+    /**
+     * Clamp a table's y (top %) so its full height stays inside the map.
+     * @param {Object} table - Table with y, capacity, shape
+     * @returns {number} Clamped top percentage
+     */
+    clampY(table) {
+      const container = document.getElementById('map-container');
+      const h = container ? container.clientHeight : 0;
+      if (!h) return Math.min(table.y, 85);
+      const maxY = 100 - (getTableHeight(table) / h) * 100;
+      return Math.max(0, Math.min(table.y, maxY));
     },
 
     // --- Lifecycle ---
@@ -734,6 +769,10 @@ export function tableMapPage() {
 
         this.isEditMode = true;
         this.undoStack = [];
+
+        // Reset zoom to 100% so drag math (which works in unscaled container
+        // coordinates) stays accurate while editing.
+        this.zoomFit();
 
         // Sync store-level editing flag so that handleRemoteChange() can guard
         // against position jitter during drag operations (design Section 4.2.8)
@@ -1448,6 +1487,57 @@ export function tableMapPage() {
         container.style.transform = '';
         container.style.transformOrigin = '';
       };
+    },
+
+    // --- Desktop / tablet zoom controls ---
+    //
+    // Reuses mapScale (same 0.5–2.0 range as pinch-zoom) but applies the
+    // transform to the inner #map-canvas wrapper with origin top-left, so the
+    // scroll container (#map-container) keeps its scrollbars while the canvas
+    // scales within it. Lets the user zoom out for a 70-table overview.
+
+    /**
+     * Apply the current mapScale to the inner canvas.
+     *
+     * The canvas stays at 100% x 100% of the container so node positions
+     * (percent of the canvas box) scale linearly with one transform — no
+     * double-scale. CSS transforms don't expand scrollWidth/Height, so a
+     * zero-content spacer sized to (100*s)% reserves the scrolled footprint
+     * and gives #map-container real scrollbars to pan zoomed-in content.
+     * transform-origin top-left keeps the spacer and scaled content aligned.
+     */
+    applyMapScale() {
+      const canvas = document.getElementById('map-canvas');
+      if (!canvas) return;
+      const s = this.mapScale;
+      canvas.style.transformOrigin = 'top left';
+      canvas.style.transform = `scale(${s})`;
+
+      // Spacer drives the scrollable area to match the scaled visual size.
+      const spacer = document.getElementById('map-canvas-spacer');
+      if (spacer) {
+        const pct = `${100 * s}%`;
+        spacer.style.width = pct;
+        spacer.style.height = pct;
+      }
+    },
+
+    /** Zoom in by 0.1 (capped at 2.0). */
+    zoomIn() {
+      this.mapScale = Math.min(2.0, Math.round((this.mapScale + 0.1) * 10) / 10);
+      this.applyMapScale();
+    },
+
+    /** Zoom out by 0.1 (floored at 0.5). */
+    zoomOut() {
+      this.mapScale = Math.max(0.5, Math.round((this.mapScale - 0.1) * 10) / 10);
+      this.applyMapScale();
+    },
+
+    /** Reset zoom to 100%. */
+    zoomFit() {
+      this.mapScale = 1;
+      this.applyMapScale();
     },
 
     // --- Reset Table (S3-23) ---

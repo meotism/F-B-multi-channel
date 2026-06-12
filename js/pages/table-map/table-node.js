@@ -16,14 +16,14 @@
  * @type {Object<number, {width: number, height: number}>}
  */
 const CAPACITY_SIZES = {
-  2: { width: 80,  height: 80  },
-  4: { width: 100, height: 100 },
-  6: { width: 120, height: 80  },
-  8: { width: 140, height: 90  },
+  2: { width: 64,  height: 64 },
+  4: { width: 76,  height: 76 },
+  6: { width: 92,  height: 60 },
+  8: { width: 104, height: 68 },
 };
 
 /** Default size used when capacity is not in the lookup table. */
-const DEFAULT_SIZE = { width: 80, height: 80 };
+const DEFAULT_SIZE = { width: 64, height: 64 };
 
 /**
  * Get the pixel width of a table node based on its capacity and shape.
