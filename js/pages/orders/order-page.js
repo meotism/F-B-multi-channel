@@ -285,6 +285,9 @@ export function orderPage() {
       if (ordersStore.cart.length === 0 && !this.tableHourlyRate) return;
 
       this.isSubmitting = true;
+      // Global overlay blocks the rest of the screen (menu taps, cart edits,
+      // back-nav) while the order is created — kills double-tap risk entirely.
+      Alpine.store('ui').startLoading('Đang tạo đơn hàng...');
 
       try {
         // Task 9.1: Pass guest count to store for order creation
@@ -314,6 +317,7 @@ export function orderPage() {
         const message = err.message || 'Không thể tạo đơn hàng. Vui lòng thử lại.';
         Alpine.store('ui').showToast(message, 'error');
       } finally {
+        Alpine.store('ui').stopLoading();
         this.isSubmitting = false;
       }
     },
@@ -771,6 +775,8 @@ export function orderPage() {
     async confirmTransfer() {
       if (this.isTransferring || !this.selectedTransferTarget) return;
       this.isTransferring = true;
+      // Block interaction during the transfer to prevent racing retries
+      Alpine.store('ui').startLoading('Đang chuyển bàn...');
 
       try {
         const orderId = Alpine.store('orders').currentOrder?.id;
@@ -816,6 +822,7 @@ export function orderPage() {
         console.error('[orderPage] confirmTransfer failed:', err);
         Alpine.store('ui').showToast(err.message || 'Không thể chuyển bàn.', 'error');
       } finally {
+        Alpine.store('ui').stopLoading();
         this.isTransferring = false;
       }
     },
