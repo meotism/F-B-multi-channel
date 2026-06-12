@@ -30,3 +30,6 @@ build/
 
 # Claude Code
 .claude/
+
+# Playwright artifacts
+tests/e2e/test-results/
