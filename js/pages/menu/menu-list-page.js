@@ -278,10 +278,21 @@ export function menuPage() {
     },
 
     /**
-     * Bulk deactivate all selected items.
+     * Bulk deactivate all selected items, after confirmation.
+     * (Activation needs no confirmation — it is non-destructive and
+     * instantly reversible.)
      */
     async bulkDeactivate() {
       if (this.selectedItems.length === 0) return;
+
+      const ok = await Alpine.store('ui').confirm({
+        title: 'Ẩn món ăn',
+        message: `Ẩn ${this.selectedItems.length} món khỏi thực đơn?`,
+        confirmLabel: 'Ẩn món',
+        danger: true,
+      });
+      if (!ok) return;
+
       this.isSaving = true;
 
       try {
