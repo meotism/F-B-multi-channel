@@ -15,6 +15,7 @@ export function loginPage() {
     password: '',
     error: '',
     isLoading: false,
+    showPassword: false,
 
     /**
      * Handle login form submission.
