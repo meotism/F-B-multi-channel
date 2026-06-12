@@ -561,7 +561,13 @@ export function tableMapPage() {
 
       try {
         await confirmArrival(reservation.id);
+        // Update local status immediately (the reservation lives in the
+        // reactive store array) so the map overlay and navigateByStatus's
+        // pending-block guard reflect the change without waiting for Realtime.
+        reservation.status = 'active';
         Alpine.store('ui').showToast('Đã xác nhận khách đến', 'success');
+        // Flow straight into ordering for this table
+        navigate(`/orders/${table.id}`);
       } catch (err) {
         Alpine.store('ui').showToast(err.message, 'error');
       }

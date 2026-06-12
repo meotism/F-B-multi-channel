@@ -386,6 +386,10 @@ export function reservationPage() {
       try {
         await confirmArrival(reservation.id);
         Alpine.store('ui').showToast('Đã xác nhận khách đến', 'success');
+        // Flow straight into ordering for the reserved table
+        if (reservation.table_id) {
+          navigate(`/orders/${reservation.table_id}`);
+        }
       } catch (err) {
         Alpine.store('ui').showToast(err.message, 'error');
       }
