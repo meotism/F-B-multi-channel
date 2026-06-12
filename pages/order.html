@@ -667,6 +667,16 @@
       <h3 class="modal-content__title">Hủy đơn hàng</h3>
       <p>Bạn có chắc muốn hủy đơn hàng này? Tồn kho sẽ được hoàn trả.</p>
 
+      <!-- Cancellation scope summary -->
+      <div style="margin: var(--space-2) 0; padding: var(--space-2) var(--space-3); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: var(--font-size-sm);">
+        <strong x-text="$store.orders.itemCount"></strong> món ·
+        Tổng <strong x-text="formatVND($store.orders.orderTotal) + 'đ'"></strong> ·
+        Bàn <strong x-text="tableName"></strong>
+        <div style="margin-top: var(--space-1); font-size: var(--font-size-xs); color: var(--color-text-secondary);">
+          Bàn sẽ được trả về trạng thái trống.
+        </div>
+      </div>
+
       <!-- Task 9.5: Cancellation reason (manager/owner only) -->
       <template x-if="isManagerOrOwner">
         <div class="modal-cancel-reason">
@@ -810,11 +820,21 @@
                 <template x-if="c.tableLabel">
                   <span class="modal-table-card__label" x-text="c.tableLabel"></span>
                 </template>
+                <span class="modal-table-card__meta"
+                      x-text="c.itemCount + ' món · ' + formatVND(c.total) + 'đ'"></span>
                 <span class="modal-table-card__check"
                       x-show="selectedMergeSources.includes(c.orderId)">&#10003;</span>
               </button>
             </template>
           </div>
+
+          <!-- Merge scope summary -->
+          <p x-show="selectedMergeSources.length > 0" x-cloak
+             style="margin-top: var(--space-3); font-size: var(--font-size-sm);">
+            Gộp <strong x-text="selectedMergeSources.length"></strong> đơn
+            vào bàn <strong x-text="tableName"></strong> ·
+            tổng <strong x-text="formatVND(mergeSelectionTotal) + 'đ'"></strong>
+          </p>
         </div>
       </template>
       <div class="modal-content__actions">

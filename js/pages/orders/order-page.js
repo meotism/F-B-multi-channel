@@ -851,24 +851,31 @@ export function orderPage() {
         const tableIds = servingTables.map(t => t.id);
         const { data: orders, error } = await supabase
           .from('orders')
-          .select('id, table_id')
+          .select('id, table_id, order_items(qty, price)')
           .in('table_id', tableIds)
           .eq('status', 'active');
 
         if (error) throw error;
 
-        // Build merge candidates: match each order to its table info
+        // Build merge candidates: match each order to its table info,
+        // with item count and total so the user can see the merge scope
         const orderByTable = {};
-        (orders || []).forEach(o => { orderByTable[o.table_id] = o.id; });
+        (orders || []).forEach(o => { orderByTable[o.table_id] = o; });
 
         this.mergeCandidates = servingTables
           .filter(t => orderByTable[t.id]) // only tables with active orders
-          .map(t => ({
-            orderId: orderByTable[t.id],
-            tableId: t.id,
-            tableName: t.name || '',
-            tableLabel: t.table_code || t.label || '',
-          }));
+          .map(t => {
+            const order = orderByTable[t.id];
+            const items = order.order_items || [];
+            return {
+              orderId: order.id,
+              tableId: t.id,
+              tableName: t.name || '',
+              tableLabel: t.table_code || t.label || '',
+              itemCount: items.reduce((sum, i) => sum + i.qty, 0),
+              total: items.reduce((sum, i) => sum + i.price * i.qty, 0),
+            };
+          });
 
         if (this.mergeCandidates.length === 0) {
           Alpine.store('ui').showToast('Không có đơn hàng hoạt động để gộp.', 'warning');
@@ -881,6 +888,16 @@ export function orderPage() {
         console.error('[orderPage] openMergeModal failed:', err);
         Alpine.store('ui').showToast('Không thể tải danh sách bàn để gộp.', 'error');
       }
+    },
+
+    /**
+     * Combined total of the currently selected merge sources.
+     * @returns {number} Sum in VND
+     */
+    get mergeSelectionTotal() {
+      return this.mergeCandidates
+        .filter(c => this.selectedMergeSources.includes(c.orderId))
+        .reduce((sum, c) => sum + c.total, 0);
     },
 
     /**

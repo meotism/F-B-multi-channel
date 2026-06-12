@@ -259,6 +259,11 @@
   color: var(--color-text-secondary);
 }
 
+.modal-table-card__meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
 .modal-table-card__check {
   position: absolute;
   top: 4px;
