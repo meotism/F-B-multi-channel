@@ -779,12 +779,15 @@ export function tableMapPage() {
      *
      * Requirements: 5.1 EC-3 (unsaved changes guard)
      */
-    handleExitEditMode() {
+    async handleExitEditMode() {
       const store = Alpine.store('tableMap');
       if (store.hasUnsavedChanges) {
-        const confirmed = window.confirm(
-          'Bạn có thay đổi chưa lưu. Bạn có muốn rời đi?',
-        );
+        const confirmed = await Alpine.store('ui').confirm({
+          title: 'Thay đổi chưa lưu',
+          message: 'Bạn có thay đổi chưa lưu. Bạn có muốn rời đi?',
+          confirmLabel: 'Rời đi',
+          danger: true,
+        });
         if (!confirmed) return;
       }
       this.exitEditMode();

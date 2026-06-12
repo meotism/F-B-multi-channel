@@ -225,25 +225,43 @@ function handleRoute() {
   if (isDirty) {
     const previousPath = _previousHash.slice(1) || '/';
     if (previousPath !== hash) {
-      const confirmed = window.confirm(
-        'Bạn có thay đổi chưa lưu. Bạn có muốn rời đi?',
-      );
-      if (!confirmed) {
-        window.removeEventListener('hashchange', handleRoute);
-        window.location.hash = _previousHash;
-        window.addEventListener('hashchange', handleRoute);
-        return;
-      }
-      // Try to call exitEditMode if available
-      if (pageContainer) {
-        const alpineRoot = pageContainer.querySelector('[x-data]');
-        if (alpineRoot && alpineRoot._x_dataStack) {
-          const pageData = alpineRoot._x_dataStack[0];
-          if (pageData && typeof pageData.exitEditMode === 'function') {
-            pageData.exitEditMode();
+      // Revert-first, re-navigate-on-confirm: the in-app confirm dialog is
+      // async while this guard is synchronous, so we capture the intended
+      // target, revert the hash (without re-triggering this handler), and
+      // only re-apply the target hash after the user confirms.
+      const targetHash = window.location.hash;
+      window.removeEventListener('hashchange', handleRoute);
+      window.location.hash = _previousHash;
+      window.addEventListener('hashchange', handleRoute);
+
+      const ui = Alpine.store('ui');
+      // Re-entrancy guard: dialog already open (user clicked another link
+      // while deciding) — keep the navigation reverted, don't stack dialogs.
+      if (ui.confirmAction) return;
+
+      ui.openConfirmDialog({
+        title: 'Thay đổi chưa lưu',
+        message: 'Bạn có thay đổi chưa lưu. Bạn có muốn rời đi?',
+        confirmLabel: 'Rời đi',
+        danger: true,
+        onConfirm: () => {
+          // Clear dirty state so the guard doesn't re-trigger, then re-navigate
+          if (pageContainer) {
+            const alpineRoot = pageContainer.querySelector('[x-data]');
+            if (alpineRoot && alpineRoot._x_dataStack) {
+              const pageData = alpineRoot._x_dataStack[0];
+              if (pageData && typeof pageData.exitEditMode === 'function') {
+                pageData.exitEditMode();
+              }
+              if (pageData) pageData.isDirty = false;
+            }
           }
-        }
-      }
+          const tableMap = Alpine.store('tableMap');
+          if (tableMap) tableMap.hasUnsavedChanges = false;
+          window.location.hash = targetHash;
+        },
+      });
+      return;
     }
   }
 
