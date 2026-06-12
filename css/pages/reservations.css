@@ -1,5 +1,17 @@
 /* Reservations page styles */
 
+/* Page layout */
+.reservation-page {
+  padding: var(--space-4);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.reservation-page__title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
 /* Status badges */
 .badge--reserved-pending {
   background: var(--color-reserved-pending);
@@ -15,10 +27,68 @@
   opacity: 0.7;
 }
 
+.badge--tiny {
+  font-size: 9px;
+  margin-left: 2px;
+}
+
+/* Desktop table cell helpers */
+.res-time {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* Mobile card */
 .reservation-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.reservation-card__notes {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Prepaid option in the create modal */
+.prepaid-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.prepaid-toggle input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+.prepaid-toggle .form-label {
+  margin: 0;
+}
+
+.prepaid-preview {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.prepaid-preview__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.prepaid-preview__row--total {
+  margin-top: var(--space-1);
+  font-weight: 700;
+  font-size: var(--font-size-base);
+  color: var(--color-primary);
 }

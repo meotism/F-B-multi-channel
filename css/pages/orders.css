@@ -1,1 +1,40 @@
 /* Orders - Order creation and editing styles */
+
+/* Order list page layout */
+.order-list-page {
+  padding: var(--space-4);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Wider filter fields than the default 140px */
+.order-list-page .filter-bar .form-group {
+  min-width: 160px;
+}
+
+/* Monospace order code in the desktop table */
+.order-code {
+  font-family: monospace;
+  font-size: var(--font-size-xs);
+}
+
+/* Mobile order card */
+.order-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  cursor: pointer;
+  margin-bottom: var(--space-3);
+}
+
+.order-card__code {
+  font-family: monospace;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.order-card__total {
+  font-weight: 700;
+  color: var(--color-primary);
+}
