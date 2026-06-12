@@ -140,7 +140,7 @@
 
         <!-- Color-blind status icon (Task 8.3) -->
         <span class="table-node__status-icon" aria-hidden="true"
-              x-text="isTableBlocked(table, timerTick) ? '\uD83D\uDCC5' : ({'empty':'\u2713','serving':'\u23F1','awaiting_payment':'\uD83D\uDD14','paid':'\uD83D\uDCB5'}[table.status] || '')"></span>
+              x-text="isTableBlocked(table, timerTick) ? '📅' : ({'empty':'✓','serving':'⏱','awaiting_payment':'🔔','paid':'💵'}[table.status] || '')"></span>
 
         <!-- Table name: double-click to inline rename in edit mode -->
         <span class="table-node__name"
@@ -176,13 +176,13 @@
              x-show="table.status === 'serving' || table.status === 'awaiting_payment'"
              x-cloak>
           <span x-show="table.guest_count > 0"
-                x-text="table.guest_count + ' kh\u00E1ch'"></span>
+                x-text="table.guest_count + ' khách'"></span>
           <span x-show="table.order_total > 0"
-                x-text="formatVND(table.order_total) + '\u0111'"></span>
+                x-text="formatVND(table.order_total) + 'đ'"></span>
           <!-- Running hourly charge for billiard tables -->
           <span x-show="table.hourly_rate > 0 && table.status === 'serving'"
                 class="table-node__hourly-cost"
-                x-text="'\u23F1 ' + formatVND(getRunningHourlyCharge(table)) + '\u0111'"
+                x-text="'⏱ ' + formatVND(getRunningHourlyCharge(table)) + 'đ'"
                 x-cloak></span>
         </div>
 
@@ -502,7 +502,7 @@
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          <span>X&#225;c nh&#7853;n kh&#225;ch &#273;&#7871;n</span>
+          <span>Xác nhận khách đến</span>
         </button>
         <div class="context-menu__divider"></div>
         <button class="context-menu__item context-menu__item--danger"
@@ -512,7 +512,7 @@
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
-          <span>H&#7911;y &#273;&#7863;t h&#7865;n</span>
+          <span>Hủy đặt hẹn</span>
         </button>
       </div>
     </template>
@@ -527,7 +527,7 @@
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
-          <span>T&#7841;o order</span>
+          <span>Tạo order</span>
         </button>
         <div class="context-menu__divider"></div>
         <button class="context-menu__item"
@@ -536,7 +536,7 @@
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          <span>Ho&#224;n th&#224;nh &#273;&#7863;t h&#7865;n</span>
+          <span>Hoàn thành đặt hẹn</span>
         </button>
       </div>
     </template>
@@ -551,7 +551,7 @@
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
-          <span>T&#7841;o order</span>
+          <span>Tạo order</span>
         </button>
         <div class="context-menu__divider"></div>
         <button class="context-menu__item"
@@ -563,7 +563,7 @@
             <line x1="8" y1="2" x2="8" y2="6"></line>
             <line x1="3" y1="10" x2="21" y2="10"></line>
           </svg>
-          <span>&#272;&#7863;t h&#7865;n</span>
+          <span>Đặt hẹn</span>
         </button>
       </div>
     </template>
@@ -590,7 +590,7 @@
             <polyline points="9 21 3 21 3 15"></polyline>
             <path d="M3 21l7-7"></path>
           </svg>
-          <span>Chuy&#7875;n b&#224;n</span>
+          <span>Chuyển bàn</span>
         </button>
         <button class="context-menu__item"
                 @click="handleContextAction('merge-table', contextMenu.table)">
@@ -600,7 +600,7 @@
             <rect x="14" y="3" width="7" height="7"></rect>
             <rect x="8" y="14" width="8" height="7"></rect>
           </svg>
-          <span>G&#7897;p b&#224;n</span>
+          <span>Gộp bàn</span>
         </button>
       </div>
     </template>
@@ -615,7 +615,7 @@
             <line x1="12" y1="1" x2="12" y2="23"></line>
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
           </svg>
-          <span>Thanh to&#225;n</span>
+          <span>Thanh toán</span>
         </button>
         <div class="context-menu__divider"></div>
         <button class="context-menu__item context-menu__item--danger"
@@ -626,7 +626,7 @@
             <line x1="15" y1="9" x2="9" y2="15"></line>
             <line x1="9" y1="9" x2="15" y2="15"></line>
           </svg>
-          <span>H&#7911;y y&#234;u c&#7847;u</span>
+          <span>Hủy yêu cầu</span>
         </button>
       </div>
     </template>
@@ -640,7 +640,7 @@
           <polyline points="1 4 1 10 7 10"></polyline>
           <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
         </svg>
-        <span>Reset b&#224;n</span>
+        <span>Reset bàn</span>
       </button>
     </template>
   </div>

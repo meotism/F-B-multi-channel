@@ -5,14 +5,14 @@
        Header + Create Button
        ================================================================ -->
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
-    <h2 style="margin: 0; font-size: var(--font-size-lg);">&#272;&#7863;t h&#7865;n</h2>
+    <h2 style="margin: 0; font-size: var(--font-size-lg);">Đặt hẹn</h2>
     <button class="btn btn--primary" @click="openCreateModal()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
       </svg>
-      <span>T&#7841;o &#273;&#7863;t h&#7865;n</span>
+      <span>Tạo đặt hẹn</span>
     </button>
   </div>
 
@@ -23,36 +23,36 @@
 
     <!-- Status filter -->
     <div class="form-group" style="margin-bottom: 0; min-width: 140px;">
-      <label class="form-label" for="filter-res-status">Tr&#7841;ng th&#225;i</label>
+      <label class="form-label" for="filter-res-status">Trạng thái</label>
       <select id="filter-res-status" class="form-select" x-model="filterStatus" @change="applyFilters()">
-        <option value="">T&#7845;t c&#7843;</option>
-        <option value="pending">Ch&#7901; &#273;&#7871;n</option>
-        <option value="active">&#272;&#227; &#273;&#7871;n</option>
-        <option value="expired">H&#7871;t h&#7841;n</option>
-        <option value="cancelled">&#272;&#227; h&#7911;y</option>
-        <option value="completed">Ho&#224;n th&#224;nh</option>
+        <option value="">Tất cả</option>
+        <option value="pending">Chờ đến</option>
+        <option value="active">Đã đến</option>
+        <option value="expired">Hết hạn</option>
+        <option value="cancelled">Đã hủy</option>
+        <option value="completed">Hoàn thành</option>
       </select>
     </div>
 
     <!-- Date from -->
     <div class="form-group" style="margin-bottom: 0; min-width: 140px;">
-      <label class="form-label" for="filter-res-from">T&#7915; ng&#224;y</label>
+      <label class="form-label" for="filter-res-from">Từ ngày</label>
       <input id="filter-res-from" type="date" class="form-input"
              x-model="filterDateFrom" @change="applyFilters()">
     </div>
 
     <!-- Date to -->
     <div class="form-group" style="margin-bottom: 0; min-width: 140px;">
-      <label class="form-label" for="filter-res-to">&#272;&#7871;n ng&#224;y</label>
+      <label class="form-label" for="filter-res-to">Đến ngày</label>
       <input id="filter-res-to" type="date" class="form-input"
              x-model="filterDateTo" @change="applyFilters()">
     </div>
 
     <!-- Table filter -->
     <div class="form-group" style="margin-bottom: 0; min-width: 140px;">
-      <label class="form-label" for="filter-res-table">B&#224;n</label>
+      <label class="form-label" for="filter-res-table">Bàn</label>
       <select id="filter-res-table" class="form-select" x-model="filterTableId" @change="applyFilters()">
-        <option value="">T&#7845;t c&#7843; b&#224;n</option>
+        <option value="">Tất cả bàn</option>
         <template x-for="table in tables" :key="table.id">
           <option :value="table.id" x-text="table.name"></option>
         </template>
@@ -62,7 +62,7 @@
     <!-- Clear filters -->
     <button class="btn btn--outline btn--sm" @click="clearFilters()"
             style="height: 38px;">
-      X&#243;a b&#7897; l&#7885;c
+      Xóa bộ lọc
     </button>
   </div>
 
@@ -71,7 +71,7 @@
        ================================================================ -->
   <div x-show="isLoading" x-cloak style="text-align: center; padding: var(--space-6);">
     <div class="spinner"></div>
-    <p style="margin-top: var(--space-3); color: var(--color-text-secondary);">&#272;ang t&#7843;i danh s&#225;ch &#273;&#7863;t h&#7865;n...</p>
+    <p style="margin-top: var(--space-3); color: var(--color-text-secondary);">Đang tải danh sách đặt hẹn...</p>
   </div>
 
   <!-- ================================================================
@@ -87,7 +87,7 @@
       <line x1="8" y1="2" x2="8" y2="6"></line>
       <line x1="3" y1="10" x2="21" y2="10"></line>
     </svg>
-    <p>Kh&#244;ng c&#243; &#273;&#7863;t h&#7865;n n&#224;o</p>
+    <p>Không có đặt hẹn nào</p>
   </div>
 
   <!-- ================================================================
@@ -97,12 +97,12 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>Th&#7901;i gian</th>
-          <th>Kh&#225;ch h&#224;ng</th>
-          <th>S&#7889; kh&#225;ch</th>
-          <th>B&#224;n</th>
-          <th>Tr&#7841;ng th&#225;i</th>
-          <th>Thao t&#225;c</th>
+          <th>Thời gian</th>
+          <th>Khách hàng</th>
+          <th>Số khách</th>
+          <th>Bàn</th>
+          <th>Trạng thái</th>
+          <th>Thao tác</th>
         </tr>
       </thead>
       <tbody>
@@ -124,7 +124,7 @@
               <span class="badge" :class="statusBadgeClass(res.status)"
                     x-text="statusLabel(res.status)"></span>
               <span x-show="res.prepaid" x-cloak class="badge badge--success"
-                    style="font-size: 9px; margin-left: 2px;">Tr&#7843; tr&#432;&#7899;c</span>
+                    style="font-size: 9px; margin-left: 2px;">Trả trước</span>
             </td>
             <td>
               <div style="display: flex; gap: var(--space-1); flex-wrap: wrap;">
@@ -132,14 +132,14 @@
                 <template x-if="res.status === 'pending'">
                   <div style="display: flex; gap: var(--space-1); flex-wrap: wrap;">
                     <button class="btn btn--success btn--sm" @click="handleConfirmArrival(res)"
-                            title="X&#225;c nh&#7853;n kh&#225;ch &#273;&#7871;n">
+                            title="Xác nhận khách đến">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="20 6 9 17 4 12"></polyline>
                       </svg>
                     </button>
                     <button class="btn btn--outline btn--sm" @click="openEditModal(res)"
-                            title="S&#7917;a">
+                            title="Sửa">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -147,7 +147,7 @@
                       </svg>
                     </button>
                     <button class="btn btn--danger btn--sm" @click="handleCancel(res)"
-                            title="H&#7911;y">
+                            title="Hủy">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -159,7 +159,7 @@
                 <!-- Active: go to order -->
                 <template x-if="res.status === 'active'">
                   <button class="btn btn--primary btn--sm" @click="goToOrder(res)">
-                    T&#7841;o order
+                    Tạo order
                   </button>
                 </template>
               </div>
@@ -184,7 +184,7 @@
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--font-size-sm);">
           <span x-text="tableName(res)"></span>
-          <span x-text="res.party_size + ' kh\u00E1ch'"></span>
+          <span x-text="res.party_size + ' khách'"></span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-2); font-size: var(--font-size-xs); color: var(--color-text-secondary);">
           <span x-text="formatDateTime(res.reserved_at)"></span>
@@ -199,19 +199,19 @@
           <template x-if="res.status === 'pending'">
             <div style="display: flex; gap: var(--space-2); width: 100%;">
               <button class="btn btn--success btn--sm" style="flex: 1;" @click="handleConfirmArrival(res)">
-                X&#225;c nh&#7853;n
+                Xác nhận
               </button>
               <button class="btn btn--outline btn--sm" @click="openEditModal(res)">
-                S&#7917;a
+                Sửa
               </button>
               <button class="btn btn--danger btn--sm" @click="handleCancel(res)">
-                H&#7911;y
+                Hủy
               </button>
             </div>
           </template>
           <template x-if="res.status === 'active'">
             <button class="btn btn--primary btn--sm" style="width: 100%;" @click="goToOrder(res)">
-              T&#7841;o order
+              Tạo order
             </button>
           </template>
         </div>
@@ -258,8 +258,8 @@
     <div class="modal-content" @click.stop style="max-width: 480px;">
       <!-- Header -->
       <div class="modal-content__header">
-        <h3 x-text="isEditing ? 'S\u1EEDa \u0111\u1EB7t h\u1EB9n' : 'T\u1EA1o \u0111\u1EB7t h\u1EB9n'"></h3>
-        <button class="modal-content__close" @click="closeModal()" aria-label="&#272;&#243;ng">&times;</button>
+        <h3 x-text="isEditing ? 'Sửa đặt hẹn' : 'Tạo đặt hẹn'"></h3>
+        <button class="modal-content__close" @click="closeModal()" aria-label="Đóng">&times;</button>
       </div>
 
       <!-- Body -->
@@ -270,59 +270,59 @@
 
         <!-- Customer name -->
         <div class="form-group">
-          <label class="form-label" for="res-name">T&#234;n kh&#225;ch <span style="color: var(--color-danger);">*</span></label>
+          <label class="form-label" for="res-name">Tên khách <span style="color: var(--color-danger);">*</span></label>
           <input id="res-name" type="text" class="form-input"
-                 x-model="form.customer_name" placeholder="VD: Nguy&#7877;n V&#259;n A" required>
+                 x-model="form.customer_name" placeholder="VD: Nguyễn Văn A" required>
         </div>
 
         <!-- Phone -->
         <div class="form-group">
-          <label class="form-label" for="res-phone">S&#7889; &#273;i&#7879;n tho&#7841;i</label>
+          <label class="form-label" for="res-phone">Số điện thoại</label>
           <input id="res-phone" type="tel" class="form-input"
                  x-model="form.customer_phone" placeholder="VD: 0912345678">
         </div>
 
         <!-- Party size -->
         <div class="form-group">
-          <label class="form-label" for="res-party">S&#7889; kh&#225;ch <span style="color: var(--color-danger);">*</span></label>
+          <label class="form-label" for="res-party">Số khách <span style="color: var(--color-danger);">*</span></label>
           <input id="res-party" type="number" class="form-input"
                  x-model.number="form.party_size" min="1" required>
         </div>
 
         <!-- Table selection -->
         <div class="form-group">
-          <label class="form-label" for="res-table">Ch&#7885;n b&#224;n <span style="color: var(--color-danger);">*</span></label>
+          <label class="form-label" for="res-table">Chọn bàn <span style="color: var(--color-danger);">*</span></label>
           <select id="res-table" class="form-select" x-model="form.table_id" required>
-            <option value="">-- Ch&#7885;n b&#224;n --</option>
+            <option value="">-- Chọn bàn --</option>
             <template x-for="table in tables" :key="table.id">
-              <option :value="table.id" x-text="table.name + ' (' + table.capacity + ' ch\u1ED7)'"></option>
+              <option :value="table.id" x-text="table.name + ' (' + table.capacity + ' chỗ)'"></option>
             </template>
           </select>
         </div>
 
         <!-- Reserved at -->
         <div class="form-group">
-          <label class="form-label" for="res-time">Th&#7901;i gian &#273;&#7871;n <span style="color: var(--color-danger);">*</span></label>
+          <label class="form-label" for="res-time">Thời gian đến <span style="color: var(--color-danger);">*</span></label>
           <input id="res-time" type="datetime-local" class="form-input"
                  x-model="form.reserved_at" required>
         </div>
 
         <!-- Duration -->
         <div class="form-group">
-          <label class="form-label" for="res-duration">Th&#7901;i l&#432;&#7907;ng (gi&#7901;) <span style="color: var(--color-danger);">*</span></label>
+          <label class="form-label" for="res-duration">Thời lượng (giờ) <span style="color: var(--color-danger);">*</span></label>
           <select id="res-duration" class="form-select" x-model.number="form.duration_hours">
-            <option value="0.5">0.5 gi&#7901;</option>
-            <option value="1">1 gi&#7901;</option>
-            <option value="1.5">1.5 gi&#7901;</option>
-            <option value="2">2 gi&#7901;</option>
-            <option value="3">3 gi&#7901;</option>
-            <option value="4">4 gi&#7901;</option>
-            <option value="5">5 gi&#7901;</option>
-            <option value="6">6 gi&#7901;</option>
-            <option value="8">8 gi&#7901;</option>
-            <option value="10">10 gi&#7901;</option>
-            <option value="12">12 gi&#7901;</option>
-            <option value="24">24 gi&#7901;</option>
+            <option value="0.5">0.5 giờ</option>
+            <option value="1">1 giờ</option>
+            <option value="1.5">1.5 giờ</option>
+            <option value="2">2 giờ</option>
+            <option value="3">3 giờ</option>
+            <option value="4">4 giờ</option>
+            <option value="5">5 giờ</option>
+            <option value="6">6 giờ</option>
+            <option value="8">8 giờ</option>
+            <option value="10">10 giờ</option>
+            <option value="12">12 giờ</option>
+            <option value="24">24 giờ</option>
           </select>
         </div>
 
@@ -331,40 +331,40 @@
           <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
             <input type="checkbox" x-model="form.prepaid"
                    style="width: 18px; height: 18px; accent-color: var(--color-primary);">
-            <span class="form-label" style="margin: 0;">Kh&#225;ch tr&#7843; ti&#7873;n tr&#432;&#7899;c</span>
+            <span class="form-label" style="margin: 0;">Khách trả tiền trước</span>
           </label>
           <p style="margin-top: var(--space-1); font-size: var(--font-size-xs); color: var(--color-text-secondary);">
-            N&#7871;u tick, &#273;&#7863;t h&#7865;n s&#7869; &#273;&#432;&#7907;c x&#225;c nh&#7853;n ngay v&#224; t&#7841;o &#273;&#417;n t&#7921; &#273;&#7897;ng.
+            Nếu tick, đặt hẹn sẽ được xác nhận ngay và tạo đơn tự động.
           </p>
           <!-- Prepaid price preview -->
           <div x-show="form.prepaid && form.table_id && getPrepaidPrice() > 0" x-cloak
                style="margin-top: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md);">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Ph&#237; theo gi&#7901;:</span>
+              <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Phí theo giờ:</span>
               <span style="font-size: var(--font-size-sm);"
                     x-text="formatVND(getSelectedTableRate()) + '/h &times; ' + form.duration_hours + 'h'"></span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-1); font-weight: 700; font-size: var(--font-size-base); color: var(--color-primary);">
-              <span>T&#7893;ng c&#7897;c:</span>
-              <span x-text="formatVND(getPrepaidPrice()) + '&#273;'"></span>
+              <span>Tổng cộc:</span>
+              <span x-text="formatVND(getPrepaidPrice()) + 'đ'"></span>
             </div>
           </div>
         </div>
 
         <!-- Notes -->
         <div class="form-group">
-          <label class="form-label" for="res-notes">Ghi ch&#250;</label>
+          <label class="form-label" for="res-notes">Ghi chú</label>
           <textarea id="res-notes" class="form-input" rows="2"
-                    x-model="form.notes" placeholder="VD: B&#224;n ngo&#224;i s&#226;n, sinh nh&#7853;t..."></textarea>
+                    x-model="form.notes" placeholder="VD: Bàn ngoài sân, sinh nhật..."></textarea>
         </div>
       </div>
 
       <!-- Footer -->
       <div class="modal-content__footer">
-        <button class="btn btn--outline" @click="closeModal()">H&#7911;y</button>
+        <button class="btn btn--outline" @click="closeModal()">Hủy</button>
         <button class="btn btn--primary" @click="submitForm()" :disabled="isSaving">
           <span x-show="isSaving" class="spinner spinner--sm" style="color: white;" x-cloak></span>
-          <span x-text="isSaving ? '&#272;ang l&#432;u...' : (isEditing ? 'C&#7853;p nh&#7853;t' : 'T&#7841;o &#273;&#7863;t h&#7865;n')"></span>
+          <span x-text="isSaving ? 'Đang lưu...' : (isEditing ? 'Cập nhật' : 'Tạo đặt hẹn')"></span>
         </button>
       </div>
     </div>

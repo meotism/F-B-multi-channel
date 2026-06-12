@@ -785,7 +785,7 @@
             </div>
             <span x-show="appliedDiscount?.id === disc.id" x-cloak
                   style="color: var(--color-success); font-weight: 700; font-size: var(--font-size-sm);">
-              &#10003; Đang áp dụng
+              ✓ Đang áp dụng
             </span>
           </div>
         </template>
@@ -823,7 +823,7 @@
                 <span class="modal-table-card__meta"
                       x-text="c.itemCount + ' món · ' + formatVND(c.total) + 'đ'"></span>
                 <span class="modal-table-card__check"
-                      x-show="selectedMergeSources.includes(c.orderId)">&#10003;</span>
+                      x-show="selectedMergeSources.includes(c.orderId)">✓</span>
               </button>
             </template>
           </div>
