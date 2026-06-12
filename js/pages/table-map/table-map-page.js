@@ -124,8 +124,6 @@ export function tableMapPage() {
 
         // Load today's reservations for map overlay
         await store.loadReservations(Alpine.store('auth').user?.outlet_id);
-
-        console.log('[TableMapPage] Tables loaded successfully');
       } catch (err) {
         console.error('[TableMapPage] Failed to load tables:', err);
         Alpine.store('ui').showToast(
@@ -759,8 +757,6 @@ export function tableMapPage() {
         // Start inactivity timer (5 min) to auto-exit edit mode if the user
         // stops interacting. This prevents indefinite lock holding.
         this.resetInactivityTimer();
-
-        console.log('[TableMapPage] enterEditMode() -- edit mode active');
       } catch (err) {
         console.error('[TableMapPage] enterEditMode() failed:', err);
         Alpine.store('ui').showToast(
@@ -837,8 +833,6 @@ export function tableMapPage() {
         clearTimeout(this.inactivityTimer);
         this.inactivityTimer = null;
       }
-
-      console.log('[TableMapPage] exitEditMode() -- lock released');
     },
 
     /**
@@ -872,7 +866,6 @@ export function tableMapPage() {
         clearTimeout(this.inactivityTimer);
       }
       this.inactivityTimer = setTimeout(() => {
-        console.log('[TableMapPage] Inactivity timeout -- auto-exiting edit mode');
         this.exitEditMode();
       }, 5 * 60 * 1000); // 5 minutes
     },
@@ -958,10 +951,6 @@ export function tableMapPage() {
 
         this.isDragging = false;
         this.resetInactivityTimer();
-
-        console.log(
-          `[TableMapPage] Table ${tableData.id} moved to (${finalX.toFixed(1)}%, ${finalY.toFixed(1)}%)`,
-        );
       };
 
       node.addEventListener('pointermove', onMove);
@@ -1020,7 +1009,6 @@ export function tableMapPage() {
         store.hasUnsavedChanges = false;
         this.undoStack = [];
         Alpine.store('ui').showToast('Đã lưu sơ đồ bàn', 'success');
-        console.log('[TableMapPage] saveMap() completed successfully');
       } catch (err) {
         console.error('[TableMapPage] saveMap() failed:', err);
         Alpine.store('ui').showToast(
@@ -1060,10 +1048,6 @@ export function tableMapPage() {
         table.x = lastAction.prevX;
         table.y = lastAction.prevY;
       }
-
-      console.log(
-        `[TableMapPage] undo: table ${lastAction.tableId} restored to (${lastAction.prevX}%, ${lastAction.prevY}%)`,
-      );
     },
 
     /**
@@ -1455,8 +1439,6 @@ export function tableMapPage() {
         container.style.transform = '';
         container.style.transformOrigin = '';
       };
-
-      console.log('[TableMapPage] Pinch-to-zoom initialized');
     },
 
     // --- Reset Table (S3-23) ---

@@ -483,9 +483,7 @@ export function tableMapStore() {
           this.handleRemoteChange(payload);
         })
         .subscribe((status, err) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('[tableMapStore] Realtime subscription active');
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             console.error('[tableMapStore] Realtime subscription failed:', status, err);
           }
         });
