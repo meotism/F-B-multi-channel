@@ -48,6 +48,11 @@ export function billPage() {
     // --- Confirmation modal state ---
     showFinalizeConfirm: false, // Whether the finalize confirmation modal is visible
 
+    // After finalizing in this page session, return to the table map once the
+    // receipt is printed so the cashier flows straight back to serving.
+    // Never set when re-printing an old bill opened from the bill list.
+    _returnToMapAfterPrint: false,
+
     // --- Discount state (Task 10.3) ---
     discount: null,           // Discount object if order has discount_id
     discountAmount: 0,        // Calculated discount amount in VND
@@ -506,6 +511,17 @@ export function billPage() {
 
         Alpine.store('ui').showToast('Hóa đơn đã được xuất thành công', 'success');
 
+        if (!Alpine.store('printer').isBluetoothSupported()) {
+          // Printing is impossible on this device — flow straight back to the
+          // table map (the success toast lives in the app shell and survives).
+          navigate('/tables');
+          return;
+        }
+
+        // Printing is possible: return to the map after a successful print,
+        // whether it happens via auto-print below or a later manual print.
+        this._returnToMapAfterPrint = true;
+
         // Auto-trigger print only if a Bluetooth printer is already connected.
         // If not connected, skip — user can print later via the print button.
         // (Requirement 9 AC-1: auto-print after finalize when printer connected)
@@ -580,6 +596,13 @@ export function billPage() {
 
           Alpine.store('printer').isConnected = true;
           Alpine.store('ui').showToast('In hóa đơn thành công!', 'success');
+
+          // Just finalized in this session and nothing else left to print:
+          // flow back to the table map. Split bills keep the cashier here
+          // until every sibling bill has been printed.
+          if (this._returnToMapAfterPrint && this.splitBills.length <= 1) {
+            navigate('/tables');
+          }
         } else {
           // Update bill status to 'pending_print' (Requirement 9 AC-3)
           const updatedBill = await updateBillStatus(this.bill.id, 'pending_print', userId);
