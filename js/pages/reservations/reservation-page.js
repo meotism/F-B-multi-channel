@@ -396,7 +396,7 @@ export function reservationPage() {
      * @param {Object} reservation
      */
     async handleCancel(reservation) {
-      const confirmed = await Alpine.store('ui').openConfirmDialog({
+      const confirmed = await Alpine.store('ui').confirm({
         title: 'Hủy đặt hẹn',
         message: `Bạn có chắc muốn hủy đặt hẹn của ${reservation.customer_name}?`,
         confirmLabel: 'Hủy đặt hẹn',

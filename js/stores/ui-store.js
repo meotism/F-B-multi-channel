@@ -87,14 +87,29 @@ export function uiStore() {
      * @param {string} [options.confirmLabel='Xác nhận'] - Confirm button text
      * @param {boolean} [options.danger=false] - Use danger styling
      * @param {Function} options.onConfirm - Callback on confirm
+     * @param {Function} [options.onCancel] - Callback when dismissed without confirming
      */
-    openConfirmDialog({ title, message, confirmLabel = 'Xác nhận', danger = false, onConfirm }) {
-      this.confirmAction = { title, message, confirmLabel, danger, onConfirm };
+    openConfirmDialog({ title, message, confirmLabel = 'Xác nhận', danger = false, onConfirm, onCancel }) {
+      this.confirmAction = { title, message, confirmLabel, danger, onConfirm, onCancel };
     },
 
     /** Close the confirmation dialog without executing. */
     closeConfirmDialog() {
+      this.confirmAction?.onCancel?.();
       this.confirmAction = null;
+    },
+
+    /**
+     * Promise-based confirmation dialog.
+     * @param {Object} options - Same as openConfirmDialog (minus callbacks)
+     * @returns {Promise<boolean>} true if confirmed, false if dismissed
+     */
+    confirm(options) {
+      return new Promise((resolve) => this.openConfirmDialog({
+        ...options,
+        onConfirm: () => resolve(true),
+        onCancel: () => resolve(false),
+      }));
     },
 
     /** Execute the confirmation callback and close. */
