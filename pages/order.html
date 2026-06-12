@@ -288,8 +288,10 @@
        Requirements: 5.2 AC-4, 5.2 AC-6
        ================================================================ -->
   <template x-if="mode === 'detail'">
+  <!-- Reading $store.orders.orderTotal registers it as a reactive dependency
+       so the discount amount re-computes whenever order items change. -->
   <div class="order-detail"
-       x-effect="checkForConflict()">
+       x-effect="checkForConflict(); $store.orders.orderTotal; recalcDiscount()">
 
     <!-- Loading state -->
     <div x-show="$store.orders.isLoading" x-cloak class="order-detail__loading">
