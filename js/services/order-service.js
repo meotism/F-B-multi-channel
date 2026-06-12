@@ -331,15 +331,21 @@ export async function removeItem(orderItemId) {
  * @throws {Error} With Vietnamese message on failure
  */
 export async function requestPayment(orderId) {
-  // 1. Update order status to 'completed'
+  // 1. Update order status to 'completed'.
+  // Status guard: only an 'active' order may transition, so a concurrent
+  // request from another device cannot double-apply the transition.
   const { data: order, error: orderError } = await supabase
     .from('orders')
     .update({ status: 'completed' })
     .eq('id', orderId)
+    .eq('status', 'active')
     .select()
     .single();
 
   if (orderError) {
+    if (orderError.code === 'PGRST116') {
+      throw new Error('Đơn hàng đã thay đổi trạng thái. Vui lòng tải lại.');
+    }
     throw new Error('Không thể yêu cầu thanh toán: ' + orderError.message);
   }
 
@@ -367,15 +373,21 @@ export async function requestPayment(orderId) {
  * @throws {Error} With Vietnamese message on failure
  */
 export async function cancelPaymentRequest(orderId) {
-  // 1. Revert order status to 'active'
+  // 1. Revert order status to 'active'.
+  // Status guard: only a 'completed' order may revert (e.g. not one that
+  // was finalized or cancelled by another device in the meantime).
   const { data: order, error: orderError } = await supabase
     .from('orders')
     .update({ status: 'active' })
     .eq('id', orderId)
+    .eq('status', 'completed')
     .select()
     .single();
 
   if (orderError) {
+    if (orderError.code === 'PGRST116') {
+      throw new Error('Đơn hàng đã thay đổi trạng thái. Vui lòng tải lại.');
+    }
     throw new Error('Không thể hủy yêu cầu thanh toán: ' + orderError.message);
   }
 

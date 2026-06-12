@@ -506,7 +506,19 @@ export function orderStore() {
         throw new Error('Không có đơn hàng hiện tại.');
       }
 
-      const updatedOrder = await requestPaymentService(this.currentOrder.id);
+      // Optimistically lock the order while the request is in flight so that
+      // canModify turns false immediately and no item edits can race the
+      // status transition. Reverted on failure.
+      const prevStatus = this.currentOrder.status;
+      this.currentOrder = { ...this.currentOrder, status: 'completed' };
+
+      let updatedOrder;
+      try {
+        updatedOrder = await requestPaymentService(this.currentOrder.id);
+      } catch (err) {
+        this.currentOrder = { ...this.currentOrder, status: prevStatus };
+        throw err;
+      }
 
       // Merge the updated order data and ensure status is 'completed'
       this.currentOrder = { ...this.currentOrder, ...updatedOrder, status: 'completed' };
@@ -533,6 +545,9 @@ export function orderStore() {
         throw new Error('Không có đơn hàng hiện tại.');
       }
 
+      // Deliberately NOT optimistic here: unlocking (status -> 'active')
+      // re-enables item edits, so we wait for the server to confirm the
+      // transition before allowing modifications again.
       const updatedOrder = await cancelPaymentRequestService(this.currentOrder.id);
 
       // Merge the updated order data and ensure status is 'active'
