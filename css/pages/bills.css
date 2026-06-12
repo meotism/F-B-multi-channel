@@ -635,3 +635,42 @@
   border-top: 1px dashed var(--color-border);
   margin: 0 var(--space-3);
 }
+
+/* ── Split bill list (selectable rows) ── */
+.bill-split-list__item {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-1);
+  background: var(--color-surface);
+  cursor: pointer;
+  text-align: left;
+  font-size: inherit;
+  color: inherit;
+}
+
+.bill-split-list__item--selected {
+  /* Keep 2px visual emphasis without shifting the row size */
+  border: 2px solid var(--color-primary);
+  padding: calc(var(--space-2) - 1px);
+}
+
+.bill-split-list__item:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.bill-split-list__total {
+  font-weight: 600;
+}
+
+.bill-split-list__viewing {
+  margin-left: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  font-weight: 600;
+}

@@ -510,13 +510,20 @@ export function orderStore() {
       // canModify turns false immediately and no item edits can race the
       // status transition. Reverted on failure.
       const prevStatus = this.currentOrder.status;
-      this.currentOrder = { ...this.currentOrder, status: 'completed' };
+      const optimistic = { ...this.currentOrder, status: 'completed' };
+      this.currentOrder = optimistic;
 
       let updatedOrder;
       try {
-        updatedOrder = await requestPaymentService(this.currentOrder.id);
+        updatedOrder = await requestPaymentService(optimistic.id);
       } catch (err) {
-        this.currentOrder = { ...this.currentOrder, status: prevStatus };
+        // Revert only if nothing newer replaced our optimistic object —
+        // e.g. when another device won the race, its Realtime UPDATE
+        // (status 'completed') may have already merged in via
+        // handleOrderChange and must not be clobbered back to 'active'.
+        if (this.currentOrder === optimistic) {
+          this.currentOrder = { ...optimistic, status: prevStatus };
+        }
         throw err;
       }
 

@@ -207,24 +207,20 @@
         <template x-for="(sb, idx) in splitBills" :key="sb.id">
           <button type="button"
                   class="bill-split-list__item"
-                  @click="selectSplitBill(sb)"
-                  style="display: flex; width: 100%; justify-content: space-between; align-items: center; padding: var(--space-2); border-radius: var(--radius-md, 8px); margin-bottom: var(--space-1); background: var(--color-surface); cursor: pointer; text-align: left; font-size: inherit; color: inherit;"
-                  :style="bill?.id === sb.id
-                    ? 'border: 2px solid var(--color-primary);'
-                    : 'border: 1px solid var(--color-border, #e5e7eb);'">
+                  :class="{ 'bill-split-list__item--selected': bill?.id === sb.id }"
+                  :disabled="isPrinting"
+                  @click="selectSplitBill(sb)">
             <span>
               Hóa đơn #<span x-text="idx + 1"></span>
-              <span class="badge badge--muted" x-text="sb.split_type === 'equal' ? 'Chia đều' : 'Theo món'" style="margin-left: var(--space-1);"></span>
-              <span class="badge"
+              <span class="badge badge--muted ml-1" x-text="sb.split_type === 'equal' ? 'Chia đều' : 'Theo món'"></span>
+              <span class="badge ml-1"
                     :class="sb.status === 'printed' ? 'badge--success' : (sb.status === 'pending_print' ? 'badge--warning' : 'badge--info')"
-                    x-text="sb.status === 'printed' ? 'Đã in' : (sb.status === 'pending_print' ? 'Chờ in lại' : 'Chưa in')"
-                    style="margin-left: var(--space-1);"></span>
-              <span x-show="bill?.id === sb.id" x-cloak
-                    style="margin-left: var(--space-1); font-size: var(--font-size-xs); color: var(--color-primary); font-weight: 600;">
+                    x-text="sb.status === 'printed' ? 'Đã in' : (sb.status === 'pending_print' ? 'Chờ in lại' : 'Chưa in')"></span>
+              <span x-show="bill?.id === sb.id" x-cloak class="bill-split-list__viewing">
                 Đang xem
               </span>
             </span>
-            <span style="font-weight: 600;" x-text="formatVND(sb.total) + 'đ'"></span>
+            <span class="bill-split-list__total" x-text="formatVND(sb.total) + 'đ'"></span>
           </button>
         </template>
       </div>

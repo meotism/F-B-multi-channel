@@ -566,6 +566,12 @@ export function billPage() {
       if (this.isPrinting || !this.bill) return;
       this.isPrinting = true;
 
+      // Snapshot the bill being printed: with selectable split bills,
+      // this.bill can change during the long Bluetooth awaits below, and
+      // the post-print status update must target the bill that was
+      // actually printed, not whichever one is selected by then.
+      const billToPrint = this.bill;
+
       try {
         // 1. Get active printer config from store
         const printerConfig = Alpine.store('printer').getActivePrinterConfig();
@@ -586,14 +592,14 @@ export function billPage() {
           // known (by-item split in this session); otherwise a totals-only
           // line (equal split, or by-item after a reload — allocation is
           // not persisted).
-          sourceItems = this._splitItems?.[this.bill.id] || null;
+          sourceItems = this._splitItems?.[billToPrint.id] || null;
           if (!sourceItems) {
-            const idx = this.splitBills.findIndex(b => b.id === this.bill.id);
-            const label = this.bill.split_type === 'equal' ? 'Chia đều' : 'Hóa đơn tách';
+            const idx = this.splitBills.findIndex(b => b.id === billToPrint.id);
+            const label = billToPrint.split_type === 'equal' ? 'Chia đều' : 'Hóa đơn tách';
             printItems = [{
               name: `${label} ${idx + 1}/${this.splitBills.length}`,
               quantity: 1,
-              price: this.bill.total,
+              price: billToPrint.total,
               note: '',
             }];
           }
@@ -608,7 +614,7 @@ export function billPage() {
         }
 
         const escPosData = buildBillEscPos(
-          this.bill,
+          billToPrint,
           outlet,
           this.order,
           printItems,
@@ -629,9 +635,8 @@ export function billPage() {
 
         if (result.success) {
           // Update bill status to 'printed' (Requirement 9 AC-2)
-          const updatedBill = await updateBillStatus(this.bill.id, 'printed', userId);
-          this.bill = updatedBill;
-          this._syncSplitBillEntry(updatedBill);
+          const updatedBill = await updateBillStatus(billToPrint.id, 'printed', userId);
+          this._adoptBillUpdate(updatedBill);
 
           Alpine.store('printer').isConnected = true;
           Alpine.store('ui').showToast('In hóa đơn thành công!', 'success');
@@ -644,9 +649,8 @@ export function billPage() {
           }
         } else {
           // Update bill status to 'pending_print' (Requirement 9 AC-3)
-          const updatedBill = await updateBillStatus(this.bill.id, 'pending_print', userId);
-          this.bill = updatedBill;
-          this._syncSplitBillEntry(updatedBill);
+          const updatedBill = await updateBillStatus(billToPrint.id, 'pending_print', userId);
+          this._adoptBillUpdate(updatedBill);
 
           Alpine.store('ui').showToast('In thất bại. Vui lòng thử lại.', 'error');
         }
@@ -661,10 +665,8 @@ export function billPage() {
         // Update bill to pending_print so retry button appears
         try {
           const userId = Alpine.store('auth').user?.id;
-          if (this.bill) {
-            const updatedBill = await updateBillStatus(this.bill.id, 'pending_print', userId);
-            this.bill = updatedBill;
-          }
+          const updatedBill = await updateBillStatus(billToPrint.id, 'pending_print', userId);
+          this._adoptBillUpdate(updatedBill);
         } catch (statusErr) {
           console.error('[billPage] failed to update bill to pending_print:', statusErr);
         }
@@ -819,18 +821,27 @@ export function billPage() {
      * @param {Object} sb - A bill from splitBills
      */
     selectSplitBill(sb) {
+      // No switching while a print is in flight — the post-print status
+      // update targets the printed bill and the UI should track it.
+      if (this.isPrinting) return;
       this.bill = sb;
     },
 
     /**
-     * Mirror an updated bill into its splitBills entry so the split list
-     * (status badges) stays in sync without waiting for Realtime.
+     * Adopt a bill record updated by this device: mirror it into its
+     * splitBills entry (status badges stay in sync without waiting for
+     * Realtime) and refresh this.bill only when it is the bill currently
+     * being viewed — the user may have selected a sibling split bill while
+     * the update was in flight.
      * @param {Object} updatedBill
      */
-    _syncSplitBillEntry(updatedBill) {
+    _adoptBillUpdate(updatedBill) {
       const idx = this.splitBills.findIndex(b => b.id === updatedBill.id);
       if (idx >= 0) {
         this.splitBills[idx] = { ...this.splitBills[idx], ...updatedBill };
+      }
+      if (this.bill?.id === updatedBill.id) {
+        this.bill = updatedBill;
       }
     },
 
