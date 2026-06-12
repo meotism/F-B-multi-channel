@@ -17,7 +17,7 @@ import {
   deleteRecipe,
 } from '../../services/menu-service.js';
 import { listIngredients } from '../../services/inventory-service.js';
-import { navigate } from '../../utils/navigate.js';
+import { navigate, getRouteParams } from '../../utils/navigate.js';
 
 /**
  * Alpine component factory for the menu item create/edit page.
@@ -61,8 +61,7 @@ export function menuEditPage() {
 
       try {
         // Extract route params from the page container's data attribute
-        const container = document.getElementById('page-container');
-        const params = JSON.parse(container?.dataset.routeParams || '{}');
+        const params = getRouteParams();
         const id = params.id;
 
         if (id && id !== 'new') {

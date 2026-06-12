@@ -16,7 +16,7 @@ import { splitByItems, splitEqual } from '../../services/split-bill-service.js';
 import { calculateDiscount } from '../../services/discount-service.js';
 import { loadOrder } from '../../services/order-service.js';
 import { formatVND, formatDate } from '../../utils/formatters.js';
-import { navigate } from '../../utils/navigate.js';
+import { navigate, getRouteParams } from '../../utils/navigate.js';
 import { buildBillEscPos } from '../../services/escpos-service.js';
 import { BluetoothConnectionManager, printWithRetry, bluetoothService } from '../../services/bluetooth-service.js';
 import { supabase } from '../../services/supabase-client.js';
@@ -268,9 +268,7 @@ export function billPage() {
      */
     async init() {
       // Extract orderId from route params stored by the router
-      const params = JSON.parse(
-        document.getElementById('page-container').dataset.routeParams || '{}',
-      );
+      const params = getRouteParams();
       this.orderId = params.orderId;
 
       if (!this.orderId) {

@@ -16,3 +16,17 @@ export function navigate(path) {
 export function getCurrentPath() {
   return window.location.hash.slice(1) || '/';
 }
+
+/**
+ * Read the route params stored on the page container by the router.
+ * @returns {Object} Parsed params, or {} if absent or malformed
+ */
+export function getRouteParams() {
+  try {
+    return JSON.parse(
+      document.getElementById('page-container')?.dataset.routeParams || '{}',
+    );
+  } catch {
+    return {};
+  }
+}

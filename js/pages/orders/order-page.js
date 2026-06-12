@@ -16,7 +16,7 @@
 // Requirements: 5.2 AC-2, 5.2 AC-4, 5.2 AC-6
 
 import { formatVND, calculateElapsed, formatTimer, getTimerColorClass } from '../../utils/formatters.js';
-import { navigate } from '../../utils/navigate.js';
+import { navigate, getRouteParams } from '../../utils/navigate.js';
 import { supabase } from '../../services/supabase-client.js';
 import { updateOrderNote, setGuestCount } from '../../services/order-service.js';
 import { onSwipe } from '../../utils/swipe.js';
@@ -99,9 +99,7 @@ export function orderPage() {
      */
     async init() {
       // Extract tableId from route params stored by the router
-      const params = JSON.parse(
-        document.getElementById('page-container').dataset.routeParams || '{}',
-      );
+      const params = getRouteParams();
       this.tableId = params.tableId;
 
       // Reset global orders store and increment load generation to invalidate
