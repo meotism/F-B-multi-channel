@@ -198,20 +198,34 @@
     <!-- ============================================================
          Action Buttons
          ============================================================ -->
-    <!-- Task 10.2: Split bills display -->
+    <!-- Task 10.2: Split bills display — click a row to view/print that bill -->
     <template x-if="splitBills.length > 1">
       <div class="bill-split-list" style="margin-bottom: var(--space-4);">
         <h3 style="font-size: var(--font-size-sm); font-weight: 600; margin-bottom: var(--space-2);">
-          Hóa đơn đã tách (<span x-text="splitBills.length"></span>)
+          Hóa đơn đã tách (<span x-text="splitBills.length"></span>) — chọn để xem &amp; in từng hóa đơn
         </h3>
         <template x-for="(sb, idx) in splitBills" :key="sb.id">
-          <div class="bill-split-list__item" style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-2); border: 1px solid var(--color-border, #e5e7eb); border-radius: var(--radius-md, 8px); margin-bottom: var(--space-1);">
+          <button type="button"
+                  class="bill-split-list__item"
+                  @click="selectSplitBill(sb)"
+                  style="display: flex; width: 100%; justify-content: space-between; align-items: center; padding: var(--space-2); border-radius: var(--radius-md, 8px); margin-bottom: var(--space-1); background: var(--color-surface); cursor: pointer; text-align: left; font-size: inherit; color: inherit;"
+                  :style="bill?.id === sb.id
+                    ? 'border: 2px solid var(--color-primary);'
+                    : 'border: 1px solid var(--color-border, #e5e7eb);'">
             <span>
               Hóa đơn #<span x-text="idx + 1"></span>
               <span class="badge badge--muted" x-text="sb.split_type === 'equal' ? 'Chia đều' : 'Theo món'" style="margin-left: var(--space-1);"></span>
+              <span class="badge"
+                    :class="sb.status === 'printed' ? 'badge--success' : (sb.status === 'pending_print' ? 'badge--warning' : 'badge--info')"
+                    x-text="sb.status === 'printed' ? 'Đã in' : (sb.status === 'pending_print' ? 'Chờ in lại' : 'Chưa in')"
+                    style="margin-left: var(--space-1);"></span>
+              <span x-show="bill?.id === sb.id" x-cloak
+                    style="margin-left: var(--space-1); font-size: var(--font-size-xs); color: var(--color-primary); font-weight: 600;">
+                Đang xem
+              </span>
             </span>
             <span style="font-weight: 600;" x-text="formatVND(sb.total) + 'đ'"></span>
-          </div>
+          </button>
         </template>
       </div>
     </template>

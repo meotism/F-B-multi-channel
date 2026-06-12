@@ -65,6 +65,12 @@ export function billPage() {
     isSplitting: false,       // Whether split action is in progress
     splitBills: [],           // Generated bills after split
 
+    // Session-scoped map { billId: orderItem[] } captured when splitting
+    // by item, so each split bill can print its own item rows. Not persisted
+    // (bills only store totals) — after a reload, split receipts print a
+    // totals-only line instead.
+    _splitItems: null,
+
     // --- Keyboard shortcut handler ref (Task 10.1) ---
     _keyHandler: null,
 
@@ -328,7 +334,18 @@ export function billPage() {
           table: 'bills',
           filter: `order_id=eq.${this.orderId}`,
         }, (payload) => {
-          if (payload.new) {
+          if (!payload.new) return;
+
+          // Keep the split list entry in sync (e.g. printed on another device)
+          const idx = this.splitBills.findIndex(b => b.id === payload.new.id);
+          if (idx >= 0) {
+            this.splitBills[idx] = { ...this.splitBills[idx], ...payload.new };
+          }
+
+          // Only adopt the change as the active bill when it matches (or no
+          // bill is loaded yet) — with split bills, an update to a sibling
+          // must not clobber the one being viewed.
+          if (!this.bill || this.bill.id === payload.new.id) {
             this.bill = payload.new;
             // Sync payment method from the bill record
             if (payload.new.payment_method) {
@@ -562,12 +579,33 @@ export function billPage() {
         // 3. Build ESC/POS byte data
         //    buildBillEscPos expects items with { name, quantity, price, note }
         //    but our orderItems have { menuItemName, qty, price, note }
-        const printItems = this.orderItems.map(item => ({
-          name: item.menuItemName || item.menu_items?.name || '',
-          quantity: item.qty,
-          price: item.price,
-          note: item.note || '',
-        }));
+        let sourceItems = this.orderItems;
+        let printItems;
+        if (this.splitBills.length > 1) {
+          // Split bill: print only this bill's items when the allocation is
+          // known (by-item split in this session); otherwise a totals-only
+          // line (equal split, or by-item after a reload — allocation is
+          // not persisted).
+          sourceItems = this._splitItems?.[this.bill.id] || null;
+          if (!sourceItems) {
+            const idx = this.splitBills.findIndex(b => b.id === this.bill.id);
+            const label = this.bill.split_type === 'equal' ? 'Chia đều' : 'Hóa đơn tách';
+            printItems = [{
+              name: `${label} ${idx + 1}/${this.splitBills.length}`,
+              quantity: 1,
+              price: this.bill.total,
+              note: '',
+            }];
+          }
+        }
+        if (!printItems) {
+          printItems = sourceItems.map(item => ({
+            name: item.menuItemName || item.menu_items?.name || '',
+            quantity: item.qty,
+            price: item.price,
+            note: item.note || '',
+          }));
+        }
 
         const escPosData = buildBillEscPos(
           this.bill,
@@ -593,6 +631,7 @@ export function billPage() {
           // Update bill status to 'printed' (Requirement 9 AC-2)
           const updatedBill = await updateBillStatus(this.bill.id, 'printed', userId);
           this.bill = updatedBill;
+          this._syncSplitBillEntry(updatedBill);
 
           Alpine.store('printer').isConnected = true;
           Alpine.store('ui').showToast('In hóa đơn thành công!', 'success');
@@ -607,6 +646,7 @@ export function billPage() {
           // Update bill status to 'pending_print' (Requirement 9 AC-3)
           const updatedBill = await updateBillStatus(this.bill.id, 'pending_print', userId);
           this.bill = updatedBill;
+          this._syncSplitBillEntry(updatedBill);
 
           Alpine.store('ui').showToast('In thất bại. Vui lòng thử lại.', 'error');
         }
@@ -734,6 +774,14 @@ export function billPage() {
             { orderItemIds: group1Ids, paymentMethod: this.paymentMethod },
             { orderItemIds: group2Ids, paymentMethod: this.paymentMethod },
           ], userId, outletId, { discountAmount: this.discountAmount });
+
+          // Bills are created in group order — map each bill to its items
+          // so printing a split bill outputs only that group's rows.
+          const itemById = new Map(this.orderItems.map(i => [i.id, i]));
+          this._splitItems = {
+            [bills[0].id]: group1Ids.map(id => itemById.get(id)).filter(Boolean),
+            [bills[1].id]: group2Ids.map(id => itemById.get(id)).filter(Boolean),
+          };
         } else {
           // Equal split
           if (this.splitEqualCount < 2) {
@@ -750,7 +798,7 @@ export function billPage() {
         }
 
         this.splitBills = bills;
-        this.bill = bills[0]; // Set first bill as active
+        this.bill = bills[0]; // Set first bill as active; others selectable from the list
         if (this.order) {
           this.order.status = 'finalized';
         }
@@ -762,6 +810,27 @@ export function billPage() {
         Alpine.store('ui').showToast(err.message || 'Không thể tách hóa đơn', 'error');
       } finally {
         this.isSplitting = false;
+      }
+    },
+
+    /**
+     * Select a split bill as the active one. Status badge, bill code,
+     * print button, and the printed receipt all follow the active bill.
+     * @param {Object} sb - A bill from splitBills
+     */
+    selectSplitBill(sb) {
+      this.bill = sb;
+    },
+
+    /**
+     * Mirror an updated bill into its splitBills entry so the split list
+     * (status badges) stays in sync without waiting for Realtime.
+     * @param {Object} updatedBill
+     */
+    _syncSplitBillEntry(updatedBill) {
+      const idx = this.splitBills.findIndex(b => b.id === updatedBill.id);
+      if (idx >= 0) {
+        this.splitBills[idx] = { ...this.splitBills[idx], ...updatedBill };
       }
     },
 
