@@ -94,10 +94,12 @@
    * Z-index Layers
    * Ordered from lowest to highest to prevent stacking conflicts.
    * ------------------------------------------------------------------ */
+  --z-sticky: 50;
   --z-sidebar: 100;
   --z-header: 200;
   --z-modal-backdrop: 300;
   --z-modal: 400;
+  --z-popover: 450;
   --z-toast: 500;
   --z-tooltip: 600;
 

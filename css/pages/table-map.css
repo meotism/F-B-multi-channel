@@ -530,7 +530,7 @@
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: var(--radius-md, 8px);
   box-shadow: var(--shadow-lg);
-  z-index: 450;
+  z-index: var(--z-popover);
   min-width: 180px;
   padding: var(--space-1, 4px) 0;
   animation: modal-enter 150ms ease;

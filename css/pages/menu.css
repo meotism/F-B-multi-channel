@@ -626,7 +626,7 @@
   color: var(--color-text-inverse);
   position: sticky;
   top: var(--header-height, 56px);
-  z-index: 50;
+  z-index: var(--z-sticky);
 }
 
 .menu-selection-toolbar__count {
